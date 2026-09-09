@@ -1,0 +1,41 @@
+@media (min-width: 650px) {
+  dialog {
+    margin: auto;
+    border-radius: 25px;
+  }
+  nav {
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 760px;
+    border-radius: 22px 22px 0 0;
+  }
+}
+@media (max-width: 359px) {
+  .donut-wrap {
+    grid-template-columns: 110px 1fr;
+    gap: 8px;
+  }
+  .donut {
+    width: 110px;
+    height: 110px;
+  }
+  .hero .metric {
+    font-size: 32px;
+  }
+  .metric {
+    font-size: 22px;
+  }
+  .actions {
+    gap: 2px;
+  }
+  .icon {
+    min-width: 40px;
+    width: 40px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

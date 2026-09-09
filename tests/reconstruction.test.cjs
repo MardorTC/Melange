@@ -1,7 +1,7 @@
 const test = require("node:test"),
   assert = require("node:assert/strict");
-const C = require("../app/src/main/assets/core.js");
-const H = require("../app/src/main/assets/history-core.js");
+const C = require("../app/src/main/assets/js/domain/finance.js").default;
+const H = require("../app/src/main/assets/js/domain/reconstruction.js").default;
 const start = C.addMonth(C.month(), -1) + "-01",
   m = C.month(start);
 function fixture() {

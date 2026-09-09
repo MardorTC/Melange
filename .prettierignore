@@ -1,0 +1,7 @@
+firma/
+node_modules/
+.tools/
+.gradle/
+**/build/
+package-lock.json
+gradlew*

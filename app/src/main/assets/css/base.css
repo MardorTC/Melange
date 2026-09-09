@@ -1,0 +1,143 @@
+:root {
+  --bg: #f5f1e7;
+  --paper: #fffdf8;
+  --ink: #30291f;
+  --muted: #82796a;
+  --line: #e8e1d5;
+  --green: #456b4d;
+  --mint: #dce9d7;
+  --orange: #ecaa72;
+  --red: #ab4f3f;
+  --shadow: 0 5px 18px #53432908;
+  color-scheme: light;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--bg);
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+  color: inherit;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--green);
+  outline-offset: 3px;
+}
+header {
+  padding: 22px 22px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 760px;
+  margin: auto;
+}
+.brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: -0.6px;
+}
+.brand small {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.brand-icon {
+  font: italic bold 32px Georgia;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 12px;
+  width: 42px;
+  height: 42px;
+  text-align: center;
+  line-height: 38px;
+}
+.brand-icon span {
+  color: var(--orange);
+  font-size: 19px;
+}
+main {
+  max-width: 760px;
+  margin: auto;
+  padding: 10px 18px 110px;
+}
+.page {
+  animation: enter 0.2s ease-out;
+}
+@keyframes enter {
+  from {
+    opacity: 0.4;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+h1 {
+  font-size: 27px;
+  letter-spacing: -1px;
+  font-weight: 650;
+  margin: 2px 0 8px;
+}
+h2 {
+  font-size: 17px;
+  letter-spacing: -0.4px;
+  margin: 0 0 14px;
+}
+h3 {
+  font-size: 14px;
+  margin: 0 0 5px;
+}
+p {
+  line-height: 1.55;
+}
+small,
+.muted {
+  color: var(--muted);
+}
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-size: 10px;
+  font-weight: 750;
+  color: var(--muted);
+  margin: 12px 0 7px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.start {
+  align-items: flex-start;
+}
+.wrap {
+  flex-wrap: wrap;
+}

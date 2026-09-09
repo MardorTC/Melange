@@ -1,10 +1,23 @@
 {
-  "name": "projectosp-android",
-  "version": "7.1.0",
+  "name": "melange",
   "private": true,
   "description": "Melange Android: offline personal finance",
   "scripts": {
-    "test": "node --test tests/core.test.cjs tests/reconstruction.test.cjs && node tests/dom.test.mjs"
+    "test": "node --test tests/core.test.cjs tests/reconstruction.test.cjs && node tests/dom.test.mjs",
+    "format": "prettier --write app/src/main/assets tests scripts docs README.md package.json .github",
+    "format:check": "prettier --check app/src/main/assets tests scripts docs README.md package.json .github",
+    "check": "npm run format:check && npm test",
+    "dev": "node scripts/preview.mjs",
+    "test:ui": "node tests/ui.test.cjs",
+    "release": "node scripts/release.mjs"
   },
-  "devDependencies": { "happy-dom": "20.14.0" }
+  "devDependencies": {
+    "acorn": "8.15.0",
+    "esbuild": "0.25.10",
+    "eslint-scope": "8.4.0",
+    "happy-dom": "20.14.0",
+    "playwright": "1.55.1",
+    "prettier": "3.6.2"
+  },
+  "type": "module"
 }

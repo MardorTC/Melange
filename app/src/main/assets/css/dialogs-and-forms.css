@@ -1,0 +1,144 @@
+dialog {
+  border: 1px solid var(--line);
+  border-radius: 25px 25px 0 0;
+  padding: 23px 20px 28px;
+  width: min(100%, 580px);
+  max-height: 92dvh;
+  position: fixed;
+  margin: auto auto 0;
+  background: var(--paper);
+  box-shadow: 0 -10px 60px #201a2520;
+  color: var(--ink);
+}
+dialog::backdrop {
+  background: #28251e66;
+  backdrop-filter: blur(3px);
+}
+dialog h2 {
+  font-size: 21px;
+  margin: 0;
+}
+form {
+  display: grid;
+  gap: 15px;
+  margin-top: 20px;
+}
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+}
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid #dfd7c8;
+  border-radius: 11px;
+  padding: 12px;
+  margin-top: 6px;
+  background: #fffdf8;
+  color: var(--ink);
+  min-height: 45px;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid #78906a;
+  outline-offset: 1px;
+}
+input[type="checkbox"] {
+  width: auto;
+  min-height: 0;
+}
+textarea {
+  min-height: 75px;
+  resize: vertical;
+}
+.form-error {
+  color: var(--red);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+.form-actions > * {
+  flex: 1;
+}
+#toast {
+  position: fixed;
+  bottom: 92px;
+  left: 18px;
+  right: 18px;
+  margin: auto;
+  max-width: 570px;
+  background: var(--ink);
+  color: white;
+  border-radius: 14px;
+  padding: 14px 16px;
+  z-index: 10;
+  display: none;
+  box-shadow: 0 8px 25px #0002;
+  font-size: 13px;
+}
+#toast.visible {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+#toast button {
+  color: #d8edc8;
+  background: transparent;
+  border: 0;
+  font-weight: 700;
+  padding: 6px;
+}
+.onboard {
+  padding: 28px 10px;
+  text-align: center;
+}
+.onboard h1 {
+  font-size: 33px;
+}
+.onboard p {
+  color: var(--muted);
+}
+.onboard-art {
+  width: 100px;
+  height: 100px;
+  margin: 15px auto 24px;
+  border-radius: 30px;
+  background: var(--mint);
+  display: grid;
+  place-items: center;
+  transform: rotate(-7deg);
+  font-size: 55px;
+  color: var(--green);
+  font-family: Georgia;
+}
+.onboard .btn {
+  margin-top: 10px;
+}
+.details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin: 20px 0;
+}
+.details small {
+  display: block;
+  margin-bottom: 5px;
+}
+.danger-zone {
+  border-color: #dfb8ac;
+}
+.badge {
+  font-size: 9px;
+  padding: 2px 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+}

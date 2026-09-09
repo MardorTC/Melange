@@ -1,0 +1,62 @@
+plugins { id 'com.android.application' }
+
+// The only source of release version information.
+def releaseName = '7.2.0'
+def releaseCode = 70200
+def minimumSdk = 26
+def signingDirectory = file(System.getenv('OSP_SIGNING_DIR') ?: rootProject.file('firma/signing'))
+
+android {
+    namespace 'app.projectosp'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'app.projectosp'
+        minSdk minimumSdk
+        targetSdk 35
+        versionCode releaseCode
+        versionName releaseName
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+    buildFeatures { buildConfig true }
+    signingConfigs {
+        release {
+            storeFile new File(signingDirectory, 'projectosp.jks')
+            keyAlias 'projectosp'
+            def passwordFile = new File(signingDirectory, 'password.txt')
+            if (passwordFile.exists()) {
+                storePassword passwordFile.getText('UTF-8').trim()
+                keyPassword storePassword
+            }
+        }
+    }
+    buildTypes {
+        release { signingConfig signingConfigs.release }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    sourceSets.main.assets.srcDir layout.buildDirectory.dir('generated/melangeAssets')
+    testOptions { unitTests.returnDefaultValues = true }
+}
+
+tasks.register('generateAppMetadata') {
+    def output = layout.buildDirectory.file('generated/melangeAssets/version.json')
+    outputs.file(output)
+    inputs.properties([version: releaseName, versionCode: releaseCode, minSdk: minimumSdk])
+    doLast {
+        output.get().asFile.parentFile.mkdirs()
+        output.get().asFile.text = groovy.json.JsonOutput.toJson([
+            version: releaseName, versionCode: releaseCode, minSdk: minimumSdk
+        ])
+    }
+}
+tasks.named('preBuild').configure { dependsOn 'generateAppMetadata' }
+
+dependencies {
+    implementation 'androidx.core:core:1.15.0'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+}

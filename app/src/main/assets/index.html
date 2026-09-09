@@ -12,8 +12,12 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
     <title>Melange</title>
-    <link rel="stylesheet" href="app.css" />
-    <link rel="stylesheet" href="melange.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/charts-and-lists.css" />
+    <link rel="stylesheet" href="css/dialogs-and-forms.css" />
+    <link rel="stylesheet" href="css/responsive.css" />
+    <link rel="stylesheet" href="css/theme.css" />
   </head>
   <body>
     <header>
@@ -32,9 +36,6 @@
     <dialog id="dialog"><div id="modal"></div></dialog>
     <div id="toast" role="status" aria-live="polite"></div>
     <input type="file" id="importFile" accept=".json,application/json" hidden />
-    <script src="core.js"></script>
-    <script src="history-core.js"></script>
-    <script src="screens.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="js/bootstrap.js"></script>
   </body>
 </html>

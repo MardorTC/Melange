@@ -1,3 +1,13 @@
+import C from "../app/src/main/assets/js/domain/finance.js";
+import { build } from "esbuild";
+const bundle = (
+  await build({
+    entryPoints: ["app/src/main/assets/js/bootstrap.js"],
+    bundle: true,
+    write: false,
+    format: "iife",
+  })
+).outputFiles[0].text;
 import assert from "node:assert/strict";
 import fs from "node:fs";
 const { Window } = await import(process.env.OSP_HAPPY_DOM || "happy-dom");
@@ -26,11 +36,7 @@ doc.write(
     .readFileSync("app/src/main/assets/index.html", "utf8")
     .replace(/<script[^>]*>.*?<\/script>/g, ""),
 );
-w.eval(
-  ["core.js", "history-core.js", "screens.js", "app.js"]
-    .map((file) => fs.readFileSync("app/src/main/assets/" + file, "utf8"))
-    .join("\n"),
-);
+w.eval(bundle);
 const wait = () => new Promise((r) => setTimeout(r, 5));
 await wait();
 const click = async (action, id) => {
@@ -72,22 +78,22 @@ await submit({
   financingCost: "0",
 });
 assert.equal(stored.state.debts.length, 1);
-const before = w.OSP.metrics(stored.state);
+const before = C.metrics(stored.state);
 await click("pay");
-await submit({ amount: "1000", method: "debit", date: w.OSP.today() });
-assert.equal(w.OSP.metrics(stored.state).debit, before.debit - 100000);
-assert.equal(w.OSP.metrics(stored.state).budgetFree, before.budgetFree);
+await submit({ amount: "1000", method: "debit", date: C.today() });
+assert.equal(C.metrics(stored.state).debit, before.debit - 100000);
+assert.equal(C.metrics(stored.state).budgetFree, before.budgetFree);
 await click("undo");
-assert.equal(w.OSP.metrics(stored.state).debit, before.debit);
+assert.equal(C.metrics(stored.state).debit, before.debit);
 await click("tab", "expense");
 await click("expenseSub", "fixed");
 await click("editFixed");
 await submit({ name: "Internet", amount: "500", dueDay: 20 });
 assert.equal(stored.state.fixedExpenses.length, 1);
 await click("pay");
-await submit({ amount: "200", method: "debit", date: w.OSP.today() });
+await submit({ amount: "200", method: "debit", date: C.today() });
 assert.equal(
-  w.OSP.obligations(stored.state).find((i) => i.kind === "fixed").remaining,
+  C.obligations(stored.state).find((i) => i.kind === "fixed").remaining,
   30000,
 );
 await click("tab", "goal");
@@ -95,7 +101,7 @@ await click("editGoal");
 await submit({ name: "Una escapada", target: "5000" });
 await click("contribute");
 await submit({ kind: "add", amount: "1000" });
-assert.equal(w.OSP.metrics(stored.state).reserved, 100000);
+assert.equal(C.metrics(stored.state).reserved, 100000);
 await click("tab", "expense");
 await click("expenseSub", "all");
 await click("filters");
@@ -133,17 +139,17 @@ await click("settings");
 await click("history");
 assert.ok(doc.querySelector("#modal").textContent.includes("Deshacer"));
 await click("close");
-const b = w.OSP.balances(stored.state);
+const b = C.balances(stored.state);
 await w.receiveImport(
   JSON.stringify({ format: "projectosp-backup", state: stored.state }),
 );
 await click("confirmImport");
-assert.deepEqual(w.OSP.balances(stored.state), b);
+assert.deepEqual(C.balances(stored.state), b);
 // A draft survives navigation and native reload without replacing the live ledger.
 console.log("DOM: original flows passed; checking reconstruction.");
 await click("settings");
 const live = JSON.stringify(stored.state),
-  start = w.OSP.addMonth(w.OSP.month(), -1) + "-01";
+  start = C.addMonth(C.month(), -1) + "-01";
 await click("rebuildStart");
 await submit({ startDate: start, debit: "1000", cash: "100", income: "2000" });
 assert.ok(stored.draft);
@@ -188,11 +194,7 @@ reload.document.write(
     .readFileSync("app/src/main/assets/index.html", "utf8")
     .replace(/<script[^>]*>.*?<\/script>/g, ""),
 );
-reload.eval(
-  ["core.js", "history-core.js", "screens.js", "app.js"]
-    .map((file) => fs.readFileSync("app/src/main/assets/" + file, "utf8"))
-    .join("\n"),
-);
+reload.eval(bundle);
 await wait();
 reload.document.querySelector("[data-action=settings]").click();
 await wait();
@@ -211,7 +213,7 @@ assert.equal(stored.draft, null);
 assert.equal(stored.state.reconstruction.basis, "ledger");
 assert.equal(stored.state.transactions.length, 1);
 assert.equal(stored.state.opening.debit, 100000);
-assert.equal(w.OSP.balances(stored.state).debit, 90000);
+assert.equal(C.balances(stored.state).debit, 90000);
 await click("undo");
 assert.equal(JSON.stringify(stored.state), live);
 console.log("DOM: confirmation and undo passed.");
@@ -235,14 +237,8 @@ if (process.env.OSP_BACKUP) {
   const raw = JSON.parse(fs.readFileSync(process.env.OSP_BACKUP, "utf8"));
   await w.receiveImport(JSON.stringify(raw));
   await click("confirmImport");
-  assert.equal(
-    w.OSP.balances(stored.state).debit,
-    w.OSP.cents(raw.balances.debit),
-  );
-  assert.equal(
-    w.OSP.balances(stored.state).cash,
-    w.OSP.cents(raw.balances.cash),
-  );
+  assert.equal(C.balances(stored.state).debit, C.cents(raw.balances.debit));
+  assert.equal(C.balances(stored.state).cash, C.cents(raw.balances.cash));
   for (const name of ["home", "expense", "debt", "calendar", "goal"])
     await click("tab", name);
   await click("settings");

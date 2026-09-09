@@ -1,0 +1,151 @@
+.chart {
+  width: 100%;
+  display: block;
+  max-height: 190px;
+  overflow: visible;
+}
+.chart text {
+  fill: var(--muted);
+  font: 10px system-ui;
+}
+.donut-wrap {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  align-items: center;
+  gap: 18px;
+}
+.donut {
+  width: 140px;
+  height: 140px;
+}
+.legend {
+  font-size: 11px;
+}
+.legend > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 10px 0;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.chips {
+  display: flex;
+  gap: 7px;
+  overflow: auto;
+  padding: 4px 0 8px;
+}
+.chip {
+  border: 1px solid var(--line);
+  background: transparent;
+  border-radius: 20px;
+  padding: 9px 13px;
+  font-size: 12px;
+  white-space: nowrap;
+  min-height: 38px;
+}
+.chip.selected {
+  background: var(--ink);
+  color: white;
+}
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
+.toolbar input {
+  flex: 1;
+  min-width: 0;
+}
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 14px 0;
+}
+.filters label {
+  font-size: 11px;
+}
+.scroll {
+  overflow: auto;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+td,
+th {
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+th {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 600;
+}
+td:last-child,
+th:last-child {
+  text-align: right;
+}
+.timeline td {
+  min-width: 95px;
+  text-align: center;
+}
+.timeline td:first-child {
+  min-width: 140px;
+  text-align: left;
+}
+.timeline-dot {
+  height: 22px;
+  border-radius: 6px;
+  display: block;
+  background: #e9dcc9;
+}
+.timeline-dot.paid {
+  background: #b7ceac;
+}
+nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 9px 12px max(12px, env(safe-area-inset-bottom));
+  background: #fffdf8f5;
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-around;
+  z-index: 3;
+}
+nav button {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  min-height: 45px;
+  min-width: 55px;
+}
+nav button.active {
+  color: var(--green);
+  font-weight: 750;
+}
+nav button.active svg {
+  background: var(--mint);
+  box-sizing: content-box;
+  padding: 4px 15px;
+  margin: -4px -15px 0;
+  border-radius: 15px;
+}

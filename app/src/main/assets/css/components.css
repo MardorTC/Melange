@@ -1,0 +1,244 @@
+.card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 19px;
+  margin: 14px 0;
+  box-shadow: var(--shadow);
+}
+.hero {
+  background:
+    radial-gradient(ellipse at 90% 5%, #66835b 0%, transparent 70%), #344c39;
+  color: #fffdf5;
+  border: none;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.hero:after {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border: 1px solid #e4edd01c;
+  border-radius: 50%;
+  right: -70px;
+  bottom: -90px;
+  pointer-events: none;
+}
+.hero .muted,
+.hero small {
+  color: #d0ddc9;
+}
+.hero .eyebrow {
+  color: #d7e2d1;
+}
+.hero .metric {
+  font-size: 39px;
+  letter-spacing: -1.4px;
+  font-weight: 650;
+  margin: 8px 0 18px;
+  font-variant-numeric: tabular-nums;
+}
+.hero-bottom {
+  border-top: 1px solid #ffffff24;
+  padding-top: 15px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.hero-bottom strong {
+  display: block;
+  font-size: 18px;
+  margin-top: 4px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.grid > .card {
+  margin: 0;
+}
+.metric {
+  font-size: 25px;
+  font-weight: 650;
+  letter-spacing: -0.8px;
+  font-variant-numeric: tabular-nums;
+}
+.metric.small {
+  font-size: 21px;
+}
+.accent {
+  background: #f4e4ce;
+}
+.sage {
+  background: #e5ecdf;
+}
+.pill {
+  font-size: 10px;
+  font-weight: 650;
+  border-radius: 20px;
+  padding: 5px 9px;
+  display: inline-block;
+  background: #eee9de;
+  color: #655d50;
+  white-space: nowrap;
+}
+.pill.good {
+  background: var(--mint);
+  color: var(--green);
+}
+.pill.bad {
+  background: #fae2da;
+  color: var(--red);
+}
+.good {
+  color: var(--green);
+}
+.bad {
+  color: var(--red);
+}
+.btn {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 12px;
+  padding: 12px 15px;
+  min-height: 44px;
+  font-weight: 650;
+}
+.btn.primary {
+  background: var(--ink);
+  color: #fffaf0;
+  border-color: var(--ink);
+}
+.btn.green {
+  background: var(--green);
+  color: white;
+  border-color: var(--green);
+}
+.btn.danger {
+  color: var(--red);
+  border-color: #e9beb3;
+}
+.btn.full {
+  width: 100%;
+}
+.icon {
+  border: 0;
+  background: #eee8dc;
+  border-radius: 12px;
+  min-width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px;
+}
+.icon svg,
+nav svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.icon.danger {
+  color: var(--red);
+  background: #f6e8e1;
+}
+.actions {
+  display: flex;
+  gap: 5px;
+}
+.quick {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 18px 0;
+}
+.quick button {
+  border: 0;
+  background: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 650;
+}
+.quick .icon {
+  width: 48px;
+  height: 48px;
+  background: #e1e9d9;
+}
+.quick button:nth-child(2) .icon {
+  background: #f5dcc4;
+}
+.quick button:nth-child(3) .icon {
+  background: #e6e0d3;
+}
+.item {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.item:first-child {
+  padding-top: 0;
+}
+.item p {
+  margin: 3px 0;
+  font-size: 12px;
+}
+.item-title {
+  font-size: 14px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.amount {
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.empty {
+  text-align: center;
+  padding: 24px 10px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.empty strong {
+  display: block;
+  color: var(--ink);
+  font-size: 17px;
+  margin-bottom: 6px;
+}
+.bar {
+  height: 7px;
+  background: #e9e4d9;
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 11px 0;
+}
+.bar > span {
+  display: block;
+  height: 100%;
+  background: var(--green);
+  border-radius: 10px;
+  transition: width 0.35s;
+}
+.note {
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+  margin: 9px 0 0;
+}
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
