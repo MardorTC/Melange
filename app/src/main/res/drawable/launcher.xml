@@ -1,0 +1,4 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+  <item><shape android:shape="rectangle"><solid android:color="#F2E8D6"/><corners android:radius="24dp"/></shape></item>
+  <item android:drawable="@drawable/melange_logo"/>
+</layer-list>

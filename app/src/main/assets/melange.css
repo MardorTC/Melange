@@ -1,0 +1,250 @@
+/* Melange: sand, espresso and ochre. Semantic warnings retain a distinct red. */
+:root {
+  --bg: #f2e8d6;
+  --paper: #fffaf1;
+  --ink: #49382f;
+  --muted: #807061;
+  --line: #e3d5bf;
+  --green: #946032;
+  --mint: #eddcbb;
+  --orange: #c58a44;
+  --red: #a14437;
+  --shadow: 0 6px 22px #704a1910;
+}
+.brand-logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  object-fit: contain;
+}
+.brand {
+  letter-spacing: -0.4px;
+}
+.hero {
+  background:
+    radial-gradient(ellipse at 95% 0%, #a77943 0%, transparent 70%), #594031;
+}
+.hero .muted,
+.hero small {
+  color: #ecdcc6;
+}
+.hero .eyebrow {
+  color: #ecdcc6;
+}
+.hero:after {
+  border-color: #e8cf9b28;
+}
+.accent {
+  background: #eed8b5;
+}
+.sage {
+  background: #eee2cd;
+}
+.pill {
+  background: #eee1cb;
+  color: #74604a;
+}
+.pill.good {
+  background: #ead4ac;
+  color: #74502b;
+}
+.pill.bad {
+  background: #f3dcd3;
+  color: var(--red);
+}
+.icon {
+  background: #eadcc6;
+}
+.icon.danger {
+  background: #f1ded4;
+}
+.quick .icon {
+  background: #ecdbba;
+}
+.quick button:nth-child(2) .icon {
+  background: #ecd0b9;
+}
+.quick button:nth-child(3) .icon {
+  background: #e4d6c2;
+}
+.bar {
+  background: #e8dcc5;
+}
+nav {
+  background: #fffaf1f5;
+}
+.onboard-art {
+  background: #ecdbba;
+  color: #946032;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline-color: #a67842;
+}
+#toast button {
+  color: #efd098;
+}
+.timeline-dot {
+  background: #eadbc0;
+  height: auto;
+  min-height: 26px;
+  padding: 4px;
+}
+.timeline-dot.paid {
+  background: #bd905a;
+  color: #25180e;
+}
+.timeline-dot.partial {
+  background: repeating-linear-gradient(45deg, #e6c99f 0 5px, #f5e8d3 5px 10px);
+}
+.expenses-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
+.expense-chart {
+  order: 0;
+  margin: 0;
+}
+.expense-list {
+  min-width: 0;
+}
+.expense-list > .card {
+  margin-bottom: 0;
+}
+.calendar-shortcuts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 15px 0 20px;
+}
+.calendar-shortcuts .btn {
+  text-align: left;
+  padding: 16px;
+  background: #fff7e8;
+  border-color: #d6b98d;
+}
+.full-screen > header,
+.full-screen > nav {
+  display: none;
+}
+.full-screen main {
+  max-width: 1200px;
+  padding-top: 20px;
+  padding-bottom: 36px;
+}
+.full-heading {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.full-heading h1 {
+  margin: 0;
+  font-size: clamp(21px, 5vw, 29px);
+}
+.full-heading .eyebrow {
+  margin-top: 0;
+}
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 10px;
+}
+.back-btn svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+.full-screen .scroll {
+  max-width: 100%;
+}
+.full-screen table th:first-child,
+.full-screen table td:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--paper);
+  z-index: 1;
+}
+.full-screen table th {
+  position: sticky;
+  top: 0;
+  background: var(--paper);
+}
+.full-screen .scroll:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+}
+.rebuild-ledger .actions {
+  flex-shrink: 0;
+}
+.rebuild-ledger strong {
+  overflow-wrap: anywhere;
+}
+.rebuild-ledger small {
+  line-height: 1.5;
+}
+.rebuild-ledger .row > div:first-child {
+  min-width: 0;
+}
+.toolbar.wrap > .btn {
+  flex: 1 1 auto;
+}
+.full-screen .details {
+  overflow-wrap: anywhere;
+}
+@media (min-width: 900px) and (orientation: landscape) {
+  body.expenses-screen main,
+  body.expenses-screen header {
+    max-width: 1200px;
+  }
+  .expenses-layout {
+    display: grid;
+    grid-template-columns: minmax(285px, 0.85fr) minmax(0, 1.35fr);
+    align-items: start;
+    gap: 22px;
+  }
+  .expense-chart {
+    position: sticky;
+    top: 18px;
+  }
+  .expense-chart .donut-wrap {
+    grid-template-columns: 1fr;
+  }
+  .expense-chart .donut {
+    margin: auto;
+    width: 190px;
+    height: 190px;
+  }
+  .expense-chart .legend {
+    max-width: 320px;
+    margin: auto;
+    width: 100%;
+  }
+  .expense-chart .legend > div {
+    margin: 14px 0;
+  }
+}
+@media (max-width: 380px) {
+  .full-heading {
+    gap: 10px;
+  }
+  .full-heading .eyebrow {
+    letter-spacing: 0.8px;
+  }
+  .full-screen .grid {
+    gap: 8px;
+  }
+  .full-screen .grid .card {
+    padding: 14px;
+  }
+  .full-screen .grid .metric {
+    font-size: 19px;
+  }
+}

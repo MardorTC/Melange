@@ -1,0 +1,10 @@
+{
+  "name": "projectosp-android",
+  "version": "7.1.0",
+  "private": true,
+  "description": "Melange Android: offline personal finance",
+  "scripts": {
+    "test": "node --test tests/core.test.cjs tests/reconstruction.test.cjs && node tests/dom.test.mjs"
+  },
+  "devDependencies": { "happy-dom": "20.14.0" }
+}
