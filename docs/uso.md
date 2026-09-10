@@ -111,4 +111,4 @@ Se prepara una lista de los siguientes 12 meses y se actualiza al abrir o modifi
 - No hay múltiples saldos bancarios independientes: se conserva la separación de v6 entre efectivo, débito y catálogo de acreedores.
 - No hay recálculo automático de intereses ni forecast de variables no registradas.
 - La base utiliza SQLite para guardar versiones del estado JSON; las consultas y filtros se calculan en memoria. No es todavía un libro mayor con tablas SQL indexadas por movimiento. Se mantienen hasta 15 estados para deshacer; no es almacenamiento ilimitado.
-- La compilación, firma, lógica y simulación del DOM fueron comprobadas. La inspección visual en navegador no pudo ejecutarse por restricciones del entorno. No se realizó una instalación en teléfono o emulador: quedan pendientes de prueba real el selector de archivos, teclado e insets, permisos, avisos y actualización sobre la versión instalada.
+- Las comprobaciones de desarrollo y sus límites se describen en [Verificación](verificacion.md).
