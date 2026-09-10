@@ -17,7 +17,7 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class AndroidSmokeTest {
   @Test
-  public void nativeStorageSignaturesAndWebView() throws Exception {
+  public void nativeStorageAndSignatures() throws Exception {
     android.app.Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
     Context context = instrumentation.getTargetContext();
     LedgerStore store = new LedgerStore(context);
@@ -32,6 +32,16 @@ public class AndroidSmokeTest {
     assertTrue(
         ApkVerifier.sameSigners(new Signature[] {first}, new Signature[] {new Signature("0011")}));
     assertFalse(ApkVerifier.sameSigners(new Signature[] {first}, new Signature[] {second}));
+  }
+
+  @Test
+  public void modernWebViewLoadsModulesAndBridge() throws Exception {
+    android.app.Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+    Context context = instrumentation.getTargetContext();
+    android.content.pm.PackageInfo provider = WebView.getCurrentWebViewPackage();
+    Assume.assumeTrue(
+        "System image requires an updated WebView (92+)",
+        provider != null && Integer.parseInt(provider.versionName.split("\\.")[0]) >= 92);
     MainActivity activity =
         (MainActivity)
             instrumentation.startActivitySync(
