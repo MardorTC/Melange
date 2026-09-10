@@ -1,4 +1,4 @@
-# Melange para Android · 7.1.0
+# Guía de uso de Melange
 
 Aplicación instalable para Android 8.0 o posterior, con Android System WebView actualizado. Funciona sin internet, sin cuenta y sin servidor. El APK no contiene datos financieros del propietario ni datos de ejemplo.
 
@@ -46,7 +46,7 @@ Obtén el nuevo APK de quien mantiene Melange. En **Ajustes → Instalar actuali
 
 El paquete debe conservar `app.projectosp`, tener una versión superior y estar firmado con la **misma clave original**. Android actualiza el programa y mantiene su base de datos. No desinstales para actualizar: desinstalar elimina los datos locales. Exportar un respaldo sigue siendo útil como protección ante pérdida o cambio de teléfono.
 
-Esta versión no descarga actualizaciones automáticamente: aún no hay un repositorio de distribución configurado.
+En Ajustes → Buscar actualizaciones puedes consultar GitHub Releases y descargar la versión estable. También se consulta al abrir, como máximo una vez al día. Tú decides cuándo descargar e instalar.
 
 ## Cambios incluidos
 
@@ -107,39 +107,8 @@ Se prepara una lista de los siguientes 12 meses y se actualiza al abrir o modifi
 ## Pendiente / límites de esta entrega
 
 - No hay sincronización automática con Google Drive ni Proton Drive. El selector de documentos de Android puede permitir guardar respaldos en proveedores instalados; eso es un respaldo manual.
-- No hay descarga automática de nuevas versiones.
+- La descarga requiere una acción del usuario; no hay instalación silenciosa.
 - No hay múltiples saldos bancarios independientes: se conserva la separación de v6 entre efectivo, débito y catálogo de acreedores.
 - No hay recálculo automático de intereses ni forecast de variables no registradas.
 - La base utiliza SQLite para guardar versiones del estado JSON; las consultas y filtros se calculan en memoria. No es todavía un libro mayor con tablas SQL indexadas por movimiento. Se mantienen hasta 15 estados para deshacer; no es almacenamiento ilimitado.
 - La compilación, firma, lógica y simulación del DOM fueron comprobadas. La inspección visual en navegador no pudo ejecutarse por restricciones del entorno. No se realizó una instalación en teléfono o emulador: quedan pendientes de prueba real el selector de archivos, teclado e insets, permisos, avisos y actualización sobre la versión instalada.
-
-## Código y compilación
-
-El proyecto tiene un contenedor nativo Java, una interfaz WebView empaquetada y un núcleo de cálculo JavaScript. No necesita Gradle ni dependencias de producción descargadas en ejecución.
-
-Requisitos de compilación: Linux, JDK 17, SDK Android Platform 35, Build Tools 35.0.0, `zip` y la clave original de firma.
-
-```bash
-export ANDROID_SDK_ROOT="$HOME/Android/Sdk"
-export OSP_SIGNING_DIR="/ruta/privada/projectosp-signing"
-./build.sh
-```
-
-El APK se genera en `build/Melange-7.1.0.apk`. No generes otra clave para actualizar instalaciones existentes. Para una versión posterior, aumenta `versionCode` / `versionName` en el manifiesto y actualiza el nombre de salida del script.
-
-El paquete privado de firma se entrega por separado. Contiene `projectosp.jks` y `password.txt`. No lo incluyas en el APK, en repositorios públicos ni en el paquete que compartas con amigos. Conserva una copia privada: perderlo impide firmar actualizaciones compatibles.
-
-Para pruebas:
-
-```bash
-npm install
-npm test
-```
-
-`tests/core.test.cjs` y `tests/reconstruction.test.cjs` comprueban 18 reglas financieras e históricas. `tests/dom.test.mjs` simula formularios, guardado asíncrono, fallo de guardado, reanudación del borrador, confirmación, deshacer y bloqueo de borradores obsoletos; no reemplaza una prueba de Android. Opcionalmente, `tests/ui.test.cjs` prepara pruebas visuales con Playwright instalado, un servidor local en el puerto 8765 y Chromium indicado mediante `OSP_CHROME`. Esa suite visual no se pudo ejecutar en el entorno de entrega.
-
-## Referencias de plataforma
-
-- [Contenido local en WebView](https://developer.android.com/develop/ui/views/layout/webapps/load-local-content)
-- [Permiso de notificaciones](https://developer.android.com/develop/ui/compose/notifications/notification-permission)
-- [Programación de alarmas](https://developer.android.com/develop/background-work/services/alarms)

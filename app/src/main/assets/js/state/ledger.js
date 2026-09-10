@@ -5,7 +5,7 @@ import { closeModal, toast, showError } from "../ui/components.js";
 import { render } from "../ui/navigation.js";
 
 export function syncReminders() {
-  if (window.window.NativeOSP)
+  if (window.NativeOSP)
     window.NativeOSP.configureReminders(
       JSON.stringify({
         enabled: model.state.settings.reminders,

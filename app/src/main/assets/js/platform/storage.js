@@ -1,7 +1,7 @@
 import { model } from "../state/model.js";
 
 export async function openStore() {
-  if (window.window.NativeOSP) return;
+  if (window.NativeOSP) return;
   model.storeDB = await new Promise((resolve, reject) => {
     const r = indexedDB.open("projectosp-android-preview", 1);
     r.onupgradeneeded = () => r.result.createObjectStore("state");
@@ -11,7 +11,7 @@ export async function openStore() {
 }
 
 export async function readStore() {
-  if (window.window.NativeOSP) {
+  if (window.NativeOSP) {
     const raw = window.NativeOSP.read();
     if (raw.startsWith("ERROR:")) throw Error(raw.slice(6));
     return raw ? JSON.parse(raw) : null;
@@ -37,7 +37,7 @@ window.nativeSaved = (id, result) => {
 };
 
 export async function writeStore(v) {
-  if (window.window.NativeOSP) {
+  if (window.NativeOSP) {
     if (window.NativeOSP.writeAsync) {
       await new Promise((resolve, reject) => {
         const id = ++model.saveSerial;

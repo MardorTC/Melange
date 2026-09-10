@@ -1,3 +1,4 @@
+import { initializeUpdates } from "./platform/updates.js";
 import C from "./domain/finance.js";
 import { model } from "./state/model.js";
 import { chooseRebuildPayment } from "./screens/reconstruction.js";
@@ -132,6 +133,7 @@ window.handleBack = () => {
     }
     render();
     syncReminders();
+    initializeUpdates();
   } catch (e) {
     view.innerHTML = `<div class="card danger-zone"><h1>No se pudieron abrir los datos</h1><p>${esc(e.message)}</p><p>No se han reemplazado ni borrado. Cierra la app y vuelve a intentarlo.</p></div>`;
   }

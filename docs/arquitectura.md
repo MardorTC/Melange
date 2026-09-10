@@ -22,3 +22,9 @@ El paquete `app.projectosp`, el esquema v7, el historial de 15 cambios y la iden
 ## Pruebas
 
 Las pruebas del dominio importan directamente sus módulos. Las pruebas DOM empaquetan temporalmente el mismo punto de entrada con esbuild para ejecutarlo dentro de Happy DOM. Playwright usa los módulos nativos, un servidor efímero propio y datos ficticios. Los archivos generados quedan fuera de Git.
+
+## Actualizaciones
+
+`GitHubReleaseClient` resuelve únicamente la última release estable y sus assets; `UpdateDescriptor` valida metadatos; `ApkVerifier` comprueba bytes e identidad Android; `UpdateController` serializa consultas y descargas. Los datos de actualización viven en SharedPreferences `updates` y caché `updates/`, fuera del libro y sus respaldos. `platform/updates.js` presenta estados sin iniciar conexiones web.
+
+Para Java se utiliza google-java-format 1.24.0: define `JAVA_FORMAT_JAR` con el jar all-deps y ejecuta `scripts/java-format.sh check` o `write`.

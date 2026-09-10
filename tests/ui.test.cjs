@@ -80,6 +80,13 @@ const fs = require("fs");
     assert.equal(after.debit, before.debit - 100000);
     assert.equal(after.budgetFree, before.budgetFree);
     await page.locator("#toast [data-action=undo]").click();
+    await page.waitForFunction(async () => {
+      const { model } = await import("/js/state/model.js");
+      return (
+        !model.busy &&
+        document.querySelector("#toast").textContent.includes("Se deshizo")
+      );
+    });
     const restored = await page.evaluate(async () => {
       const { model } = await import("/js/state/model.js");
       const state = model.state;
@@ -229,7 +236,7 @@ const fs = require("fs");
       path: "build/previews/Melange-metas.png",
       fullPage: true,
     });
-    for (const width of [360, 390, 430]) {
+    for (const width of [360, 390, 430, 1000]) {
       await page.setViewportSize({ width, height: 844 });
       for (const name of ["home", "expense", "debt", "calendar", "goal"]) {
         await page.locator(`nav [data-id=${name}]`).click();
@@ -247,7 +254,7 @@ const fs = require("fs");
     assert.deepEqual(errors, []);
     await browser.close();
     console.log(
-      "UI checks passed: onboarding, balances, debt payment + undo + reload, partial fixed payment, goals, filters, invalid import, write failure rollback, 3 mobile widths.",
+      "UI checks passed: onboarding, balances, debt payment + undo + reload, partial fixed payment, goals, filters, invalid import, 3 mobile widths and landscape.",
     );
   } finally {
     server.close();

@@ -1,3 +1,4 @@
+import { updateAction } from "../platform/updates.js";
 import { reconstructionAction } from "../screens/reconstruction.js";
 import { backPage, render } from "./navigation.js";
 import { model } from "../state/model.js";
@@ -36,6 +37,7 @@ import { showProjection, timeline } from "../screens/calendar.js";
 import { doExport } from "../platform/backups.js";
 
 export async function action(a, id, el) {
+  if (updateAction(a)) return;
   if (a.startsWith("rebuild")) {
     await reconstructionAction(a, id, el);
     return;
@@ -159,7 +161,7 @@ export async function action(a, id, el) {
         }),
     );
   else if (a === "import") {
-    if (window.window.NativeOSP) window.NativeOSP.importBackup();
+    if (window.NativeOSP) window.NativeOSP.importBackup();
     else $("#importFile").click();
   } else if (a === "confirmImport") {
     const incoming = C.clone(model.importCandidate);
@@ -169,12 +171,7 @@ export async function action(a, id, el) {
       C.ensureBudget(s);
     });
   } else if (a === "export") doExport();
-  else if (a === "update") {
-    modal(
-      "Actualizar Melange",
-      `<p>Selecciona un APK nuevo de Melange. Android verificará la firma y conservará los datos al actualizar.</p><p class="note">No desinstales la versión actual. Puedes exportar un respaldo antes de continuar.</p>${btn("Exportar respaldo", "export", "", "full")}${window.window.NativeOSP ? btn("Seleccionar APK", "pickApk", "", "primary full") : "<p>Disponible en Android.</p>"}`,
-    );
-  } else if (a === "pickApk") window.NativeOSP.installUpdate();
+  else if (a === "pickApk") window.NativeOSP.installUpdate();
   else if (a === "reminders") {
     form(
       "Recordatorios de pago",
@@ -204,7 +201,7 @@ export async function action(a, id, el) {
           s.settings.reminders = f.enabled === "yes";
           s.settings.reminderDays = Number(f.days);
         });
-        if (ok && model.state.settings.reminders && window.window.NativeOSP)
+        if (ok && model.state.settings.reminders && window.NativeOSP)
           window.NativeOSP.requestNotifications();
       },
     );

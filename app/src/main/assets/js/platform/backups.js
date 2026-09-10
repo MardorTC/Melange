@@ -34,7 +34,7 @@ export function exportState(exported, filename = "Melange") {
     null,
     2,
   );
-  if (window.window.NativeOSP) window.NativeOSP.exportBackup(json);
+  if (window.NativeOSP) window.NativeOSP.exportBackup(json);
   else {
     const url = URL.createObjectURL(
       new Blob([json], { type: "application/json" }),

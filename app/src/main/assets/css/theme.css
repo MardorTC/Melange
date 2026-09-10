@@ -248,3 +248,14 @@ textarea:focus {
     font-size: 19px;
   }
 }
+
+.release-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  max-height: 16rem;
+  overflow: auto;
+}
+#update-content progress {
+  width: 100%;
+}
