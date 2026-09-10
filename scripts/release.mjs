@@ -11,6 +11,10 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 process.chdir(path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."));
+if (process.env.JAVA_HOME) {
+  process.env.PATH =
+    path.join(process.env.JAVA_HOME, "bin") + path.delimiter + process.env.PATH;
+}
 const repo = "MardorTC/Melange";
 const output = (cmd, args) =>
   execFileSync(cmd, args, { encoding: "utf8" }).trim();
