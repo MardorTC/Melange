@@ -1,8 +1,9 @@
-import { model } from "../state/model.js";
+let storeDB;
+let saveSerial = 0;
 
 export async function openStore() {
   if (window.NativeOSP) return;
-  model.storeDB = await new Promise((resolve, reject) => {
+  storeDB = await new Promise((resolve, reject) => {
     const r = indexedDB.open("projectosp-android-preview", 1);
     r.onupgradeneeded = () => r.result.createObjectStore("state");
     r.onsuccess = () => resolve(r.result);
@@ -17,16 +18,13 @@ export async function readStore() {
     return raw ? JSON.parse(raw) : null;
   }
   return await new Promise((res, rej) => {
-    const r = model.storeDB
-      .transaction("state")
-      .objectStore("state")
-      .get("current");
+    const r = storeDB.transaction("state").objectStore("state").get("current");
     r.onsuccess = () => res(r.result || null);
     r.onerror = () => rej(r.error);
   });
 }
 
-export const saveRequests = new Map();
+const saveRequests = new Map();
 
 window.nativeSaved = (id, result) => {
   const pending = saveRequests.get(id);
@@ -40,7 +38,7 @@ export async function writeStore(v) {
   if (window.NativeOSP) {
     if (window.NativeOSP.writeAsync) {
       await new Promise((resolve, reject) => {
-        const id = ++model.saveSerial;
+        const id = ++saveSerial;
         saveRequests.set(id, { resolve, reject });
         window.NativeOSP.writeAsync(JSON.stringify(v), id);
       });
@@ -51,7 +49,7 @@ export async function writeStore(v) {
     return;
   }
   await new Promise((res, rej) => {
-    const tx = model.storeDB.transaction("state", "readwrite");
+    const tx = storeDB.transaction("state", "readwrite");
     tx.objectStore("state").put(v, "current");
     tx.oncomplete = res;
     tx.onerror = () => rej(tx.error);

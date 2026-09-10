@@ -13,7 +13,6 @@ export const model = {
   busy: false,
   formSubmit: null,
   toastTimer: undefined,
-  storeDB: undefined,
   importCandidate: null,
   filter: {
     q: "",
@@ -26,5 +25,4 @@ export const model = {
     max: "",
   },
   showFilters: false,
-  saveSerial: 0,
 };

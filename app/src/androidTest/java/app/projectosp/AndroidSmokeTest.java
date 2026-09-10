@@ -53,6 +53,9 @@ public class AndroidSmokeTest {
       long deadline = System.currentTimeMillis() + 90000;
       while (System.currentTimeMillis() < deadline) {
         loaded = eval(instrumentation, web, "document.querySelector('#view')?.textContent || ''");
+        if (loaded.contains("Empezar desde cero")) {
+          eval(instrumentation, web, "document.querySelector('[data-action=start]').click()");
+        }
         if (loaded.contains("Cada grano cuenta") || loaded.contains("No se pudieron abrir")) break;
         Thread.sleep(500);
       }
@@ -60,6 +63,8 @@ public class AndroidSmokeTest {
           "WebView did not load the application: " + loaded, loaded.contains("Cada grano cuenta"));
       String info = eval(instrumentation, web, "NativeOSP.appInfo()");
       assertTrue(info.contains(BuildConfig.VERSION_NAME));
+      assertEquals(
+          "true", eval(instrumentation, web, "JSON.parse(NativeOSP.read()).state.started"));
       assertEquals("\"undefined\"", eval(instrumentation, web, "typeof window.OSP"));
       assertEquals("\"function\"", eval(instrumentation, web, "typeof window.nativeUpdate"));
       assertEquals("true", eval(instrumentation, web, "window.handleBack() === false"));
