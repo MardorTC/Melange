@@ -58,16 +58,15 @@ try {
   const tag = "v" + metadata.version;
   const notes = `docs/releases/${metadata.version}.md`;
   if (!existsSync(notes)) throw Error("Faltan las notas de release: " + notes);
-  const releases = JSON.parse(
-    output("gh", [
-      "api",
-      "--paginate",
-      "--slurp",
-      `repos/${repo}/releases`,
-      "--jq",
-      "[.[][] | .tag_name]",
-    ]).replace(/\]\s*\[/g, ","),
-  );
+  const releases = output("gh", [
+    "api",
+    "--paginate",
+    `repos/${repo}/releases`,
+    "--jq",
+    ".[].tag_name",
+  ])
+    .split(/\r?\n/)
+    .filter(Boolean);
   if (releases.includes(tag))
     throw Error("Esa release ya existe; no se reemplazará.");
   if (
