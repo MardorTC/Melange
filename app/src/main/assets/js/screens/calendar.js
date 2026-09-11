@@ -46,24 +46,41 @@ export function timelinePage() {
   );
   return (
     pageHeading("Timeline anual", "Los compromisos, en perspectiva") +
-    `<div class="toolbar">${icon("back", "Año anterior", "timelineYear", "-1")}<h2 style="flex:1;text-align:center;margin:0">${year}</h2>${icon("back", "Año siguiente", "timelineYear", "1", 'style="transform:rotate(180deg)"')}</div><p class="note">Cobre: pagado · Arena: pendiente · Rayado: abono parcial. Desliza para explorar los meses.</p><section class="card"><div class="scroll" tabindex="0" aria-label="Timeline anual"><table class="timeline"><thead><tr><th>Compromiso</th>${months.map((m) => `<th>${mlabel(m)}</th>`).join("")}</tr></thead><tbody><tr><td>Total del mes</td>${byMonth.map((items) => `<td>${money(items.reduce((a, i) => a + i.amount, 0))}</td>`).join("")}</tr>${[
+    `<div class="toolbar">${icon("back", "Año anterior", "timelineYear", "-1")}<h2 style="flex:1;text-align:center;margin:0">${year}</h2>${icon("back", "Año siguiente", "timelineYear", "1", 'style="transform:rotate(180deg)"')}</div><p class="note">Verde: pagado · Neutro: pendiente · Cobre rayado: abono parcial. Los periodos consecutivos forman una sola franja.</p><section class="card timeline-card"><div class="scroll" tabindex="0" aria-label="Timeline anual"><table class="timeline"><thead><tr><th>Compromiso</th>${months.map((m) => `<th>${mlabel(m)}</th>`).join("")}</tr></thead><tbody><tr class="timeline-total"><td>Total del mes</td>${byMonth.map((items) => `<td>${money(items.reduce((a, i) => a + i.amount, 0))}</td>`).join("")}</tr>${[
       ...refs.values(),
     ]
-      .map(
-        (r) =>
-          `<tr><td>${esc(r.name)}<br><small>${r.kind === "debt" ? "Deuda" : "Gasto fijo"}</small></td>${byMonth
-            .map((items) => {
-              const occurrences = items.filter(
-                (i) => i.ref === r.ref && i.kind === r.kind,
-              );
-              return `<td>${occurrences.length ? occurrences.map((i) => `<span class="timeline-dot ${i.paid ? "paid" : i.recorded ? "partial" : ""}" title="${i.date} · ${i.paid ? "Pagado" : "Pendiente: " + money(i.remaining)}">${i.date.slice(8)} · ${money(i.amount)}</span>`).join("<br>") : "—"}</td>`;
-            })
-            .join("")}</tr>`,
-      )
+      .map((r) => timelineRow(r, byMonth))
       .join(
         "",
       )}</tbody></table></div>${refs.size ? "" : empty("Sin compromisos", "No hay cuotas ni gastos fijos para este año.")}</section>`
   );
+}
+
+function timelineRow(ref, byMonth) {
+  const rowMonths = byMonth.map((items) =>
+    items.filter((i) => i.ref === ref.ref && i.kind === ref.kind),
+  );
+  return `<tr><td>${esc(ref.name)}<br><small>${ref.kind === "debt" ? "Deuda" : "Gasto fijo"}</small></td>${rowMonths
+    .map((occurrences, index) => {
+      if (!occurrences.length)
+        return '<td class="timeline-cell empty-cell">—</td>';
+      const paid = occurrences.every((i) => i.paid),
+        partial = !paid && occurrences.some((i) => i.recorded),
+        status = paid ? "paid" : partial ? "partial" : "pending",
+        hasPrev = Boolean(rowMonths[index - 1]?.length),
+        hasNext = Boolean(rowMonths[index + 1]?.length),
+        label = occurrences
+          .map((i) => `${i.date.slice(8)} · ${money(i.amount)}`)
+          .join(" / "),
+        title = occurrences
+          .map(
+            (i) =>
+              `${i.date} · ${i.paid ? "Pagado" : "Pendiente: " + money(i.remaining)}`,
+          )
+          .join(" · ");
+      return `<td class="timeline-cell filled ${hasPrev ? "has-prev" : ""} ${hasNext ? "has-next" : ""}"><span class="timeline-flow ${status}" title="${esc(title)}">${esc(label)}</span></td>`;
+    })
+    .join("")}</tr>`;
 }
 
 export function calendarPage() {

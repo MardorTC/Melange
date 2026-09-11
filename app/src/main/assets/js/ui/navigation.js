@@ -64,6 +64,8 @@ export function render() {
     fullScreens.includes(model.tab),
   );
   document.body.classList.toggle("expenses-screen", model.tab === "expense");
+  document.body.dataset.screen = model.tab;
+  document.body.dataset.debtSub = model.debtSub || "";
   const old = {};
   document
     .querySelectorAll("[data-metric]")

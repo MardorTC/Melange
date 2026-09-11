@@ -1,0 +1,1364 @@
+/* Melange Visual Refresh v2
+   Warm neutral surfaces, semantic color and copper used as a brand accent.
+   Loaded after theme.css so presentation changes remain isolated. */
+
+:root {
+  /* Keep legacy component variables aligned with the refreshed system. */
+  --bg: #fcfbf8;
+  --paper: #ffffff;
+  --ink: #22262c;
+  --muted: #656b73;
+  --line: #e9e4dc;
+  --green: #3f7d59;
+  --mint: #e5f3e8;
+  --orange: #c26738;
+  --red: #b34d47;
+  --shadow: 0 9px 28px #3a31260a;
+
+  --ui-bg: #fcfbf8;
+  --ui-surface: #ffffff;
+  --ui-surface-soft: #f8f4ed;
+  --ui-surface-muted: #eeece7;
+  --ui-ink: #22262c;
+  --ui-muted: #656b73;
+  --ui-line: #e9e4dc;
+  --ui-brand: #c26738;
+  --ui-brand-dark: #914721;
+  --ui-brand-soft: #f7e4d6;
+  --ui-brand-faint: #fbf2ea;
+  --ui-success: #3f7d59;
+  --ui-success-soft: #e5f3e8;
+  --ui-warning: #bd7624;
+  --ui-warning-soft: #fff0d9;
+  --ui-danger: #b34d47;
+  --ui-danger-soft: #f8e4e1;
+  --ui-info: #5b7f98;
+  --ui-info-soft: #e7eff4;
+  --ui-violet: #83749d;
+  --ui-shadow: 0 9px 28px #3a31260a;
+  --ui-shadow-raised: 0 14px 36px #3a312612;
+}
+
+html,
+body {
+  background: var(--ui-bg);
+  color: var(--ui-ink);
+}
+
+body {
+  min-height: 100vh;
+}
+
+header,
+main {
+  max-width: 900px;
+}
+
+header {
+  padding-top: 24px;
+}
+
+.brand,
+h1,
+h2,
+h3,
+.metric,
+.amount {
+  color: var(--ui-ink);
+}
+
+.brand small,
+small,
+.muted,
+.note,
+.eyebrow {
+  color: var(--ui-muted);
+}
+
+.brand-logo {
+  border-radius: 12px;
+  background: #f6eadb;
+}
+
+h1 {
+  font-weight: 720;
+}
+
+.card {
+  background: var(--ui-surface);
+  border-color: var(--ui-line);
+  border-radius: 17px;
+  box-shadow: var(--ui-shadow);
+}
+
+.btn {
+  background: var(--ui-surface);
+  border-color: var(--ui-line);
+  border-radius: 12px;
+}
+
+.btn.primary,
+.btn.green {
+  background: var(--ui-brand);
+  border-color: var(--ui-brand);
+  color: #fffaf6;
+}
+
+.btn.primary:active,
+.btn.green:active {
+  background: var(--ui-brand-dark);
+}
+
+.btn.link-btn,
+.btn.round-link {
+  min-height: auto;
+  padding: 7px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--ui-brand-dark);
+  box-shadow: none;
+}
+
+.btn.round-link {
+  border: 1px solid var(--ui-line);
+  border-radius: 999px;
+  color: var(--ui-muted);
+}
+
+.icon {
+  background: var(--ui-surface-soft);
+  color: var(--ui-ink);
+}
+
+.icon.danger {
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible,
+a:focus-visible {
+  outline-color: var(--ui-brand);
+}
+
+.pill {
+  background: var(--ui-surface-muted);
+  color: var(--ui-muted);
+}
+
+.pill.good {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+
+.pill.bad {
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+}
+
+.pill.debt-active {
+  background: #fbecdf;
+  color: #a5572d;
+}
+
+.good {
+  color: var(--ui-success);
+}
+
+.bad {
+  color: var(--ui-danger);
+}
+
+.bar {
+  background: #e6e4df;
+}
+
+.bar > span {
+  background: var(--ui-brand);
+}
+
+.accent {
+  background: var(--ui-warning-soft);
+  border-color: #eed3ac;
+}
+
+.sage {
+  background: var(--ui-success-soft);
+  border-color: #cfe1d3;
+}
+
+.visual-icon,
+.debt-type-icon {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ui-brand-dark);
+  background: var(--ui-brand-soft);
+}
+
+.visual-icon svg,
+.debt-type-icon svg,
+.account-chevron svg,
+.debt-details svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.visual-icon.neutral,
+.debt-type-icon.info {
+  color: #565b62;
+  background: #f0eee9;
+}
+
+.visual-icon.cash,
+.visual-icon.success,
+.debt-type-icon.success {
+  color: var(--ui-success);
+  background: var(--ui-success-soft);
+}
+
+.visual-icon.warning {
+  color: var(--ui-warning);
+  background: var(--ui-warning-soft);
+}
+
+.visual-icon.debt {
+  color: var(--ui-brand-dark);
+  background: var(--ui-brand-soft);
+}
+
+.visual-icon.goal {
+  color: #a75d1f;
+  background: #ffebcf;
+}
+
+/* Sculpted sand layers: decorative SVG stays separate from card content. */
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: var(--ui-ink);
+  background: linear-gradient(115deg, #fbefe2, #f7e4d1);
+  border: 1px solid #ecd4bd;
+  box-shadow: var(--ui-shadow);
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: inherit;
+  transform: none;
+  background: url("../art/dunes.svg") right bottom / 100% 100% no-repeat;
+  pointer-events: none;
+}
+.hero::after {
+  content: none;
+}
+.hero .muted,
+.hero small,
+.hero .eyebrow,
+.hero p {
+  color: #6f5c4e;
+}
+.hero .metric,
+.hero-bottom strong {
+  color: #352b24;
+}
+.hero-bottom {
+  border-top-color: #bf916033;
+}
+
+/* Bottom navigation */
+nav {
+  left: 50%;
+  right: auto;
+  bottom: 12px;
+  width: min(calc(100% - 28px), 680px);
+  transform: translateX(-50%);
+  padding: 8px 10px max(9px, env(safe-area-inset-bottom));
+  background: #fffdf9f5;
+  border: 1px solid var(--ui-line);
+  border-radius: 21px;
+  box-shadow: 0 13px 38px #22252a14;
+}
+
+nav button {
+  color: var(--ui-muted);
+}
+
+nav button.active {
+  color: var(--ui-brand-dark);
+}
+
+nav button.active svg {
+  background: var(--ui-brand-soft);
+}
+
+/* Home */
+.home-heading {
+  margin: 8px 0 18px;
+}
+
+.home-heading .eyebrow {
+  margin-bottom: 4px;
+}
+
+.home-hero {
+  padding: 25px;
+}
+
+.home-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.home-hero .metric {
+  font-size: 38px;
+  margin: 8px 0 4px;
+}
+
+.home-ready {
+  display: block;
+  font-size: 12px;
+  font-weight: 650;
+  color: #4e5358;
+}
+
+.hero-link {
+  flex: 0 0 auto;
+  background: #fff9f4;
+  border-color: #dfbda7;
+  color: var(--ui-brand-dark);
+}
+
+.home-hero .hero-bottom {
+  margin-top: 20px;
+}
+
+.hero-account {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.hero-account .visual-icon {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+}
+
+.hero-account strong {
+  display: block;
+  margin-top: 2px;
+}
+
+.home-actions {
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.home-actions button {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-line);
+  border-radius: 16px;
+  min-height: 92px;
+  padding: 14px 8px;
+  box-shadow: var(--ui-shadow);
+}
+
+.home-actions .icon {
+  width: 46px;
+  height: 46px;
+}
+
+.home-actions button:nth-child(1) .icon {
+  color: var(--ui-brand);
+  background: var(--ui-brand-soft);
+}
+
+.home-actions button:nth-child(2) .icon {
+  color: var(--ui-danger);
+  background: var(--ui-danger-soft);
+}
+
+.home-actions button:nth-child(3) .icon {
+  color: var(--ui-info);
+  background: var(--ui-info-soft);
+}
+
+.home-summary {
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.home-summary-card {
+  min-height: 104px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+}
+
+.home-summary-card .metric {
+  margin-top: 2px;
+}
+
+.home-summary-card .note {
+  margin: 4px 0 0;
+}
+
+.home-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.home-two-col > .card {
+  margin: 0;
+}
+
+.home-upcoming .item,
+.home-spending .donut-wrap {
+  min-height: 0;
+}
+
+.home-spending .donut-wrap {
+  grid-template-columns: 128px 1fr;
+  gap: 14px;
+}
+
+.home-spending .donut {
+  width: 128px;
+  height: 128px;
+}
+
+.home-spending > .btn {
+  margin-top: 7px;
+}
+
+.payment-item {
+  justify-content: flex-start;
+  gap: 11px;
+}
+
+.payment-item .item-icon {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+  border-radius: 11px;
+  color: var(--ui-brand-dark);
+  background: #fbede4;
+}
+
+.payment-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.payment-amount {
+  text-align: right;
+  flex: 0 0 auto;
+}
+
+.home-accounts {
+  margin-top: 14px;
+}
+
+.account-preview-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.account-preview {
+  width: 100%;
+  border: 1px solid var(--ui-line);
+  background: #fffdfa;
+  border-radius: 14px;
+  padding: 11px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.account-preview .visual-icon {
+  width: 42px;
+  height: 42px;
+  flex-basis: 42px;
+}
+
+.account-copy {
+  min-width: 0;
+}
+
+.account-copy strong,
+.account-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.account-chevron {
+  display: inline-flex;
+  color: var(--ui-muted);
+}
+
+.account-chevron svg {
+  width: 17px;
+  height: 17px;
+}
+
+.home-links {
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.home-link-card {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.home-link-card .visual-icon {
+  width: 46px;
+  height: 46px;
+  flex-basis: 46px;
+}
+
+.home-link-card .metric {
+  margin-top: 2px;
+}
+
+.home-link-card .note {
+  margin: 2px 0 0;
+}
+
+.bar.mini {
+  height: 5px;
+  margin: 7px 0 0;
+}
+
+.home-secondary {
+  margin-top: 14px;
+}
+
+/* Debts */
+.debt-page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 8px 0 16px;
+}
+
+.debt-page-heading h1 {
+  margin-bottom: 2px;
+}
+
+.debt-page-heading p {
+  margin: 0;
+  color: var(--ui-muted);
+}
+
+.debt-segments {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 0 18px;
+  background: #eceae5;
+  border: 1px solid var(--ui-line);
+  border-radius: 15px;
+}
+
+.debt-segment {
+  border: 0;
+  min-height: 42px;
+  border-radius: 11px;
+  background: transparent;
+  color: #555a61;
+  font-weight: 650;
+}
+
+.debt-segment.active {
+  background: #fffaf6;
+  color: var(--ui-brand-dark);
+  box-shadow: 0 3px 11px #30271f0d;
+}
+
+.debt-hero {
+  margin-bottom: 22px;
+  padding: 24px;
+}
+
+.debt-hero .metric {
+  font-size: 36px;
+  margin: 7px 0 6px;
+}
+
+.debt-hero p {
+  margin: 0;
+}
+
+.debt-list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 2px 0 8px;
+}
+
+.debt-list-heading h2 {
+  margin: 0;
+}
+
+.debt-card {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) 160px;
+  gap: 15px;
+  align-items: stretch;
+  padding: 18px;
+  margin: 12px 0;
+}
+
+.debt-type-icon {
+  width: 48px;
+  height: 48px;
+  flex-basis: 48px;
+  align-self: start;
+}
+
+.debt-card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.debt-card-title h2 {
+  margin: 0 0 3px;
+}
+
+.debt-numbers {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: end;
+  margin-top: 14px;
+}
+
+.debt-numbers > div:last-child {
+  text-align: right;
+}
+
+.debt-numbers strong {
+  display: block;
+  font-size: 16px;
+  margin-top: 3px;
+}
+
+.debt-card .metric {
+  font-size: 25px;
+  margin-top: 3px;
+}
+
+.debt-progress {
+  height: 6px;
+  margin: 11px 0 8px;
+}
+
+.debt-card.is-paid .debt-progress > span {
+  background: var(--ui-success);
+}
+
+.debt-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.debt-card-actions {
+  border-left: 1px solid #ece8e1;
+  padding-left: 15px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.debt-card-actions .btn {
+  width: 100%;
+}
+
+.debt-pay {
+  min-height: 44px;
+}
+
+.debt-details {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--ui-brand-dark);
+  background: #fffaf6;
+  border-color: #eedbce;
+}
+
+.debt-details svg {
+  width: 17px;
+  height: 17px;
+}
+
+.debt-tools {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.debt-tools .icon {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  padding: 8px;
+}
+
+.receivable-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: -6px 0 12px;
+}
+
+.receivable-card {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) 145px;
+  gap: 15px;
+  align-items: start;
+}
+
+.receivable-content .metric {
+  margin: 12px 0 3px;
+}
+
+.receivable-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+}
+
+.receivable-movement {
+  font-size: 12px;
+}
+
+/* Accounts screen */
+body[data-screen="accounts"] .page > .row:first-child {
+  margin-bottom: 4px;
+}
+
+body[data-screen="accounts"] .page > .note:first-of-type {
+  margin-bottom: 18px;
+}
+
+body[data-screen="accounts"] section.card {
+  margin: 12px 0;
+}
+
+body[data-screen="accounts"] section.card > .details {
+  background: #faf7f1;
+  border: 1px solid #ebe4da;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 14px;
+}
+
+/* Movements */
+body[data-screen="expense"] .expense-chart,
+body[data-screen="expense"] .expense-list > .card {
+  background: var(--ui-surface);
+}
+
+body[data-screen="expense"] .toolbar input {
+  background: var(--ui-surface);
+  border-color: var(--ui-line);
+}
+
+/* Calendar */
+.calendar-shortcuts .btn {
+  background: var(--ui-surface);
+  border-color: var(--ui-line);
+}
+
+body[data-screen="calendar"] .grid > .accent {
+  background: var(--ui-warning-soft);
+}
+
+body[data-screen="calendar"] .grid > .sage {
+  background: var(--ui-success-soft);
+}
+
+/* Timeline: consecutive months visually form one continuous band. */
+.timeline-card {
+  padding: 15px;
+}
+
+.timeline td,
+.timeline th {
+  min-width: 112px;
+}
+
+.timeline td:first-child,
+.timeline th:first-child {
+  min-width: 150px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.timeline-cell {
+  padding: 7px 0;
+  text-align: center;
+}
+
+.timeline-cell.empty-cell {
+  color: #a3a5a4;
+}
+
+.timeline-flow {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  padding: 8px 8px;
+  border-radius: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #e9e7e2;
+  color: #51555a;
+  border: 1px solid #dfddd7;
+}
+
+.timeline-cell.has-prev .timeline-flow {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left-color: transparent;
+}
+
+.timeline-cell.has-next .timeline-flow {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right-color: transparent;
+}
+
+.timeline-flow.paid {
+  background: var(--ui-success-soft);
+  color: #2f6545;
+  border-color: #c7ddcd;
+}
+
+.timeline-flow.partial {
+  background: repeating-linear-gradient(45deg, #f0cfaf 0 6px, #fff3e7 6px 12px);
+  color: #7b481e;
+  border-color: #e7c49f;
+}
+
+.timeline-total td {
+  background: #fbf8f2;
+  font-weight: 650;
+}
+
+/* Charts and minor semantics */
+.dot {
+  outline: 1px solid #00000008;
+}
+
+.empty {
+  color: var(--ui-muted);
+}
+
+.empty strong {
+  color: var(--ui-ink);
+}
+
+@media (min-width: 700px) {
+  main {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+
+  .home-actions {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .home-two-col,
+  .account-preview-list {
+    grid-template-columns: 1fr;
+  }
+
+  .debt-card,
+  .receivable-card {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .debt-type-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .debt-card-actions,
+  .receivable-actions {
+    grid-column: 2;
+    border-left: 0;
+    border-top: 1px solid #ece8e1;
+    padding: 12px 0 0;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .debt-card-actions .btn {
+    width: auto;
+    flex: 1 1 auto;
+  }
+
+  .debt-tools {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  nav {
+    width: calc(100% - 18px);
+    bottom: 6px;
+    border-radius: 18px;
+  }
+
+  .home-hero {
+    padding: 20px;
+  }
+
+  .home-hero-top {
+    display: block;
+  }
+
+  .home-hero .hero-link {
+    margin-top: 12px;
+  }
+
+  .home-hero .metric {
+    font-size: 34px;
+  }
+
+  .home-actions button {
+    min-height: 78px;
+    padding: 10px 5px;
+    font-size: 12px;
+  }
+
+  .home-actions .icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .home-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .home-summary-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 16px;
+  }
+  .home-summary-card .visual-icon {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+    border-radius: 10px;
+  }
+  .home-summary-card .metric {
+    font-size: clamp(18px, 5vw, 22px);
+  }
+  .home-links {
+    grid-template-columns: 1fr;
+  }
+  .home-hero-top {
+    position: relative;
+  }
+  .home-hero .hero-link {
+    position: absolute;
+    top: -4px;
+    right: 0;
+    margin: 0;
+    padding: 8px 10px;
+    min-height: 36px;
+    font-size: 12px;
+  }
+  .home-hero-top > div > span {
+    display: block;
+    max-width: calc(100% - 105px);
+    font-size: 12px;
+  }
+  .hero-bottom strong {
+    font-size: 16px;
+  }
+  .hero-account {
+    gap: 8px;
+    min-width: 0;
+  }
+  .hero-account .visual-icon {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    flex-basis: 32px;
+  }
+  .debt-card-actions,
+  .receivable-actions {
+    grid-column: 1 / -1;
+  }
+  .debt-tools {
+    width: auto;
+  }
+
+  .home-link-card {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+  }
+
+  .home-link-card .visual-icon {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+  }
+
+  .payment-item .item-icon {
+    display: none;
+  }
+
+  .account-preview {
+    grid-template-columns: 38px minmax(0, 1fr) auto 16px;
+  }
+
+  .account-preview .visual-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .debt-page-heading p {
+    font-size: 12px;
+  }
+
+  .debt-card,
+  .receivable-card {
+    padding: 15px;
+  }
+
+  .debt-numbers {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .debt-meta {
+    display: block;
+  }
+
+  .debt-meta small {
+    display: block;
+    margin-top: 2px;
+  }
+
+  .debt-card-actions {
+    flex-wrap: wrap;
+  }
+
+  .debt-tools {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* Shared controls and typography, including screens that retain the original layout. */
+h1 {
+  font-size: clamp(24px, 5.8vw, 28px);
+  letter-spacing: -0.7px;
+}
+h2 {
+  font-size: 17px;
+  line-height: 1.3;
+}
+small,
+.note {
+  line-height: 1.5;
+}
+.card > .row:first-child {
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.card > .row:first-child h2 {
+  margin-bottom: 0;
+}
+.card,
+.grid > *,
+.split > *,
+.home-link-card > div,
+.debt-card-content {
+  min-width: 0;
+}
+.metric {
+  overflow-wrap: anywhere;
+}
+.home-link-card .metric {
+  font-size: 22px;
+}
+.home-link-card .round-link {
+  min-height: 36px;
+  min-width: 44px;
+}
+.home-ready {
+  color: #705c4d;
+  font-weight: 500;
+}
+.home-hero .metric {
+  margin-bottom: 6px;
+}
+.home-actions button {
+  font-size: 12px;
+}
+.home-actions button:nth-child(1) .icon {
+  color: var(--ui-success);
+  background: var(--ui-success-soft);
+}
+.home-spending > .row {
+  flex-wrap: wrap;
+}
+.debt-card-title h2,
+.receivable-content h2 {
+  overflow-wrap: anywhere;
+}
+.debt-card-actions {
+  flex-wrap: wrap;
+}
+.debt-tools {
+  flex-shrink: 0;
+}
+.btn.link-btn {
+  min-height: 36px;
+  flex-shrink: 0;
+}
+.btn,
+.icon,
+.chip,
+.debt-segment {
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+.chip.selected {
+  background: var(--ui-brand-soft);
+  border-color: #e5c1a9;
+  color: var(--ui-brand-dark);
+}
+input,
+select,
+textarea {
+  background: var(--ui-surface);
+  border-color: var(--ui-line);
+}
+input[type="checkbox"],
+progress {
+  accent-color: var(--ui-brand);
+}
+dialog {
+  background: var(--ui-surface);
+  border-radius: 20px 20px 0 0;
+}
+dialog::backdrop {
+  background: #24232166;
+}
+.onboard-art {
+  background: var(--ui-brand-soft);
+}
+.danger-zone {
+  border-color: #e7bab3;
+  background: #fff6f4;
+}
+#toast {
+  background: #352d28;
+}
+#toast button {
+  color: #ffdfbf;
+}
+.donut > circle:first-child {
+  stroke: var(--ui-line);
+}
+body[data-screen="accounts"] section.card > .details {
+  background: var(--ui-surface-soft);
+  border-color: var(--ui-line);
+}
+nav {
+  background: #fffffff5;
+}
+nav button {
+  min-height: 46px;
+}
+@media (min-width: 761px) {
+  .home-link-card {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+  }
+  .home-link-card .visual-icon {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+}
+@media (max-width: 380px) {
+  .debt-card,
+  .receivable-card {
+    column-gap: 10px;
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+  .debt-type-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+  .debt-numbers {
+    gap: 8px;
+  }
+  .debt-card .metric {
+    font-size: 22px;
+  }
+  .debt-card-title {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .home-link-card {
+    gap: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .icon,
+  .chip,
+  .debt-segment {
+    transition: none;
+  }
+}
+
+/* Compact actions, a centered spending chart and full-width history. */
+.home-actions button {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  min-height: 72px;
+  padding: 8px 4px;
+}
+.home-spending .donut-wrap {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 12px;
+  margin: 16px 0 8px;
+}
+.home-spending .donut {
+  width: 160px;
+  height: 160px;
+}
+.home-spending .legend {
+  width: 100%;
+  font-size: 12px;
+}
+.home-spending .legend > div {
+  margin: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ui-line);
+  gap: 16px;
+}
+.home-spending .legend > div:last-child {
+  border-bottom: 0;
+}
+.home-spending .legend > div > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.home-spending .legend strong {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.history-chart {
+  width: 100%;
+  margin-top: 16px;
+}
+.history-chart .chart {
+  width: 100%;
+  height: 170px;
+  max-height: none;
+  margin: 8px 0;
+}
+.chart-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--ui-muted);
+}
+.chart-labels > :last-child {
+  text-align: right;
+}
+.debt-settled {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+.debt-settled h2 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.debt-settled .debt-type-icon {
+  width: 36px;
+  height: 36px;
+}
+.debt-settled .link-btn {
+  font-size: 12px;
+  padding: 8px 4px;
+}
+@media (max-width: 380px) {
+  .debt-settled {
+    gap: 8px;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+  }
+  .debt-settled .debt-type-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .debt-settled > .icon {
+    grid-column: 3;
+    justify-self: end;
+  }
+}

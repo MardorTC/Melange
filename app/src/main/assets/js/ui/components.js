@@ -66,6 +66,15 @@ export const icons = {
   settings: "M4 7h16M4 17h16M8 4v6M16 14v6",
   download: "M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5",
   back: "m15 5-7 7 7 7",
+  bank: "M3 10h18M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18M12 3 3 8h18Z",
+  cash: "M3 6h18v12H3ZM7 9a3 3 0 0 1-3 3m16-3a3 3 0 0 0 3 3M9 12h6",
+  card: "M3 6h18v12H3ZM3 10h18M7 15h4",
+  receipt: "M5 3h14v18l-3-2-4 2-4-2-3 2ZM8 8h8M8 12h8M8 16h5",
+  calendarCheck: "M4 5h16v16H4ZM8 3v4M16 3v4M4 10h16m-11 5 2 2 4-5",
+  checkCircle: "M21 11a9 9 0 1 1-5-7M8 12l3 3 8-9",
+  wallet: "M3 6h15a3 3 0 0 1 3 3v9H3ZM3 9h18M15 13h4v3h-4Z",
+  ticket: "M4 8a2 2 0 0 0 0 4v4h16v-4a2 2 0 0 0 0-4V4H4ZM9 7v6",
+  chevron: "m9 5 7 7-7 7",
 };
 
 export const svg = (k) =>
@@ -173,12 +182,12 @@ export function metric(n, key, cls = "") {
 }
 
 export const colors = [
-  "#986437",
-  "#c78b44",
-  "#ba7856",
-  "#79655e",
-  "#b8a081",
-  "#dac49f",
+  "#c76a3b",
+  "#e0a24f",
+  "#6f9f7b",
+  "#6f91a6",
+  "#d47e72",
+  "#9486ad",
 ];
 
 export const kindName = (k) =>

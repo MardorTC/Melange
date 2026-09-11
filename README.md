@@ -8,6 +8,7 @@ Requiere Node.js 24, JDK 17 y SDK Android 35. Instala las dependencias con `npm 
 
 Define `JAVA_HOME` y `ANDROID_HOME` según tu equipo. `./build.sh debug` compila sin la firma privada; `./build.sh release` utiliza `firma/signing/` o `OSP_SIGNING_DIR`.
 
+- [Editar y previsualizar el diseño sin APK](docs/desarrollo-visual.md)
 - [Arquitectura](docs/arquitectura.md)
 - [Guía de uso y datos](docs/uso.md)
 - [Compilación y publicación](docs/publicacion.md)
