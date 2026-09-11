@@ -294,3 +294,39 @@ test("reminders group debts, loans and boxes, chosen time validates, and maturit
   s.settings.reminderTime = "25:00";
   assert.throws(() => C.validate(s));
 });
+
+test("calendar changes cannot duplicate a due that was paid in advance", () => {
+  const s = fixture(),
+    f = recurring("months", "2025-01-31", { amount: 10000 });
+  s.fixedExpenses = [f];
+  C.ensureBudget(s, "2025-01");
+  C.pay(s, C.obligations(s, "2025-01")[0].key, {
+    period: "2025-01",
+    amount: 10000,
+    date: "2025-01-02",
+  });
+  f.rules[0].effectiveFrom = "2025-01-01";
+  const before = JSON.stringify(f);
+  assert.throws(
+    () =>
+      C.setRecurrence(s, f, {
+        unit: "months",
+        interval: 1,
+        startDate: "2025-01-31",
+        effectiveFrom: "2025-01-20",
+        amount: 20000,
+      }),
+    /pagos/,
+  );
+  assert.equal(JSON.stringify(f), before);
+  C.setRecurrence(s, f, {
+    unit: "months",
+    interval: 1,
+    startDate: "2025-01-31",
+    effectiveFrom: "2025-02-01",
+    amount: 20000,
+  });
+  C.refreshAllBudgets(s);
+  assert.equal(C.obligations(s, "2025-01").length, 1);
+  assert.equal(C.obligations(s, "2025-01")[0].paid, true);
+});

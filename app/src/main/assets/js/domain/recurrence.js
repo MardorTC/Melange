@@ -105,6 +105,16 @@ export function setRecurrence(s, f, rule) {
   const last = rules.at(-1);
   if (last && rule.effectiveFrom < last.effectiveFrom)
     throw Error("La vigencia debe ser posterior a la última configuración.");
+  for (const t of s.transactions.filter((t) => t.ref === f.id)) {
+    const m = t.period || L.month(t.date);
+    const due = (s.budgets?.[m]?.items || occurrences(f, m)).find(
+      (i) => i.key === t.obligation,
+    );
+    if ((due?.date || t.date) >= rule.effectiveFrom)
+      throw Error(
+        "Hay vencimientos con pagos desde esa fecha; elige una vigencia posterior para conservarlos.",
+      );
+  }
   const id = L.id();
   if (last && last.effectiveFrom === rule.effectiveFrom) {
     if (
