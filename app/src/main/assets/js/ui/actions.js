@@ -1,3 +1,5 @@
+import { accountAction } from "../screens/accounts.js";
+import { loanAction } from "../screens/receivables.js";
 import { updateAction } from "../platform/updates.js";
 import { reconstructionAction } from "../screens/reconstruction.js";
 import { backPage, render } from "./navigation.js";
@@ -9,6 +11,7 @@ import {
   money,
   form,
   amount,
+  input,
   moneyValue,
   $,
   btn,
@@ -37,7 +40,12 @@ import { showProjection, timeline } from "../screens/calendar.js";
 import { doExport } from "../platform/backups.js";
 
 export async function action(a, id, el) {
-  if (updateAction(a)) return;
+  if (updateAction(a) || accountAction(a, id) || loanAction(a, id)) return;
+  if (a === "debtSub") {
+    model.debtSub = id;
+    render();
+    return;
+  }
   if (a.startsWith("rebuild")) {
     await reconstructionAction(a, id, el);
     return;
@@ -100,7 +108,7 @@ export async function action(a, id, el) {
     const f = model.state.fixedExpenses.find((f) => f.id === id);
     modal(
       f.name,
-      `<p>${money(f.amount)} al mes · Día ${f.dueDay}</p><p>${f.kind === "subscription" ? "Suscripción" : "Gasto fijo"}</p><p class="note">Cada pago se vincula al mes que corresponde.</p>`,
+      `<p>${money(f.amount)} por vencimiento · ${esc(C.recurrenceLabel(f))}</p><p>${f.kind === "subscription" ? "Suscripción" : "Gasto fijo"}</p><p class="note">Cada pago se vincula a su vencimiento individual.</p>`,
     );
   } else if (a === "expenseSub") {
     model.sub = id;
@@ -114,7 +122,7 @@ export async function action(a, id, el) {
       from: "",
       to: "",
       category: "",
-      method: "",
+      accountId: "",
       kind: "",
       min: "",
       max: "",
@@ -129,19 +137,23 @@ export async function action(a, id, el) {
     const b = C.balances(model.state);
     form(
       "Ajustar saldos",
-      amount("debit", "Débito real", b.debit) +
-        amount("cash", "Efectivo real", b.cash) +
+      model.state.walletAccounts
+        .filter((a) => a.active !== false)
+        .map((a) => amount(a.id, a.name + " real", b[a.id]))
+        .join("") +
         '<p class="note">La diferencia queda registrada como ajuste, no como ingreso ni gasto.</p>',
       async (f) =>
         commit("Saldos ajustados", (s) => {
           const current = C.balances(s);
-          for (const method of ["cash", "debit"]) {
-            const diff = moneyValue(f[method]) - current[method];
+          for (const accountId of s.walletAccounts
+            .filter((a) => a.active !== false)
+            .map((a) => a.id)) {
+            const diff = moneyValue(f[accountId]) - current[accountId];
             if (diff)
               C.record(s, {
                 kind: "adjustment",
                 name: "Ajuste de saldo",
-                method,
+                accountId,
                 amount: Math.abs(diff),
                 direction: diff < 0 ? -1 : 1,
                 date: C.today(),
@@ -195,11 +207,20 @@ export async function action(a, id, el) {
             ["7", "Una semana antes"],
           ],
           String(model.state.settings.reminderDays),
-        ),
+        ) +
+        input(
+          "time",
+          "Hora común de los avisos",
+          model.state.settings.reminderTime,
+          "time",
+          "required",
+        ) +
+        '<p class="note">Incluye pagos, cobros pendientes y cajitas por liberar. Android puede retrasar el aviso.</p>',
       async (f) => {
         const ok = await commit("Recordatorios actualizados", (s) => {
           s.settings.reminders = f.enabled === "yes";
           s.settings.reminderDays = Number(f.days);
+          s.settings.reminderTime = f.time;
         });
         if (ok && model.state.settings.reminders && window.NativeOSP)
           window.NativeOSP.requestNotifications();

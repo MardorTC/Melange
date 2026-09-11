@@ -53,8 +53,10 @@ export function timelinePage() {
         (r) =>
           `<tr><td>${esc(r.name)}<br><small>${r.kind === "debt" ? "Deuda" : "Gasto fijo"}</small></td>${byMonth
             .map((items) => {
-              const i = items.find((i) => i.ref === r.ref && i.kind === r.kind);
-              return `<td>${i ? `<span class="timeline-dot ${i.paid ? "paid" : i.recorded ? "partial" : ""}" title="${i.paid ? "Pagado" : "Pendiente: " + money(i.remaining)}">${money(i.amount)}</span>` : "—"}</td>`;
+              const occurrences = items.filter(
+                (i) => i.ref === r.ref && i.kind === r.kind,
+              );
+              return `<td>${occurrences.length ? occurrences.map((i) => `<span class="timeline-dot ${i.paid ? "paid" : i.recorded ? "partial" : ""}" title="${i.date} · ${i.paid ? "Pagado" : "Pendiente: " + money(i.remaining)}">${i.date.slice(8)} · ${money(i.amount)}</span>`).join("<br>") : "—"}</td>`;
             })
             .join("")}</tr>`,
       )

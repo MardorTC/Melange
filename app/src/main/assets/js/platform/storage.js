@@ -50,7 +50,20 @@ export async function writeStore(v) {
   }
   await new Promise((res, rej) => {
     const tx = storeDB.transaction("state", "readwrite");
-    tx.objectStore("state").put(v, "current");
+    const objects = tx.objectStore("state");
+    const old = objects.get("current");
+    old.onsuccess = () => {
+      if (
+        old.result?.state?.schemaVersion === 7 &&
+        v.state.schemaVersion === 8
+      ) {
+        const backup = objects.get("migration-v7");
+        backup.onsuccess = () => {
+          if (!backup.result) objects.put(old.result, "migration-v7");
+          objects.put(v, "current");
+        };
+      } else objects.put(v, "current");
+    };
     tx.oncomplete = res;
     tx.onerror = () => rej(tx.error);
     tx.onabort = () => rej(tx.error);

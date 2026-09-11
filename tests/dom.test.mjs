@@ -80,7 +80,7 @@ await submit({
 assert.equal(stored.state.debts.length, 1);
 const before = C.metrics(stored.state);
 await click("pay");
-await submit({ amount: "1000", method: "debit", date: C.today() });
+await submit({ amount: "1000", accountId: "debit", date: C.today() });
 assert.equal(C.metrics(stored.state).debit, before.debit - 100000);
 assert.equal(C.metrics(stored.state).budgetFree, before.budgetFree);
 await click("undo");
@@ -88,10 +88,15 @@ assert.equal(C.metrics(stored.state).debit, before.debit);
 await click("tab", "expense");
 await click("expenseSub", "fixed");
 await click("editFixed");
-await submit({ name: "Internet", amount: "500", dueDay: 20 });
+await submit({
+  name: "Internet",
+  amount: "500",
+  startDate: C.month() + "-20",
+  effectiveFrom: C.month() + "-01",
+});
 assert.equal(stored.state.fixedExpenses.length, 1);
 await click("pay");
-await submit({ amount: "200", method: "debit", date: C.today() });
+await submit({ amount: "200", accountId: "debit", date: C.today() });
 assert.equal(
   C.obligations(stored.state).find((i) => i.kind === "fixed").remaining,
   30000,
@@ -159,7 +164,7 @@ await submit({
   name: "Compra histórica",
   amount: "100",
   date: start,
-  method: "debit",
+  accountId: "debit",
 });
 assert.equal(stored.draft.entries.length, 1);
 assert.equal(JSON.stringify(stored.state), live);
@@ -169,7 +174,7 @@ await submit({
   name: "Falla simulada",
   amount: "200",
   date: start,
-  method: "debit",
+  accountId: "debit",
 });
 assert.equal(stored.draft.entries.length, 1);
 assert.match(doc.querySelector(".form-error").textContent, /Simulated/);
@@ -212,7 +217,10 @@ await submit({});
 assert.equal(stored.draft, null);
 assert.equal(stored.state.reconstruction.basis, "ledger");
 assert.equal(stored.state.transactions.length, 1);
-assert.equal(stored.state.opening.debit, 100000);
+assert.equal(
+  stored.state.walletAccounts.find((a) => a.id === "debit").opening,
+  100000,
+);
 assert.equal(C.balances(stored.state).debit, 90000);
 await click("undo");
 assert.equal(JSON.stringify(stored.state), live);
@@ -243,6 +251,74 @@ if (process.env.OSP_BACKUP) {
     await click("tab", name);
   await click("settings");
 }
+// Melange 8 forms: named accounts, availability, antecedents, loans and reminders.
+await click("tab", "home");
+await click("tab", "accounts");
+await click("walletEdit");
+await submit({ name: "BBVA", type: "bank" });
+const bbva = stored.state.walletAccounts.find((a) => a.name === "BBVA").id;
+await click("walletAdjust", bbva);
+await submit({ amount: "5000" });
+await click("boxCreate", bbva);
+await submit({
+  name: "Plazo",
+  amount: "3000",
+  goalId: stored.state.goals[0].id,
+});
+assert.equal(
+  C.accountSummary(stored.state).find((a) => a.id === bbva).available,
+  200000,
+);
+await click("tab", "home");
+await click("expense");
+const unchanged = JSON.stringify(stored.state);
+await submit({ name: "No alcanza", amount: "2500", accountId: bbva });
+assert.equal(JSON.stringify(stored.state), unchanged);
+assert.match(doc.querySelector(".form-error").textContent, /Faltan/);
+await click("close");
+await click("tab", "accounts");
+const box = stored.state.boxes.find((b) => b.name === "Plazo").id;
+await click("boxRelease", box);
+await submit({ amount: "1000" });
+assert.equal(
+  C.accountSummary(stored.state).find((a) => a.id === bbva).available,
+  200000,
+);
+await click("tab", "debt");
+await click("editDebt");
+await submit({
+  name: "Doce cuotas",
+  balance: "700",
+  originalAmount: "1200",
+  payment: "100",
+  totalPayments: 12,
+  priorPaid: 5,
+  startDate: C.addMonth(C.month(), -5) + "-01",
+});
+const debt = stored.state.debts.find((d) => d.name === "Doce cuotas");
+assert.ok(debt, doc.querySelector(".form-error")?.textContent);
+assert.deepEqual(debt.paidPayments, [1, 2, 3, 4, 5]);
+await click("debtSub", "owed");
+await click("loanCreate");
+await submit({
+  person: "Ana",
+  name: "Prueba préstamo",
+  amount: "500",
+  accountId: bbva,
+});
+const loan = stored.state.receivables.at(-1).id;
+assert.equal(C.loanBalance(stored.state, loan), 50000);
+await click("loanCollect", loan);
+await submit({ amount: "200", accountId: "cash" });
+assert.equal(C.loanBalance(stored.state, loan), 30000);
+await click("settings");
+await click("reminders");
+await submit({ time: "18:35", enabled: "yes", days: "3" });
+assert.equal(stored.state.settings.reminderTime, "18:35");
+console.log(
+  "DOM: Melange 8 accounts, blocked spending, boxes, prior installments, loans and reminder time passed.",
+);
+
 await w.happyDOM.abort();
 console.log(
   "DOM integration passed: event handlers, save rollback, payment/undo, partial fixed payment, goals, filters, invalid import, projection, timeline, backup round trip. Not visual or Android runtime QA.",

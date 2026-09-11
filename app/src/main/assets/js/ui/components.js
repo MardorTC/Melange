@@ -140,15 +140,21 @@ export const moneyValue = (f) => {
   return C.cents(v);
 };
 
-export const methodOptions = [
-  ["debit", "Débito"],
-  ["cash", "Efectivo"],
-];
+export function accountOptions(source = model.state, freeOnly = false) {
+  return source.walletAccounts
+    .filter((a) => a.active !== false && (!freeOnly || a.type !== "restricted"))
+    .map((a) => [a.id, a.name]);
+}
+export function accountName(id, source = model.state) {
+  return (
+    source.walletAccounts.find((a) => a.id === id)?.name || "Cuenta archivada"
+  );
+}
 
 export function paymentFields(a) {
   return (
     amount("amount", "Importe", a) +
-    select("method", "Pagar desde", methodOptions, "debit") +
+    select("accountId", "Pagar desde", accountOptions(), "debit") +
     input(
       "date",
       "Fecha real de pago",
@@ -183,6 +189,8 @@ export const kindName = (k) =>
     income: "Ingreso",
     transfer: "Transferencia",
     adjustment: "Ajuste",
+    loan_out: "Dinero prestado",
+    loan_in: "Cobro de préstamo",
   })[k] || k;
 
 export const debtType = (t) =>

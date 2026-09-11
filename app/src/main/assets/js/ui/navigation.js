@@ -1,3 +1,4 @@
+import { accountsPage } from "../screens/accounts.js";
 import { model } from "../state/model.js";
 import {
   closeModal,
@@ -69,7 +70,7 @@ export function render() {
     .forEach((e) => (old[e.dataset.metric] = Number(e.dataset.value)));
   $("#nav").innerHTML = [
     ["home", "Inicio"],
-    ["expense", "Gastos"],
+    ["expense", "Movimientos"],
     ["debt", "Deudas"],
     ["calendar", "Calendario"],
     ["goal", "Metas"],
@@ -89,6 +90,7 @@ export function render() {
   }
   const pages = {
     home: homePage,
+    accounts: accountsPage,
     expense: expensesPage,
     debt: debtsPage,
     calendar: calendarPage,

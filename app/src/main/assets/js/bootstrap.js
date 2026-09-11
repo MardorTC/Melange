@@ -1,3 +1,4 @@
+import H from "./domain/reconstruction.js";
 import { initializeUpdates } from "./platform/updates.js";
 import C from "./domain/finance.js";
 import { model } from "./state/model.js";
@@ -116,7 +117,8 @@ window.handleBack = () => {
 (async () => {
   try {
     await openStore();
-    const saved = await readStore();
+    const saved = C.migrateEnvelope(await readStore());
+    if (saved?.draft) H.build(saved.draft);
     model.state = saved ? C.validate(saved.state) : C.empty();
     model.history = saved?.history || [];
     model.rebuildDraft = saved?.draft || null;

@@ -159,9 +159,7 @@ const fs = require("fs");
       100000,
     );
     await page.locator("nav [data-id=expense]").click();
-    await page
-      .getByRole("button", { name: "Movimientos", exact: true })
-      .click();
+    await page.locator("#view [data-action=expenseSub][data-id=all]").click();
     await page
       .getByRole("button", { name: "Mostrar filtros", exact: true })
       .click();
@@ -203,7 +201,7 @@ const fs = require("fs");
           name: "Despensa",
           amount: 85000,
           date: OSP.today(),
-          method: "debit",
+          accountId: "debit",
           categoryId: s.categories[0].id,
         });
         s.transactions.push({
@@ -212,7 +210,7 @@ const fs = require("fs");
           name: "Transporte",
           amount: 24000,
           date: OSP.today(),
-          method: "debit",
+          accountId: "debit",
           categoryId: s.categories[1].id,
         });
         s.liquidityHistory = [
@@ -251,6 +249,211 @@ const fs = require("fs");
         assert.equal(overflow, false, `${name} overflow at ${width}`);
       }
     }
+    await page.evaluate(async () => {
+      const { model } = await import("/js/state/model.js");
+      const { default: C } = await import("/js/domain/finance.js");
+      const { commit } = await import("/js/state/ledger.js");
+      await commit("Muestras v8", (s) => {
+        s.walletAccounts.find((a) => a.id === "debit").name = "BBVA";
+        s.walletAccounts.push({
+          id: "banamex",
+          name: "Banamex",
+          type: "bank",
+          opening: 0,
+          active: true,
+          allowedCategories: [],
+        });
+        s.receivables.push({
+          id: "demo-loan",
+          name: "Viaje compartido",
+          person: "Ana",
+          opening: 50000,
+          dueDate: C.today(),
+        });
+        C.freeze(s, {
+          name: "Ahorro a plazo",
+          amount: 300000,
+          accountId: "debit",
+          createdDate: C.today(),
+          availableDate: C.today(),
+        });
+      });
+    });
+    for (const width of [360, 390, 430, 844]) {
+      await page.setViewportSize({ width, height: width === 844 ? 390 : 844 });
+      for (const screen of ["accounts", "owed"]) {
+        await page.evaluate(async (screen) => {
+          const { model } = await import("/js/state/model.js");
+          const { render } = await import("/js/ui/navigation.js");
+          model.tab = screen === "owed" ? "debt" : screen;
+          model.debtSub = "owed";
+          render();
+        }, screen);
+        assert.equal(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth > innerWidth,
+          ),
+          false,
+          screen + " overflow " + width,
+        );
+        if (width === 390)
+          await page.screenshot({
+            path: "build/previews/Melange-" + screen + ".png",
+            fullPage: true,
+          });
+      }
+    }
+
+    // Exercise the actual IndexedDB upgrade, including the non-rotating original.
+    const originalEnvelope = await page.evaluate(async () => {
+      const { default: L } = await import("/js/domain/legacy-v7.js");
+      const s = L.empty();
+      s.started = true;
+      s.opening = { cash: 12300, debit: 500000 };
+      s.goals = [
+        {
+          id: "legacy-goal",
+          name: "Reserva antigua",
+          balance: 300000,
+          target: 600000,
+        },
+      ];
+      L.ensureBudget(s);
+      const draft = {
+        version: 1,
+        id: "draft",
+        baseId: s.id,
+        baseRevision: 3,
+        config: { startDate: L.today(), cash: 100, debit: 200, income: 0 },
+        categories: s.categories,
+        accounts: s.accounts,
+        settings: s.settings,
+        debts: [],
+        fixedExpenses: [],
+        entries: [],
+      };
+      const v = {
+        state: s,
+        history: [
+          { label: "Antes", state: L.clone(s), date: new Date().toISOString() },
+        ],
+        draft,
+        revision: 3,
+      };
+      await new Promise((resolve, reject) => {
+        const r = indexedDB.open("projectosp-android-preview", 1);
+        r.onsuccess = () => {
+          const db = r.result,
+            t = db.transaction("state", "readwrite");
+          t.objectStore("state").put(v, "current");
+          t.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          t.onerror = () => reject(t.error);
+        };
+      });
+      return v;
+    });
+    await page.reload();
+    await page.getByRole("heading", { name: "Cada grano cuenta." }).waitFor();
+    const migrated = await page.evaluate(async () => {
+      const { model } = await import("/js/state/model.js");
+      const { default: C } = await import("/js/domain/finance.js");
+      return {
+        schema: model.state.schemaVersion,
+        balances: C.balances(model.state),
+        draft: model.rebuildDraft.version,
+        history: model.history[0].state.schemaVersion,
+        available: C.available(model.state),
+      };
+    });
+    assert.deepEqual(migrated, {
+      schema: 8,
+      balances: { cash: 12300, debit: 500000 },
+      draft: 2,
+      history: 8,
+      available: 212300,
+    });
+    const backup = await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const r = indexedDB.open("projectosp-android-preview", 1);
+          r.onsuccess = () => {
+            const db = r.result,
+              g = db
+                .transaction("state")
+                .objectStore("state")
+                .get("migration-v7");
+            g.onsuccess = () => {
+              resolve(g.result);
+              db.close();
+            };
+          };
+        }),
+    );
+    assert.deepEqual(backup, originalEnvelope);
+    await page.evaluate(async () => {
+      const { commit } = await import("/js/state/ledger.js");
+      for (let n = 0; n < 17; n++)
+        await commit("Rotar historial", (s) => {
+          s.income = n;
+        });
+    });
+    const afterRotation = await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const r = indexedDB.open("projectosp-android-preview", 1);
+          r.onsuccess = () => {
+            const db = r.result,
+              g = db
+                .transaction("state")
+                .objectStore("state")
+                .get("migration-v7");
+            g.onsuccess = () => {
+              resolve(g.result);
+              db.close();
+            };
+          };
+        }),
+    );
+    assert.deepEqual(afterRotation, originalEnvelope);
+    await page.evaluate(async (v) => {
+      v.history[0].state = { invalid: true };
+      await new Promise((resolve) => {
+        const r = indexedDB.open("projectosp-android-preview", 1);
+        r.onsuccess = () => {
+          const db = r.result,
+            t = db.transaction("state", "readwrite");
+          t.objectStore("state").put(v, "current");
+          t.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+        };
+      });
+    }, originalEnvelope);
+    await page.reload();
+    await page
+      .getByRole("heading", { name: "No se pudieron abrir los datos" })
+      .waitFor();
+    const unmodified = await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const r = indexedDB.open("projectosp-android-preview", 1);
+          r.onsuccess = () => {
+            const db = r.result,
+              g = db.transaction("state").objectStore("state").get("current");
+            g.onsuccess = () => {
+              resolve(g.result);
+              db.close();
+            };
+          };
+        }),
+    );
+    assert.equal(unmodified.state.schemaVersion, 7);
+    assert.deepEqual(unmodified.history[0].state, { invalid: true });
+
     assert.deepEqual(errors, []);
     await browser.close();
     console.log(

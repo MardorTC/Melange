@@ -1,3 +1,4 @@
+import { recurrenceFields, recurrenceValue } from "../ui/recurrence-fields.js";
 import {
   btn,
   closeModal,
@@ -15,7 +16,7 @@ import {
   icon,
   kindName,
   select,
-  methodOptions,
+  accountOptions,
   modal,
   mlabel,
 } from "../ui/components.js";
@@ -73,8 +74,9 @@ export function startRebuild() {
         "date",
         `required min="${C.addMonth(C.month(), -120)}-01" max="${C.today()}"`,
       ) +
-      signedField("debit", "Débito al comenzar ese día") +
-      signedField("cash", "Efectivo al comenzar ese día") +
+      model.state.walletAccounts
+        .map((a) => signedField(a.id, a.name + " al comenzar ese día"))
+        .join("") +
       amount(
         "income",
         "Ingreso mensual previsto (0 si no lo sabes)",
@@ -85,8 +87,9 @@ export function startRebuild() {
         model.state,
         {
           startDate: f.startDate,
-          debit: signedMoney(f.debit),
-          cash: signedMoney(f.cash),
+          openings: Object.fromEntries(
+            model.state.walletAccounts.map((a) => [a.id, signedMoney(f[a.id])]),
+          ),
           income: moneyValue(f.income),
         },
         model.revision,
@@ -119,9 +122,9 @@ export function rebuildPage() {
     stale = model.rebuildDraft.baseRevision !== model.revision;
   return (
     pageHeading("Reconstruir mi historia", "Borrador privado · Paso a paso") +
-    `<p class="note">Desde ${model.rebuildDraft.config.startDate} hasta ${C.today()}. Se guarda al agregar o corregir cada dato; puedes salir y continuar después.</p>${stale ? '<div class="card danger-zone"><strong>Tus datos activos cambiaron después de iniciar.</strong><p>Para evitar sobrescribir cambios nuevos, este borrador no puede confirmarse. Puedes revisarlo, exportar su resultado o empezar otro.</p></div>' : ""}<div class="grid"><div class="card accent"><small>Débito reconstruido</small><div class="metric small">${money(b.debit)}</div></div><div class="card sage"><small>Efectivo reconstruido</small><div class="metric small">${money(b.cash)}</div></div></div><div class="toolbar wrap">${btn("Editar saldos iniciales", "rebuildOpening")}${btn("Comparar con hoy", "rebuildReview", "", "primary")}</div>
-    <section class="card"><h2>1. Compromisos que ya existían</h2><p class="note">Usa el saldo de las deudas al inicio del periodo, no el saldo actual. Las cuotas anteriores a esa fecha se marcan como antecedentes sin volver a descontar dinero.</p><div class="toolbar wrap">${btn("Agregar deuda", "rebuildDebt")}${btn("Agregar gasto fijo", "rebuildFixed")}</div>${[...model.rebuildDraft.debts.map((d) => ({ ...d, entity: "debt" })), ...model.rebuildDraft.fixedExpenses.map((f) => ({ ...f, entity: "fixed" }))].map((d) => `<div class="item row"><span>${esc(d.name)}<br><small>${d.entity === "debt" ? "Saldo inicial: " + money(d.balance) : money(d.amount) + "/mes"}</small></span><div class="actions">${icon("edit", "Editar compromiso", "rebuildDefinitionEdit", d.id, `data-kind="${d.entity}"`)}${icon("trash", "Quitar compromiso del borrador", "rebuildDefinitionDelete", d.id, `data-kind="${d.entity}"`)}</div></div>`).join("")}</section>
-    <section class="card"><h2>2. Lo que ocurrió</h2><div class="toolbar wrap">${btn("Gasto", "rebuildEntry", "expense")}${btn("Ingreso", "rebuildEntry", "income")}${btn("Transferencia", "rebuildEntry", "transfer")}${btn("Pagar compromiso", "rebuildPayment")}</div><p class="note">Puedes capturar en cualquier orden: el cálculo ordena por fecha. Los movimientos del mismo día conservan el orden de captura.</p><div class="rebuild-ledger">${rows.map((t) => `<div class="item"><div class="row"><div><strong>${esc(t.name)}</strong><p>${t.date} · ${kindName(t.kind)} · ${money(t.amount)}</p><small>Después: débito ${money(t.debit)} · efectivo ${money(t.cash)}</small></div><div class="actions">${icon("edit", "Corregir movimiento del borrador", "rebuildEntryEdit", t.id)}${icon("trash", "Quitar movimiento del borrador", "rebuildEntryDelete", t.id)}</div></div></div>`).join("") || empty("Aún sin movimientos", "Captura los ingresos, gastos y pagos desde la fecha inicial.")}</div></section>
+    `<p class="note">Desde ${model.rebuildDraft.config.startDate} hasta ${C.today()}. Se guarda al agregar o corregir cada dato; puedes salir y continuar después.</p>${stale ? '<div class="card danger-zone"><strong>Tus datos activos cambiaron después de iniciar.</strong><p>Para evitar sobrescribir cambios nuevos, este borrador no puede confirmarse. Puedes revisarlo, exportar su resultado o empezar otro.</p></div>' : ""}<div class="grid">${s.walletAccounts.map((a) => `<div class="card"><small>${esc(a.name)} reconstruido</small><div class="metric small">${money(b[a.id])}</div></div>`).join("")}</div><div class="toolbar wrap">${btn("Editar saldos iniciales", "rebuildOpening")}${btn("Comparar con hoy", "rebuildReview", "", "primary")}</div>
+    <section class="card"><h2>1. Compromisos que ya existían</h2><p class="note">Usa el saldo de las deudas al inicio del periodo, no el saldo actual. Las cuotas anteriores a esa fecha se marcan como antecedentes sin volver a descontar dinero.</p><div class="toolbar wrap">${btn("Agregar deuda", "rebuildDebt")}${btn("Agregar gasto fijo", "rebuildFixed")}</div>${[...model.rebuildDraft.debts.map((d) => ({ ...d, entity: "debt" })), ...model.rebuildDraft.fixedExpenses.map((f) => ({ ...f, entity: "fixed" }))].map((d) => `<div class="item row"><span>${esc(d.name)}<br><small>${d.entity === "debt" ? "Saldo inicial: " + money(d.balance) : money(d.amount) + " · " + C.recurrenceLabel(d)}</small></span><div class="actions">${icon("edit", "Editar compromiso", "rebuildDefinitionEdit", d.id, `data-kind="${d.entity}"`)}${icon("trash", "Quitar compromiso del borrador", "rebuildDefinitionDelete", d.id, `data-kind="${d.entity}"`)}</div></div>`).join("")}</section>
+    <section class="card"><h2>2. Lo que ocurrió</h2><div class="toolbar wrap">${btn("Gasto", "rebuildEntry", "expense")}${btn("Ingreso", "rebuildEntry", "income")}${btn("Transferencia", "rebuildEntry", "transfer")}${btn("Pagar compromiso", "rebuildPayment")}</div><p class="note">Puedes capturar en cualquier orden: el cálculo ordena por fecha. Los movimientos del mismo día conservan el orden de captura.</p><div class="rebuild-ledger">${rows.map((t) => `<div class="item"><div class="row"><div><strong>${esc(t.name)}</strong><p>${t.date} · ${kindName(t.kind)} · ${money(t.amount)}</p><small>Después: ${s.walletAccounts.map((a) => esc(a.name) + " " + money(t.balances[a.id])).join(" · ")}</small></div><div class="actions">${icon("edit", "Corregir movimiento del borrador", "rebuildEntryEdit", t.id)}${icon("trash", "Quitar movimiento del borrador", "rebuildEntryDelete", t.id)}</div></div></div>`).join("") || empty("Aún sin movimientos", "Captura los ingresos, gastos y pagos desde la fecha inicial.")}</div></section>
     <section class="card"><h2>Liquidez reconstruida</h2>${lineChart(s.liquidityHistory)}<p class="note">Saldos calculados desde los movimientos, no observaciones bancarias. No se inventan gastos ni ingresos.</p></section><div class="toolbar wrap">${btn("Exportar resultado del borrador", "rebuildExport")}${btn("Descartar borrador", "rebuildDiscard", "", "danger")}</div>`
   );
 }
@@ -131,13 +134,17 @@ export function rebuildOpeningForm() {
   form(
     "Saldos al inicio",
     `<p class="note">Fecha inicial: ${c.startDate}. Para cambiar el periodo crea otro borrador.</p>` +
-      signedField("debit", "Débito inicial", c.debit / 100) +
-      signedField("cash", "Efectivo inicial", c.cash / 100) +
+      model.rebuildDraft.walletAccounts
+        .map((a) =>
+          signedField(a.id, a.name + " inicial", c.openings[a.id] / 100),
+        )
+        .join("") +
       amount("income", "Ingreso mensual previsto", c.income),
     async (f) =>
       changeDraft((d) => {
-        d.config.debit = signedMoney(f.debit);
-        d.config.cash = signedMoney(f.cash);
+        d.config.openings = Object.fromEntries(
+          d.walletAccounts.map((a) => [a.id, signedMoney(f[a.id])]),
+        );
         d.config.income = moneyValue(f.income);
       }),
   );
@@ -158,17 +165,66 @@ export function rebuildDefinition(kind, id = "") {
     paidPayments: [],
     originalAmount: 0,
   };
+  if (kind === "fixed") {
+    form(
+      "Gasto fijo histórico",
+      input("name", "Nombre", d.name, "text", 'required maxlength="120"') +
+        select(
+          "kind",
+          "Tipo",
+          [
+            ["fixed", "Gasto fijo"],
+            ["subscription", "Suscripción"],
+          ],
+          d.kind || "fixed",
+        ) +
+        recurrenceFields(
+          found || {
+            ...d,
+            rules: [
+              {
+                unit: "months",
+                interval: 1,
+                startDate: model.rebuildDraft.config.startDate,
+                effectiveFrom: model.rebuildDraft.config.startDate,
+                amount: 0,
+              },
+            ],
+          },
+          model.rebuildDraft,
+          !!found,
+        ),
+      async (v) =>
+        changeDraft((draft) => {
+          const rule = recurrenceValue(v);
+          let item = draft.fixedExpenses.find((x) => x.id === id);
+          if (!item) {
+            item = { id: C.id(), rules: [] };
+            draft.fixedExpenses.push(item);
+          }
+          C.setRecurrence({ transactions: draft.entries }, item, rule);
+          Object.assign(item, {
+            name: v.name.trim(),
+            kind: v.kind,
+            amount: rule.amount,
+            active: true,
+            categoryId: rule.categoryId,
+          });
+        }),
+    );
+    return;
+  }
   const fields =
     input("name", "Nombre", d.name, "text", 'required maxlength="120"') +
     (kind === "debt"
       ? select(
-          "accountId",
+          "creditorId",
           "Acreedor",
           [
             ["", "Sin acreedor"],
-            ...model.rebuildDraft.accounts.map((a) => [a.id, a.name]),
+            ...model.rebuildDraft.creditors.map((a) => [a.id, a.name]),
           ],
-          d.accountId || "",
+          d.creditorId || "",
         ) +
         amount("originalAmount", "Monto original", d.originalAmount) +
         amount("balance", "Saldo pendiente al inicio del periodo", d.balance) +
@@ -256,13 +312,17 @@ export function rebuildDefinition(kind, id = "") {
           value = {
             ...value,
             type: total ? "loan" : "loan-open",
-            accountId: f.accountId,
+            creditorId: f.creditorId,
             balance: moneyValue(f.balance),
             originalAmount: moneyValue(f.originalAmount),
             payment: moneyValue(f.payment),
             totalPayments: total,
             startDate: f.startDate,
             paidPayments: Array.from({ length: prior }, (_, i) => i + 1),
+            historicalPaidPayments: Array.from(
+              { length: prior },
+              (_, i) => i + 1,
+            ),
             paidMonths: [],
             financingCost: 0,
             annualRate: 0,
@@ -298,8 +358,8 @@ export function rebuildEntry(kind, id = "") {
     name: "",
     amount: 0,
     date: model.rebuildDraft.config.startDate,
-    method: "debit",
-    to: "cash",
+    accountId: "debit",
+    toAccountId: "cash",
     categoryId: "",
   };
   if (old && ["debt", "fixed"].includes(old.kind)) {
@@ -320,13 +380,18 @@ export function rebuildEntry(kind, id = "") {
         `required min="${model.rebuildDraft.config.startDate}" max="${C.today()}"`,
       ) +
       select(
-        "method",
+        "accountId",
         kind === "income" ? "Recibir en" : "Origen",
-        methodOptions,
-        e.method,
+        accountOptions(model.rebuildDraft),
+        e.accountId,
       ) +
       (kind === "transfer"
-        ? select("to", "Destino", methodOptions, e.to)
+        ? select(
+            "toAccountId",
+            "Destino",
+            accountOptions(model.rebuildDraft),
+            e.toAccountId,
+          )
         : "") +
       (kind === "expense"
         ? select(
@@ -347,9 +412,9 @@ export function rebuildEntry(kind, id = "") {
           name: f.name.trim(),
           amount: moneyValue(f.amount),
           date: f.date,
-          method: f.method,
+          accountId: f.accountId,
           categoryId: f.categoryId || "",
-          ...(kind === "transfer" ? { to: f.to } : {}),
+          ...(kind === "transfer" ? { toAccountId: f.toAccountId } : {}),
         };
         if (old) d.entries[d.entries.findIndex((x) => x.id === id)] = value;
         else d.entries.push(value);
@@ -388,7 +453,12 @@ export function rebuildPayForm(key, m, old) {
   form(
     "Pago histórico: " + item.name,
     amount("amount", "Importe pagado", old?.amount || item.remaining) +
-      select("method", "Pagar desde", methodOptions, old?.method || "debit") +
+      select(
+        "accountId",
+        "Pagar desde",
+        accountOptions(model.rebuildDraft),
+        old?.accountId || "debit",
+      ) +
       input(
         "date",
         "Fecha real de pago",
@@ -411,7 +481,7 @@ export function rebuildPayForm(key, m, old) {
           name: item.name,
           amount: moneyValue(f.amount),
           date: f.date,
-          method: f.method,
+          accountId: f.accountId,
           categoryId: "",
           ...(f.principal ? { principal: moneyValue(f.principal) } : {}),
         };
@@ -432,16 +502,19 @@ export function reviewRebuild() {
     b = C.balances(s);
   form(
     "Comparar con tus saldos de hoy",
-    `<p>Calculado: débito <strong>${money(b.debit)}</strong> · efectivo <strong>${money(b.cash)}</strong>.</p><p class="note">Introduce lo que tienes realmente. No uses cifras estimadas para ocultar una diferencia.</p>` +
-      signedField("debit", "Débito real hoy") +
-      signedField("cash", "Efectivo real hoy"),
+    `<p>Calculado: ${s.walletAccounts.map((a) => esc(a.name) + " " + money(b[a.id])).join(" · ")}.</p><p class="note">Introduce lo que tienes realmente. No uses cifras estimadas para ocultar una diferencia.</p>` +
+      s.walletAccounts
+        .map((a) => signedField(a.id, a.name + " real hoy"))
+        .join(""),
     async (f) => {
-      const actual = { debit: signedMoney(f.debit), cash: signedMoney(f.cash) };
+      const actual = Object.fromEntries(
+        s.walletAccounts.map((a) => [a.id, signedMoney(f[a.id])]),
+      );
       const result = HistoryRebuild.reconcile(model.rebuildDraft, actual);
       await saveDraft({ ...model.rebuildDraft, actual });
       form(
         "Confirmar reconstrucción",
-        `<p>${result.matches ? "Los saldos coinciden." : "Hay diferencias por revisar:"}</p><div class="details"><div><small>Diferencia en débito</small>${money(result.differences.debit)}</div><div><small>Diferencia en efectivo</small>${money(result.differences.cash)}</div></div>` +
+        `<p>${result.matches ? "Los saldos coinciden." : "Hay diferencias por revisar:"}</p><div class="details">${s.walletAccounts.map((a) => `<div><small>Diferencia en ${esc(a.name)}</small>${money(result.differences[a.id])}</div>`).join("")}</div>` +
           (result.matches
             ? ""
             : select(

@@ -10,6 +10,7 @@ export function syncReminders() {
       JSON.stringify({
         enabled: model.state.settings.reminders,
         days: model.state.settings.reminderDays,
+        time: model.state.settings.reminderTime,
         items: C.reminders(model.state),
       }),
     );

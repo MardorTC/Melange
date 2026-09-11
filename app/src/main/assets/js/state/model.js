@@ -19,7 +19,7 @@ export const model = {
     from: C.month() + "-01",
     to: C.today(),
     category: "",
-    method: "",
+    accountId: "",
     kind: "",
     min: "",
     max: "",

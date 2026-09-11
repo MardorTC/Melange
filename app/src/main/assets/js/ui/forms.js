@@ -1,3 +1,5 @@
+import { recurrenceFields, recurrenceValue } from "./recurrence-fields.js";
+import { accountName } from "../ui/components.js";
 import {
   modal,
   svg,
@@ -5,7 +7,7 @@ import {
   input,
   amount,
   select,
-  methodOptions,
+  accountOptions,
   form,
   moneyValue,
   empty,
@@ -36,10 +38,13 @@ export function transactionForm(kind = "expense", existing) {
     amount: 0,
     name: "",
     date: C.today(),
-    method: "debit",
+    accountId: "debit",
     categoryId: "",
   };
-  if (existing && ["debt", "fixed", "adjustment"].includes(t.kind)) {
+  if (
+    existing &&
+    ["debt", "fixed", "adjustment", "loan_in", "loan_out"].includes(t.kind)
+  ) {
     modal(
       "Movimiento vinculado",
       `<p>Para cambiar importe, fecha u origen, revierte este movimiento y regístralo de nuevo. Así se mantienen conectados el saldo y el compromiso.</p>${btn("Revertir movimiento", "deleteTransaction", t.id, "danger full")}`,
@@ -57,10 +62,10 @@ export function transactionForm(kind = "expense", existing) {
     amount("amount", "Importe", t.amount) +
     input("date", "Fecha", t.date, "date", `required max="${C.today()}"`) +
     select(
-      "method",
+      "accountId",
       kind === "income" ? "Recibir en" : "Pagar desde",
-      methodOptions,
-      t.method,
+      accountOptions(),
+      t.accountId,
     ) +
     (kind === "expense"
       ? select(
@@ -74,7 +79,12 @@ export function transactionForm(kind = "expense", existing) {
         )
       : "") +
     (kind === "transfer"
-      ? select("to", "Destino", methodOptions, t.to || "cash")
+      ? select(
+          "toAccountId",
+          "Destino",
+          accountOptions(),
+          t.toAccountId || "cash",
+        )
       : "") +
     (t.historical
       ? '<p class="note">Movimiento importado: editarlo no altera tu saldo inicial.</p>'
@@ -94,18 +104,17 @@ export function transactionForm(kind = "expense", existing) {
         name: f.name.trim(),
         amount: moneyValue(f.amount),
         date: f.date,
-        method: f.method,
+        accountId: f.accountId,
         categoryId: f.categoryId || "",
-        ...(kind === "transfer" ? { to: f.to } : {}),
+        ...(kind === "transfer" ? { toAccountId: f.toAccountId } : {}),
       };
-      if (kind === "transfer" && f.to === f.method)
+      if (kind === "transfer" && f.toAccountId === f.accountId)
         throw Error("El origen y destino deben ser diferentes.");
       await commit(
         existing ? "Movimiento actualizado" : "Movimiento registrado",
         (s) => {
           if (existing) {
-            const original = s.transactions.find((x) => x.id === existing.id);
-            Object.assign(original, value);
+            C.editTransaction(s, existing.id, value);
           } else C.record(s, value);
         },
       );
@@ -159,7 +168,7 @@ export function payForm(key, m) {
             "",
           )
         : "") +
-      '<p class="note">Si el saldo disponible no alcanza, el resultado se mostrará negativo; no se recortará a cero.</p>',
+      '<p class="note">El pago requiere saldo disponible. Puedes liberar reservas o cajitas desde Cuentas antes de pagarlo.</p>',
     async (f) => {
       if (f.date > C.today())
         throw Error("La fecha real de pago no puede ser futura.");
@@ -168,7 +177,7 @@ export function payForm(key, m) {
         C.pay(s, key, {
           period: m,
           amount: moneyValue(f.amount),
-          method: f.method,
+          accountId: f.accountId,
           date: f.date,
           categoryId: f.categoryId,
           principal: f.principal ? moneyValue(f.principal) : undefined,
@@ -182,7 +191,7 @@ export function payForm(key, m) {
 export function editDebt(id) {
   const d = model.state.debts.find((x) => x.id === id) || {
     name: "",
-    accountId: "",
+    creditorId: "",
     type: "msi",
     originalAmount: 0,
     balance: 0,
@@ -202,13 +211,13 @@ export function editDebt(id) {
     id ? "Editar deuda" : "Nueva deuda",
     input("name", "Nombre", d.name, "text", 'required maxlength="120"') +
       select(
-        "accountId",
+        "creditorId",
         "Acreedor",
         [
           ["", "Sin acreedor"],
-          ...model.state.accounts.map((a) => [a.id, a.name]),
+          ...model.state.creditors.map((a) => [a.id, a.name]),
         ],
-        d.accountId,
+        d.creditorId,
       ) +
       select(
         "type",
@@ -238,6 +247,14 @@ export function editDebt(id) {
         "number",
         `min="0" max="1200" required ${hasPaid ? "readonly" : ""}`,
       ) +
+      input(
+        "priorPaid",
+        "Cuotas ya liquidadas antes del registro",
+        d.historicalPaidPayments?.length || 0,
+        "number",
+        'required min="0" max="1200"',
+      ) +
+      '<p class="note">Son antecedentes: no generan salidas ni vuelven a reducir el saldo pendiente.</p>' +
       input(
         "startDate",
         "Fecha de primera cuota",
@@ -270,9 +287,10 @@ export function editDebt(id) {
         : ""),
     async (f) => {
       await commit(id ? "Deuda actualizada" : "Deuda agregada", (s) => {
+        const debtId = id || C.id();
         const value = {
           name: f.name.trim(),
-          accountId: f.accountId,
+          creditorId: f.creditorId,
           type: f.type,
           originalAmount: moneyValue(f.originalAmount),
           balance: moneyValue(f.balance),
@@ -280,7 +298,7 @@ export function editDebt(id) {
           totalPayments: Number(f.totalPayments),
           startDate: f.startDate,
           dueDay: Number(f.dueDay),
-          financingCost: moneyValue(f.financingCost),
+          financingCost: moneyValue(f.financingCost || "0"),
           annualRate: Number(f.annualRate),
           notes: f.notes,
           balanceMode: f.balanceMode,
@@ -295,13 +313,23 @@ export function editDebt(id) {
         else
           s.debts.push({
             ...value,
-            id: C.id(),
+            id: debtId,
+            historicalPaidPayments: [],
             active: true,
             archived: false,
             paidPayments: [],
             paidMonths: [],
           });
-        C.refreshBudget(s);
+        if (
+          !id ||
+          Number(f.priorPaid) !== (d.historicalPaidPayments?.length || 0)
+        )
+          C.setPriorPayments(
+            s,
+            s.debts.find((x) => x.id === debtId),
+            Number(f.priorPaid),
+          );
+        C.refreshAllBudgets(s);
       });
     },
   );
@@ -311,14 +339,11 @@ export function editFixed(id) {
   const f = model.state.fixedExpenses.find((x) => x.id === id) || {
     name: "",
     amount: 0,
-    dueDay: 1,
     kind: "fixed",
-    active: true,
   };
   form(
     id ? "Editar gasto fijo" : "Nuevo gasto fijo",
     input("name", "Nombre", f.name, "text", 'required maxlength="120"') +
-      amount("amount", "Importe mensual", f.amount) +
       select(
         "kind",
         "Tipo",
@@ -328,13 +353,7 @@ export function editFixed(id) {
         ],
         f.kind,
       ) +
-      input(
-        "dueDay",
-        "Día de vencimiento",
-        f.dueDay || 1,
-        "number",
-        'min="1" max="31" required',
-      ) +
+      recurrenceFields(f, model.state, !!id) +
       select(
         "active",
         "Estado",
@@ -342,31 +361,31 @@ export function editFixed(id) {
           ["yes", "Activo"],
           ["no", "Archivado"],
         ],
-        f.active !== false ? "yes" : "no",
+        f.active === false ? "no" : "yes",
       ),
     async (v) =>
-      commit(id ? "Gasto fijo actualizado" : "Gasto fijo agregado", (s) => {
-        const value = {
+      commit("Gasto fijo actualizado", (s) => {
+        const rule = recurrenceValue(v);
+        let item = s.fixedExpenses.find((x) => x.id === id);
+        if (!item) {
+          item = { id: C.id(), rules: [] };
+          s.fixedExpenses.push(item);
+        }
+        C.setRecurrence(s, item, rule);
+        Object.assign(item, {
           name: v.name.trim(),
-          amount: moneyValue(v.amount),
           kind: v.kind,
-          dueDay: Number(v.dueDay),
-          active: v.active === "yes",
-        };
-        if (id)
-          Object.assign(
-            s.fixedExpenses.find((x) => x.id === id),
-            value,
-          );
-        else
-          s.fixedExpenses.push({ ...value, id: C.id(), startMonth: C.month() });
-        C.refreshBudget(s);
+          amount: rule.amount,
+          categoryId: rule.categoryId,
+          active: rule.active,
+        });
+        C.refreshAllBudgets(s);
       }),
   );
 }
 
 export function editCatalog(kind, id) {
-  const list = kind === "Account" ? "accounts" : "categories",
+  const list = kind === "Account" ? "creditors" : "categories",
     x = model.state[list].find((a) => a.id === id);
   form(
     (id ? "Editar " : "Agregar ") +
@@ -412,7 +431,7 @@ export function editGoal(id) {
             s.goals.find((x) => x.id === id),
             v,
           );
-        else s.goals.push({ ...v, id: C.id(), balance: 0 });
+        else s.goals.push({ ...v, id: C.id(), balance: 0, allocations: [] });
       }),
   );
 }
@@ -427,25 +446,34 @@ export function contribute(id) {
       [
         ["add", "Reservar dinero"],
         ["remove", "Liberar reserva"],
+        ["assign", "Asignar reserva antigua a cuenta"],
       ],
       "add",
     ) +
-      amount("amount", "Importe") +
-      `<p class="note">Reservado: ${money(g.balance)}. Disponible sin reservas: ${money(C.metrics(model.state).available)}. No se crea un gasto.</p>`,
+      select(
+        "accountId",
+        "Cuenta",
+        accountOptions(model.state, true),
+        "debit",
+      ) +
+      select(
+        "allocation",
+        "Reserva existente",
+        g.allocations.map((r, i) => [
+          String(i),
+          `${r.accountId ? accountName(r.accountId) : "Pendiente de asignar"} · ${money(r.amount)}${r.boxId ? " · Cajita" : ""}`,
+        ]),
+        "0",
+      ) +
+      amount("amount", "Importe (reservar / liberar)") +
+      `<p class="note">Reservado: ${money(g.balance)}. Asignar una reserva antigua no altera saldos ni avance.</p>`,
     async (f) =>
       commit("Reserva actualizada", (s) => {
-        const goal = s.goals.find((x) => x.id === id),
-          n = moneyValue(f.amount);
-        if (n <= 0) throw Error("Introduce un importe mayor a cero.");
-        if (f.kind === "add") {
-          if (n > C.metrics(s).available)
-            throw Error("No hay suficiente dinero sin reservar.");
-          goal.balance += n;
-        } else {
-          if (n > goal.balance)
-            throw Error("No puedes liberar más de lo reservado.");
-          goal.balance -= n;
-        }
+        if (f.kind === "add")
+          C.reserve(s, id, f.accountId, moneyValue(f.amount));
+        else if (f.kind === "remove")
+          C.releaseReserve(s, id, Number(f.allocation), moneyValue(f.amount));
+        else C.assignReserve(s, id, Number(f.allocation), f.accountId);
       }),
   );
 }
@@ -475,8 +503,14 @@ export function deleteEntity(type, id) {
       "Se conservarán sus pagos realizados y dejará de generar compromisos nuevos.",
       "Gasto fijo archivado",
       (s) => {
-        s.fixedExpenses.find((x) => x.id === id).active = false;
-        C.refreshBudget(s);
+        const f = s.fixedExpenses.find((x) => x.id === id);
+        C.setRecurrence(s, f, {
+          ...C.rulesFor(f).at(-1),
+          effectiveFrom: C.today(),
+          active: false,
+        });
+        f.active = false;
+        C.refreshAllBudgets(s);
       },
     );
   else if (type === "Goal")
@@ -484,13 +518,20 @@ export function deleteEntity(type, id) {
       "Eliminar meta",
       "Se liberará su reserva. Tu liquidez total no cambia.",
       "Meta eliminada",
-      (s) => (s.goals = s.goals.filter((x) => x.id !== id)),
+      (s) => {
+        s.goals = s.goals.filter((x) => x.id !== id);
+        s.boxes
+          .filter((b) => b.goalId === id)
+          .forEach((b) => {
+            b.goalId = null;
+          });
+      },
     );
   else {
-    const key = type === "Account" ? "accounts" : "categories";
+    const key = type === "Account" ? "creditors" : "categories";
     if (
       (type === "Account" &&
-        model.state.debts.some((d) => d.accountId === id)) ||
+        model.state.debts.some((d) => d.creditorId === id)) ||
       (type === "Category" &&
         model.state.transactions.some((t) => t.categoryId === id))
     ) {
@@ -513,7 +554,7 @@ export function transactionDetails(id) {
   const t = model.state.transactions.find((x) => x.id === id);
   modal(
     t.name,
-    `<div class="details"><div><small>Importe</small><strong>${money(t.amount)}</strong></div><div><small>Tipo</small>${kindName(t.kind)}</div><div><small>Fecha</small>${t.date}</div><div><small>Origen</small>${t.method === "cash" ? "Efectivo" : "Débito"}</div></div>${t.historical ? '<p class="note">Importado de v6. Este gasto ya está contemplado en el saldo inicial; no se volvió a descontar.</p>' : ""}${t.obligation ? '<p class="note">Vinculado a un compromiso de ' + mlabel(t.period) + ".</p>" : ""}`,
+    `<div class="details"><div><small>Importe</small><strong>${money(t.amount)}</strong></div><div><small>Tipo</small>${kindName(t.kind)}</div><div><small>Fecha</small>${t.date}</div><div><small>Origen</small>${esc(accountName(t.accountId))}</div></div>${t.historical ? '<p class="note">Importado de v6. Este gasto ya está contemplado en el saldo inicial; no se volvió a descontar.</p>' : ""}${t.obligation ? '<p class="note">Vinculado a un compromiso de ' + mlabel(t.period) + ".</p>" : ""}`,
   );
 }
 
@@ -537,7 +578,7 @@ export function debtDetails(id) {
       )
       .join(
         "",
-      )}</div><p>${esc(d.notes || "Sin notas")}</p><p class="note">${d.paidPayments.length} cuotas marcadas como pagadas. Los pagos migrados no tienen fecha real ni cuenta de origen.</p>${d.balance > 0 ? btn("Registrar abono adicional", "extraPayment", id, "full") : ""}<h3 style="margin-top:20px">Movimientos vinculados</h3>${
+      )}</div><p>${esc(d.notes || "Sin notas")}</p><p class="note">${d.historicalPaidPayments?.length || 0} cuotas como antecedentes; ${d.paidPayments.length - (d.historicalPaidPayments?.length || 0)} liquidadas mediante pagos registrados. Los antecedentes no afectan el saldo de tus cuentas.</p>${d.balance > 0 ? btn("Registrar abono adicional", "extraPayment", id, "full") : ""}<h3 style="margin-top:20px">Movimientos vinculados</h3>${
       model.state.transactions
         .filter((t) => t.ref === id)
         .map(
@@ -570,7 +611,7 @@ export function extraPayment(id) {
           principal: p,
           ref: id,
           date: f.date,
-          method: f.method,
+          accountId: f.accountId,
           categoryId: "",
         });
         debt.balance -= p;

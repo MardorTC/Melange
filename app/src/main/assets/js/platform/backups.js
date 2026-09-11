@@ -10,7 +10,7 @@ export async function importRaw(raw) {
     const s = model.importCandidate;
     modal(
       "Revisar importación",
-      `<p>Se reemplazarán los datos actuales por este respaldo. El estado anterior quedará en Deshacer.</p><div class="details"><div><small>Deudas</small>${s.debts.length}</div><div><small>Movimientos</small>${s.transactions.length}</div><div><small>Débito</small>${money(C.balances(s).debit)}</div><div><small>Efectivo</small>${money(C.balances(s).cash)}</div></div><p class="note">${esc(s.migration?.note || "Respaldo compatible de Melange / ProjectOSP.")}</p>${btn("Importar estos datos", "confirmImport", "", "primary full")}`,
+      `<p>Se reemplazarán los datos actuales por este respaldo. El estado anterior quedará en Deshacer.</p><div class="details"><div><small>Deudas</small>${s.debts.length}</div><div><small>Movimientos</small>${s.transactions.length}</div><div><small>Cuentas</small>${s.walletAccounts.length}</div><div><small>Disponible libre</small>${money(C.metrics(s).available)}</div></div><p class="note">${esc(s.migration?.note || "Respaldo compatible de Melange / ProjectOSP.")}</p>${btn("Importar estos datos", "confirmImport", "", "primary full")}`,
     );
   } catch (e) {
     toast("No se importó: " + e.message);
@@ -27,7 +27,7 @@ export function exportState(exported, filename = "Melange") {
   const json = JSON.stringify(
     {
       format: "projectosp-backup",
-      version: 7,
+      version: 8,
       exportedAt: new Date().toISOString(),
       state: exported,
     },

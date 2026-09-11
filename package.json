@@ -3,7 +3,7 @@
   "private": true,
   "description": "Melange Android: offline personal finance",
   "scripts": {
-    "test": "node --test tests/core.test.cjs tests/reconstruction.test.cjs && node tests/dom.test.mjs && node tests/updates.test.mjs",
+    "test": "node --test tests/core.test.cjs tests/reconstruction.test.cjs tests/v8.test.mjs && node tests/dom.test.mjs && node tests/updates.test.mjs",
     "format": "prettier --write app/src/main/assets tests scripts docs README.md package.json .github",
     "format:check": "prettier --check app/src/main/assets tests scripts docs README.md package.json .github",
     "check": "npm run format:check && npm test",
