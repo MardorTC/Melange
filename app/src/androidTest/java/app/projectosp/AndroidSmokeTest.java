@@ -26,6 +26,16 @@ public class AndroidSmokeTest {
         "{\"state\":{\"schemaVersion\":7},\"history\":[],\"draft\":null,\"revision\":17}";
     store.write(marker);
     assertEquals(marker, store.read());
+    String upgraded = marker.replace("schemaVersion\":7", "schemaVersion\":8");
+    store.write(upgraded);
+    assertEquals(upgraded, store.read());
+    try (android.database.Cursor backup =
+        store
+            .getReadableDatabase()
+            .rawQuery("SELECT envelope FROM migration_backups WHERE version=7", null)) {
+      assertTrue(backup.moveToFirst());
+      assertTrue(backup.getString(0).contains("schemaVersion\":7"));
+    }
     store.write(original);
     store.close();
     Signature first = new Signature("0011"), second = new Signature("0022");
@@ -42,6 +52,18 @@ public class AndroidSmokeTest {
     Assume.assumeTrue(
         "System image requires an updated WebView (92+)",
         provider != null && Integer.parseInt(provider.versionName.split("\\.")[0]) >= 92);
+    String fixture;
+    try (java.io.InputStream input =
+        instrumentation.getContext().getAssets().open("v7-upgrade.json")) {
+      java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+      byte[] buffer = new byte[4096];
+      int count;
+      while ((count = input.read(buffer)) != -1) bytes.write(buffer, 0, count);
+      fixture = bytes.toString("UTF-8");
+    }
+    LedgerStore seed = new LedgerStore(context);
+    seed.write(fixture);
+    seed.close();
     MainActivity activity =
         (MainActivity)
             instrumentation.startActivitySync(
@@ -65,6 +87,22 @@ public class AndroidSmokeTest {
       assertTrue(info.contains(BuildConfig.VERSION_NAME));
       assertEquals(
           "true", eval(instrumentation, web, "JSON.parse(NativeOSP.read()).state.started"));
+      assertEquals(
+          "8", eval(instrumentation, web, "JSON.parse(NativeOSP.read()).state.schemaVersion"));
+      assertEquals("2", eval(instrumentation, web, "JSON.parse(NativeOSP.read()).draft.version"));
+      assertEquals(
+          "8",
+          eval(
+              instrumentation, web, "JSON.parse(NativeOSP.read()).history[0].state.schemaVersion"));
+      assertEquals(
+          "830000",
+          eval(
+              instrumentation,
+              web,
+              "JSON.parse(NativeOSP.read()).state.walletAccounts.find(a=>a.id==='debit').opening"));
+      assertEquals(
+          "100000",
+          eval(instrumentation, web, "JSON.parse(NativeOSP.read()).state.goals[0].balance"));
       assertEquals("\"undefined\"", eval(instrumentation, web, "typeof window.OSP"));
       assertEquals("\"function\"", eval(instrumentation, web, "typeof window.nativeUpdate"));
       assertEquals("true", eval(instrumentation, web, "window.handleBack() === false"));

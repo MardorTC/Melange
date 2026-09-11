@@ -24,12 +24,19 @@ public class ReminderReceiver extends BroadcastReceiver {
       JSONObject cfg =
           new JSONObject(c.getSharedPreferences("reminders", 0).getString("config", "{}"));
       if (!cfg.optBoolean("enabled")) return;
-      ZonedDateTime now = ZonedDateTime.now(),
-          next = now.withHour(9).withMinute(0).withSecond(0).withNano(0);
-      if (!next.isAfter(now)) next = next.plusDays(1);
+      ZonedDateTime next = nextReminder(ZonedDateTime.now(), cfg.optString("time", "09:00"));
       a.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.toInstant().toEpochMilli(), alarm(c));
     } catch (Exception ignored) {
     }
+  }
+
+  static ZonedDateTime nextReminder(ZonedDateTime now, String time) {
+    if (!time.matches("([01]\\d|2[0-3]):[0-5]\\d")) time = "09:00";
+    LocalTime clock = LocalTime.parse(time);
+    ZonedDateTime next = now.toLocalDate().atTime(clock).atZone(now.getZone());
+    if (!next.isAfter(now))
+      next = now.toLocalDate().plusDays(1).atTime(clock).atZone(now.getZone());
+    return next;
   }
 
   @Override
@@ -48,7 +55,7 @@ public class ReminderReceiver extends BroadcastReceiver {
       if (items != null)
         for (int i = 0; i < items.length(); i++) {
           LocalDate due = LocalDate.parse(items.getJSONObject(i).getString("date"));
-          if (!due.isBefore(today) && !due.isAfter(today.plusDays(days))) count++;
+          if (!due.isAfter(today.plusDays(days))) count++;
         }
       NotificationManager manager = context.getSystemService(NotificationManager.class);
       manager.createNotificationChannel(
@@ -66,11 +73,11 @@ public class ReminderReceiver extends BroadcastReceiver {
         Notification n =
             new Notification.Builder(context, CHANNEL)
                 .setSmallIcon(app.projectosp.R.drawable.icon)
-                .setContentTitle("Tus próximos pagos")
+                .setContentTitle("Tus recordatorios de Melange")
                 .setContentText(
                     "Tienes "
                         + count
-                        + " compromiso"
+                        + " aviso"
                         + (count == 1 ? "" : "s")
                         + " próximo"
                         + (count == 1 ? "" : "s")

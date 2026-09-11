@@ -1,0 +1,221 @@
+{
+  "state": {
+    "schemaVersion": 7,
+    "id": "542769ea-0bf4-46c3-9bd2-d96b5bb5c16f",
+    "created": "2026-09-11",
+    "opening": {
+      "cash": 120000,
+      "debit": 830000
+    },
+    "income": 2000000,
+    "accounts": [],
+    "categories": [
+      {
+        "id": "18db9329-fc02-4853-a87a-772ba4bd7f20",
+        "name": "Alimentación"
+      },
+      {
+        "id": "b59ff5a8-1923-4d1d-baa0-7ba0dfd82b11",
+        "name": "Transporte"
+      },
+      {
+        "id": "f93e696f-b82f-4776-a5d7-9238ef8a3d11",
+        "name": "Hogar"
+      },
+      {
+        "id": "cff2cddf-c93a-43db-8f24-f67a7c5a1db7",
+        "name": "Salud"
+      },
+      {
+        "id": "88340f45-28d4-4f37-b794-5d657a734805",
+        "name": "Ocio"
+      },
+      {
+        "id": "224a2807-75ba-4d82-846a-f70a8dca1fc8",
+        "name": "Compras"
+      },
+      {
+        "id": "728e9fb3-ec32-4272-b192-a44392c5e935",
+        "name": "Trabajo"
+      },
+      {
+        "id": "8e0cf0e9-b39f-4bfc-a9a7-58c6e75d81a8",
+        "name": "Otros"
+      }
+    ],
+    "fixedExpenses": [],
+    "debts": [],
+    "transactions": [
+      {
+        "kind": "expense",
+        "amount": 12500,
+        "date": "2026-09-11",
+        "name": "Prueba de actualización",
+        "method": "debit",
+        "categoryId": "18db9329-fc02-4853-a87a-772ba4bd7f20",
+        "id": "bf692912-fb70-4109-98f4-44ea9fbf7932"
+      }
+    ],
+    "goals": [
+      {
+        "id": "upgrade-goal",
+        "name": "Meta de prueba",
+        "balance": 100000,
+        "target": 500000
+      }
+    ],
+    "liquidityHistory": [],
+    "budgets": {
+      "2026-09": {
+        "income": 2000000,
+        "items": []
+      }
+    },
+    "settings": {
+      "reminders": true,
+      "reminderDays": 2
+    },
+    "migration": null,
+    "started": true
+  },
+  "history": [
+    {
+      "label": "Antes",
+      "date": "2026-09-11T15:24:09.422Z",
+      "state": {
+        "schemaVersion": 7,
+        "id": "542769ea-0bf4-46c3-9bd2-d96b5bb5c16f",
+        "created": "2026-09-11",
+        "opening": {
+          "cash": 120000,
+          "debit": 830000
+        },
+        "income": 2000000,
+        "accounts": [],
+        "categories": [
+          {
+            "id": "18db9329-fc02-4853-a87a-772ba4bd7f20",
+            "name": "Alimentación"
+          },
+          {
+            "id": "b59ff5a8-1923-4d1d-baa0-7ba0dfd82b11",
+            "name": "Transporte"
+          },
+          {
+            "id": "f93e696f-b82f-4776-a5d7-9238ef8a3d11",
+            "name": "Hogar"
+          },
+          {
+            "id": "cff2cddf-c93a-43db-8f24-f67a7c5a1db7",
+            "name": "Salud"
+          },
+          {
+            "id": "88340f45-28d4-4f37-b794-5d657a734805",
+            "name": "Ocio"
+          },
+          {
+            "id": "224a2807-75ba-4d82-846a-f70a8dca1fc8",
+            "name": "Compras"
+          },
+          {
+            "id": "728e9fb3-ec32-4272-b192-a44392c5e935",
+            "name": "Trabajo"
+          },
+          {
+            "id": "8e0cf0e9-b39f-4bfc-a9a7-58c6e75d81a8",
+            "name": "Otros"
+          }
+        ],
+        "fixedExpenses": [],
+        "debts": [],
+        "transactions": [
+          {
+            "kind": "expense",
+            "amount": 12500,
+            "date": "2026-09-11",
+            "name": "Prueba de actualización",
+            "method": "debit",
+            "categoryId": "18db9329-fc02-4853-a87a-772ba4bd7f20",
+            "id": "bf692912-fb70-4109-98f4-44ea9fbf7932"
+          }
+        ],
+        "goals": [
+          {
+            "id": "upgrade-goal",
+            "name": "Meta de prueba",
+            "balance": 100000,
+            "target": 500000
+          }
+        ],
+        "liquidityHistory": [],
+        "budgets": {
+          "2026-09": {
+            "income": 2000000,
+            "items": []
+          }
+        },
+        "settings": {
+          "reminders": true,
+          "reminderDays": 2
+        },
+        "migration": null,
+        "started": true
+      }
+    }
+  ],
+  "draft": {
+    "version": 1,
+    "id": "upgrade-draft",
+    "baseId": "542769ea-0bf4-46c3-9bd2-d96b5bb5c16f",
+    "baseRevision": 9,
+    "config": {
+      "startDate": "2026-09-11",
+      "cash": 100,
+      "debit": 200,
+      "income": 0
+    },
+    "categories": [
+      {
+        "id": "18db9329-fc02-4853-a87a-772ba4bd7f20",
+        "name": "Alimentación"
+      },
+      {
+        "id": "b59ff5a8-1923-4d1d-baa0-7ba0dfd82b11",
+        "name": "Transporte"
+      },
+      {
+        "id": "f93e696f-b82f-4776-a5d7-9238ef8a3d11",
+        "name": "Hogar"
+      },
+      {
+        "id": "cff2cddf-c93a-43db-8f24-f67a7c5a1db7",
+        "name": "Salud"
+      },
+      {
+        "id": "88340f45-28d4-4f37-b794-5d657a734805",
+        "name": "Ocio"
+      },
+      {
+        "id": "224a2807-75ba-4d82-846a-f70a8dca1fc8",
+        "name": "Compras"
+      },
+      {
+        "id": "728e9fb3-ec32-4272-b192-a44392c5e935",
+        "name": "Trabajo"
+      },
+      {
+        "id": "8e0cf0e9-b39f-4bfc-a9a7-58c6e75d81a8",
+        "name": "Otros"
+      }
+    ],
+    "accounts": [],
+    "settings": {
+      "reminders": true,
+      "reminderDays": 2
+    },
+    "debts": [],
+    "fixedExpenses": [],
+    "entries": []
+  },
+  "revision": 9
+}

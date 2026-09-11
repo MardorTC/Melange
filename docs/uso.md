@@ -112,3 +112,23 @@ Se prepara una lista de los siguientes 12 meses y se actualiza al abrir o modifi
 - No hay recálculo automático de intereses ni forecast de variables no registradas.
 - La base utiliza SQLite para guardar versiones del estado JSON; las consultas y filtros se calculan en memoria. No es todavía un libro mayor con tablas SQL indexadas por movimiento. Se mantienen hasta 15 estados para deshacer; no es almacenamiento ilimitado.
 - Las comprobaciones de desarrollo y sus límites se describen en [Verificación](verificacion.md).
+
+## Melange 8: cuentas y disponibilidad
+
+Abre **Cuentas** desde Inicio. Crea cuentas con nombres como BBVA o Banamex, distribuye saldos mediante transferencias y selecciona la cuenta concreta al registrar cada movimiento. Los ajustes corrigen un saldo real sin contarlo como ingreso o gasto. Archivar conserva los antecedentes y requiere dejar saldo y reservas en cero.
+
+Los vales admiten ingresos y gastos de las categorías marcadas al editar la cuenta. No se usan para prestar, pagar deudas ni transferir dinero. Un gasto fijo también necesita una categoría compatible.
+
+Una cajita congela dinero sin crear un gasto. Su fecha prevista genera un aviso; pulsa **Confirmar liberación** cuando realmente puedas disponer del importe. Puedes liberar una parte. Si tiene una meta vinculada, la reserva sigue vigente después de descongelar; libérala desde Metas si deseas gastarla. Registrar rendimiento exige que ya se haya recibido.
+
+Si una salida supera el disponible, primero libera reservas, confirma una liberación o corrige el saldo desde Cuentas. Las metas antiguas sin cuenta ya reducen el disponible global; asignarlas no vuelve a descontar dinero ni cambia su avance.
+
+## Compromisos y préstamos
+
+**Movimientos** agrupa ingresos, gastos, transferencias, préstamos, cobros y ajustes, con filtros por cuenta y operación. **Debo** muestra obligaciones propias; **Me deben** registra préstamos nuevos o históricos y cobros parciales. Los préstamos históricos no descuentan dinero de nuevo. Los cobros pueden entrar en otra cuenta libre y el capital no cuenta como ingreso.
+
+Al registrar una deuda con plazo, indica el saldo pendiente actual y las cuotas liquidadas antes del registro. Cinco antecedentes de doce muestran 5/12; la siguiente cuota es la sexta. Editar esos antecedentes no crea movimientos ni reduce otra vez el saldo. Las cuotas que tienen pagos reales no pueden convertirse en antecedentes.
+
+Los gastos fijos tienen importe por vencimiento, fecha de inicio, final opcional y periodicidad. Cada 14 días es distinto de dos veces al mes. Los días inexistentes se ajustan al último día sin desplazar los siguientes meses. Un pago anual se cuenta completo en su mes de vencimiento. Para cambiar el calendario, indica desde qué fecha aplica; los vencimientos anteriores y sus pagos permanecen.
+
+En Ajustes, elige la hora común y anticipación para pagos, cobros pendientes y cajitas por liberar. Android puede retrasar el aviso. Los respaldos v8 no pueden importarse en versiones antiguas.
