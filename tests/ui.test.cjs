@@ -63,10 +63,9 @@ const fs = require("fs");
       const { render } = await import("/js/ui/navigation.js");
       return OSP.metrics(state);
     });
+    await page.locator(".debt-card [data-action=pay]").click();
     await page
-      .getByRole("button", { name: "Pagar deuda", exact: true })
-      .click();
-    await page
+      .locator("#form")
       .getByRole("button", { name: "Registrar pago", exact: true })
       .click();
     const after = await page.evaluate(async () => {
@@ -124,6 +123,7 @@ const fs = require("fs");
       .click();
     await page.locator("[name=amount]").fill("200");
     await page
+      .locator("#form")
       .getByRole("button", { name: "Registrar pago", exact: true })
       .click();
     assert.equal(

@@ -9,6 +9,7 @@ export const model = {
   history: [],
   tab: "home",
   sub: "all",
+  debtSub: "owe",
   period: C.month(),
   busy: false,
   formSubmit: null,

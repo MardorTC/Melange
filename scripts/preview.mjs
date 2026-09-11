@@ -20,6 +20,7 @@ export async function startPreview(port = 8765) {
         ".js": "text/javascript",
         ".css": "text/css",
         ".png": "image/png",
+        ".svg": "image/svg+xml",
         ".json": "application/json",
       };
       res.writeHead(200, {
