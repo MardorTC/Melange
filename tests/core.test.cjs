@@ -3,7 +3,8 @@ const test = require("node:test"),
 const C = require("../app/src/main/assets/js/domain/finance.js").default;
 function fixture() {
   let s = C.empty();
-  s.opening = { cash: 100000, debit: 1000000 };
+  s.walletAccounts.find((a) => a.id === "cash").opening = 100000;
+  s.walletAccounts.find((a) => a.id === "debit").opening = 1000000;
   s.income = 2000000;
   s.debts = [
     {
@@ -31,7 +32,7 @@ test("payment updates balance and pending but preserves budget and DTI", () => {
   const s = fixture(),
     before = C.metrics(s),
     key = C.obligations(s).find((i) => i.kind === "debt").key;
-  C.pay(s, key, { amount: 100000, date: C.today(), method: "debit" });
+  C.pay(s, key, { amount: 100000, date: C.today(), accountId: "debit" });
   const after = C.metrics(s);
   assert.equal(after.debit, before.debit - 100000);
   assert.equal(after.pending, before.pending - 100000);
@@ -72,16 +73,21 @@ test("fixed payment is one expense and one debit", () => {
   assert.equal(C.metrics(s).consumption, 0);
   assert.equal(C.balances(s).debit, 1000000);
 });
-test("negative funds stay visible instead of being clipped", () => {
-  const s = fixture();
-  C.record(s, {
-    kind: "expense",
-    amount: 1200000,
-    date: C.today(),
-    name: "Expense",
-    method: "debit",
-  });
-  assert.equal(C.balances(s).debit, -200000);
+test("new spending beyond available funds is blocked", () => {
+  const s = fixture(),
+    before = JSON.stringify(s);
+  assert.throws(
+    () =>
+      C.record(s, {
+        kind: "expense",
+        amount: 1200000,
+        date: C.today(),
+        name: "Expense",
+        accountId: "debit",
+      }),
+    /Faltan/,
+  );
+  assert.equal(JSON.stringify(s), before);
 });
 test("transfer is neither expense nor income", () => {
   const s = fixture();
@@ -90,8 +96,8 @@ test("transfer is neither expense nor income", () => {
     amount: 30000,
     date: C.today(),
     name: "Retiro",
-    method: "debit",
-    to: "cash",
+    accountId: "debit",
+    toAccountId: "cash",
   });
   assert.equal(C.metrics(s).liquidity, 1100000);
   assert.equal(C.metrics(s).outflow, 0);

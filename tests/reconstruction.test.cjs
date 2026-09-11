@@ -18,7 +18,7 @@ function entry(id, kind, amount, day, extra = {}) {
     kind,
     amount,
     date: m + "-" + String(day).padStart(2, "0"),
-    method: "debit",
+    accountId: "debit",
     ...extra,
   };
 }
@@ -33,7 +33,7 @@ test("chronological reconstruction leaves source and draft untouched", () => {
   d.entries = [
     entry("expense", "expense", 20000, 4),
     entry("income", "income", 50000, 2),
-    entry("transfer", "transfer", 5000, 3, { to: "cash" }),
+    entry("transfer", "transfer", 5000, 3, { toAccountId: "cash" }),
   ];
   const copy = JSON.stringify(d),
     s = H.build(d);

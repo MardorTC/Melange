@@ -8,18 +8,23 @@ function checkDate(date, start, end) {
 function create(source, config, revision) {
   const end = C.today();
   checkDate(config.startDate, C.addMonth(C.month(end), -120) + "-01", end);
-  for (const n of [config.cash, config.debit, config.income])
+  config = {
+    ...config,
+    openings: config.openings || { cash: config.cash, debit: config.debit },
+  };
+  for (const n of [...Object.values(config.openings), config.income])
     if (!Number.isSafeInteger(n)) throw Error("Revisa los saldos iniciales.");
   if (config.income < 0)
     throw Error("El ingreso previsto no puede ser negativo.");
   return {
-    version: 1,
+    version: 2,
     id: C.id(),
     baseRevision: revision,
     baseId: source.id,
     config: { ...config },
     categories: C.clone(source.categories),
-    accounts: C.clone(source.accounts),
+    creditors: C.clone(source.creditors),
+    walletAccounts: C.clone(source.walletAccounts),
     settings: C.clone(source.settings),
     debts: [],
     fixedExpenses: [],
@@ -28,16 +33,20 @@ function create(source, config, revision) {
   };
 }
 function build(draft, end = C.today()) {
-  if (!draft || draft.version !== 1) throw Error("Borrador incompatible.");
+  draft = C.migrateDraft(draft);
+  if (!draft || draft.version !== 2) throw Error("Borrador incompatible.");
   const start = draft.config.startDate;
   checkDate(start, C.addMonth(C.month(end), -120) + "-01", end);
   const s = C.empty();
   Object.assign(s, {
     id: draft.baseId,
     started: true,
-    opening: { cash: draft.config.cash, debit: draft.config.debit },
+    walletAccounts: draft.walletAccounts.map((a) => ({
+      ...a,
+      opening: draft.config.openings[a.id],
+    })),
     income: draft.config.income,
-    accounts: C.clone(draft.accounts),
+    creditors: C.clone(draft.creditors),
     categories: C.clone(draft.categories),
     settings: C.clone(draft.settings),
     debts: C.clone(draft.debts),
@@ -68,10 +77,10 @@ function build(draft, end = C.today()) {
           )
             throw Error("El mes del compromiso debe estar dentro del periodo.");
           C.ensureBudget(s, e.period);
-          const t = C.pay(s, e.obligation, { ...e });
+          const t = C.pay(s, e.obligation, { ...e, replay: true });
           t.id = e.id;
         } else {
-          C.record(s, e);
+          C.record(s, e, { replay: true });
           s.transactions.at(-1).id = e.id;
         }
       } catch (error) {
@@ -87,17 +96,17 @@ function reconcile(draft, actual, addAdjustments = false, end = C.today()) {
   const s = build(draft, end),
     b = C.balances(s);
   const differences = {};
-  for (const method of ["cash", "debit"]) {
-    if (!Number.isSafeInteger(actual[method]))
-      throw Error("Indica ambos saldos reales.");
-    differences[method] = actual[method] - b[method];
-    if (differences[method] && addAdjustments) {
+  for (const accountId of s.walletAccounts.map((a) => a.id)) {
+    if (!Number.isSafeInteger(actual[accountId]))
+      throw Error("Indica los saldos reales de todas las cuentas.");
+    differences[accountId] = actual[accountId] - b[accountId];
+    if (differences[accountId] && addAdjustments) {
       C.record(s, {
         name: "Conciliación de reconstrucción",
         kind: "adjustment",
-        method,
-        amount: Math.abs(differences[method]),
-        direction: Math.sign(differences[method]),
+        accountId,
+        amount: Math.abs(differences[accountId]),
+        direction: Math.sign(differences[accountId]),
         date: end,
       });
     }
