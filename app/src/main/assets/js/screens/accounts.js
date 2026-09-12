@@ -13,10 +13,13 @@ import {
   accountOptions,
   accountName,
   confirmAction,
+  icon,
+  metric,
+  svg,
 } from "../ui/components.js";
 export function accountsPage() {
   const m = C.metrics(model.state);
-  return `<div class="row"><h1>Cuentas</h1>${btn("Agregar cuenta", "walletEdit")}</div><p class="note">Disponible libre: ${money(m.available)} · Vales: ${money(m.restricted)} · Congelado: ${money(m.frozen)} · Por recuperar: ${money(m.receivable)}</p>${
+  return `<div class="debt-page-heading"><div><div class="eyebrow">Cada saldo en su lugar</div><h1>Cuentas</h1><p>Separa lo que puedes usar de lo que has apartado.</p></div>${icon("plus", "Agregar cuenta", "walletEdit")}</div><section class="card hero"><small>Disponible libre</small>${metric(m.available, "walletFree")}<div class="hero-bottom"><div><small>Vales / despensa</small><strong>${money(m.restricted)}</strong></div><div><small>Congelado</small><strong>${money(m.frozen)}</strong></div></div></section>${
     m.unassigned
       ? `<section class="card"><h2>Reservas pendientes de asignar</h2><p>${money(m.unassigned)} ya se descuentan del disponible global.</p>${model.state.goals
           .filter((g) => g.allocations.some((r) => !r.accountId))
@@ -26,8 +29,7 @@ export function accountsPage() {
   }${C.accountSummary(model.state)
     .map(
       (a) =>
-        `<section class="card"><div class="row"><h2>${esc(a.name)}</h2><span class="pill">${a.active === false ? "Archivada" : a.type === "restricted" ? "Uso restringido" : a.type === "bank" ? "Bancaria" : "Efectivo"}</span></div><div class="details">${[
-          ["Saldo total", a.total],
+        `<section class="card wallet-card"><div class="row"><div class="wallet-title"><span class="visual-icon ${a.type === "restricted" ? "warning" : a.type === "cash" ? "success" : "neutral"}">${svg(a.type === "restricted" ? "ticket" : a.type === "cash" ? "cash" : "bank")}</span><h2>${esc(a.name)}</h2></div><span class="pill">${a.active === false ? "Archivada" : a.type === "restricted" ? "Uso restringido" : a.type === "bank" ? "Bancaria" : "Efectivo"}</span></div><div class="wallet-balance"><small>Saldo total</small><div class="metric">${money(a.total)}</div></div><div class="details">${[
           ["Reservas", a.reserved],
           ["Cajitas", a.frozen],
           ["Disponible", a.available],
@@ -38,7 +40,7 @@ export function accountsPage() {
           )
           .join(
             "",
-          )}</div><div class="toolbar wrap">${btn("Editar", "walletEdit", a.id)}${a.active !== false ? btn("Ajustar saldo", "walletAdjust", a.id) + (a.type !== "restricted" ? btn("Crear cajita", "boxCreate", a.id) : "") + btn("Archivar", "walletArchive", a.id) : ""}</div>${model.state.goals
+          )}</div><div class="toolbar wrap">${icon("edit", "Editar cuenta", "walletEdit", a.id)}${a.active !== false ? btn("Ajustar saldo", "walletAdjust", a.id) + (a.type !== "restricted" ? btn("Crear cajita", "boxCreate", a.id) : "") + icon("trash", "Archivar cuenta", "walletArchive", a.id) : ""}</div>${model.state.goals
           .filter((g) => g.allocations.some((r) => r.accountId === a.id))
           .map((g) => btn("Reserva: " + g.name, "contribute", g.id))
           .join("")}${model.state.boxes
@@ -75,12 +77,7 @@ export function accountAction(action, id) {
           ],
           a?.type || "bank",
         ) +
-        model.state.categories
-          .map(
-            (c) =>
-              `<label><input type="checkbox" name="cat_${esc(c.id)}" ${a?.allowedCategories.includes(c.id) ? "checked" : ""}> ${esc(c.name)} (permitida en vales)</label>`,
-          )
-          .join("") +
+        `<div id="wallet-restrictions" ${a?.type === "restricted" ? "" : "hidden"}><p class="note">Los vales se destinan a despensa. Puedes recibir aquí el saldo que antes tenías agrupado en otra cuenta.</p><details><summary>Personalizar categorías (opcional)</summary>${model.state.categories.map((c) => `<label><input type="checkbox" name="cat_${esc(c.id)}" ${(a ? a.allowedCategories.includes(c.id) : /alimenta|despensa|supermerc/i.test(c.name)) ? "checked" : ""}>${esc(c.name)}</label>`).join("")}</details></div>` +
         '<p class="note">Las cuentas nuevas empiezan en cero. Distribuye dinero con transferencias o registra el saldo mediante un ajuste. El tipo queda protegido al tener antecedentes.</p>',
       async (f) =>
         commit("Cuenta guardada", (s) => {
@@ -88,10 +85,21 @@ export function accountAction(action, id) {
           const value = {
             name: f.name.trim(),
             type: f.type,
-            allowedCategories: s.categories
-              .filter((c) => f["cat_" + c.id])
-              .map((c) => c.id),
+            allowedCategories:
+              f.type === "restricted"
+                ? s.categories.filter((c) => f["cat_" + c.id]).map((c) => c.id)
+                : [],
           };
+          if (value.type === "restricted" && !value.allowedCategories.length) {
+            let category = s.categories.find((c) =>
+              /alimenta|despensa|supermerc/i.test(c.name),
+            );
+            if (!category) {
+              category = { id: C.id(), name: "Despensa" };
+              s.categories.push(category);
+            }
+            value.allowedCategories = [category.id];
+          }
           if (old) {
             if (
               old.type !== value.type &&

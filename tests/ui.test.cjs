@@ -142,9 +142,7 @@ const fs = require("fs");
     await page.locator("[name=name]").fill("Una escapada");
     await page.locator("[name=target]").fill("5000");
     await page.getByRole("button", { name: "Guardar", exact: true }).click();
-    await page
-      .getByRole("button", { name: "Aportar o liberar reserva", exact: true })
-      .click();
+    await page.locator("[data-action=contribute]").click();
     await page.locator("[name=amount]").fill("1000");
     await page.getByRole("button", { name: "Guardar", exact: true }).click();
     assert.equal(

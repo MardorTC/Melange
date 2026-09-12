@@ -89,6 +89,10 @@ APP_BASE_NAME=${0##*/}
 APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s
 ' "$PWD" ) || exit
 
+# Melange: share local tool detection with npm commands.
+MELANGE_ROOT=$APP_HOME
+. "$APP_HOME/scripts/dev-env.sh"
+
 # Use the maximum available, or set MAX_FD != -1 to use that value.
 MAX_FD=maximum
 

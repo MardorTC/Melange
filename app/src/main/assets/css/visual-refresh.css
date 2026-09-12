@@ -1362,3 +1362,265 @@ nav button {
     justify-self: end;
   }
 }
+
+/* Account and goal overview */
+.wallet-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.wallet-title h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.wallet-balance {
+  margin: 18px 0 8px;
+}
+.wallet-balance .metric {
+  font-size: 28px;
+  margin-top: 4px;
+}
+.wallet-card .details {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.wallet-card .details strong {
+  display: block;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+.wallet-card .toolbar {
+  justify-content: flex-end;
+}
+.wallet-card .toolbar .btn {
+  flex: 1 1 auto;
+  font-size: 12px;
+}
+#wallet-restrictions[hidden] {
+  display: none;
+}
+#wallet-restrictions details {
+  border: 1px solid var(--ui-line);
+  border-radius: 12px;
+  padding: 12px;
+}
+#wallet-restrictions summary {
+  cursor: pointer;
+  font-size: 12px;
+}
+#wallet-restrictions label {
+  padding-top: 8px;
+}
+.goal-amount {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 22px;
+}
+.goal-amount .metric {
+  font-size: 28px;
+}
+.goal-card .bar {
+  height: 9px;
+  margin: 16px 0 10px;
+}
+.goal-remaining {
+  color: var(--ui-brand-dark);
+  font-weight: 600;
+  font-size: 12px;
+}
+.goal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ui-line);
+}
+.goal-footer .actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+.goal-footer .btn {
+  font-size: 12px;
+}
+/* Readable, touch-friendly historical balances */
+.history-readout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--ui-surface-soft);
+}
+.history-readout strong {
+  display: block;
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+.history-readout > span {
+  max-width: 45%;
+  text-align: right;
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+.history-plot {
+  position: relative;
+  height: 180px;
+  margin: 14px 0 0;
+}
+.history-plot svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.history-grid {
+  fill: none;
+  stroke: var(--ui-line);
+  stroke-dasharray: 3 5;
+  vector-effect: non-scaling-stroke;
+}
+.history-area {
+  fill: var(--ui-brand-soft);
+}
+.history-line {
+  fill: none;
+  stroke: var(--ui-brand);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+.history-point {
+  position: absolute;
+  width: 26px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
+.history-point::after {
+  content: "";
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ui-brand);
+  margin: auto;
+}
+.history-point[aria-pressed="true"] {
+  z-index: 1;
+}
+.history-point[aria-pressed="true"]::after {
+  width: 12px;
+  height: 12px;
+  box-shadow: 0 0 0 4px #c2673830;
+  border: 2px solid white;
+}
+.history-chart input[type="range"] {
+  padding: 0;
+  border: 0;
+  margin: 0;
+  height: 32px;
+  min-height: 32px;
+  accent-color: var(--ui-brand);
+}
+.history-range {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  border-top: 1px solid var(--ui-line);
+  padding-top: 12px;
+  margin-top: 14px;
+  font-size: 11px;
+  color: var(--ui-muted);
+}
+.history-range strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--ui-ink);
+}
+.history-range > :last-child {
+  text-align: right;
+}
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 20px 0;
+}
+.health-grid strong {
+  display: block;
+  font-size: 21px;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+.health-outlook {
+  background: var(--ui-surface-soft);
+  border-radius: 12px;
+  padding: 16px;
+}
+.health-outlook > strong {
+  display: block;
+  font-size: 26px;
+  margin: 6px 0;
+}
+.health-card > .btn.full {
+  margin-top: 14px;
+}
+.back-btn {
+  border-radius: 999px;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-line);
+  box-shadow: var(--ui-shadow);
+  padding: 10px 14px;
+  gap: 7px;
+  min-height: 42px;
+  font-size: 12px;
+  color: var(--ui-brand-dark);
+}
+.back-btn svg {
+  width: 17px;
+  height: 17px;
+}
+@media (max-width: 380px) {
+  .wallet-card .details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .wallet-title .visual-icon {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+  .goal-footer .actions {
+    width: 100%;
+  }
+  .goal-footer .actions .btn {
+    flex: 1;
+  }
+  .history-readout strong {
+    font-size: 21px;
+  }
+}
+.wallet-card .toolbar {
+  display: grid;
+  grid-template-columns: 40px repeat(2, minmax(0, 1fr)) 40px;
+  gap: 8px;
+}
+.wallet-card .toolbar .btn {
+  padding: 10px 6px;
+}
+.wallet-card .toolbar .icon {
+  min-width: 40px;
+  width: 40px;
+  padding: 10px;
+}
+.wallet-card .toolbar .icon:last-child {
+  grid-column: 4;
+}

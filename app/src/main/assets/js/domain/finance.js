@@ -465,8 +465,7 @@ function checkMovement(s, t, replay = false) {
     if (t.toAccountId === t.accountId)
       throw Error("El origen y destino deben ser diferentes.");
     const destination = s.walletAccounts.find((x) => x.id === t.toAccountId);
-    if (!destination || destination.type === "restricted")
-      throw Error("Destino de transferencia no permitido.");
+    if (!destination) throw Error("Destino de transferencia no permitido.");
     if (!replay) F.requireDestination(s, t.toAccountId, "transfer");
   }
   if (["loan_out", "loan_in"].includes(t.kind)) {
@@ -501,7 +500,15 @@ function reverseTransaction(s, idTx) {
   )
     F.requireFunds(s, t.accountId, t.amount, "reversal", t.categoryId);
   if (t.kind === "transfer")
-    F.requireFunds(s, t.toAccountId, t.amount, "transfer");
+    F.requireFunds(
+      s,
+      t.toAccountId,
+      t.amount,
+      s.walletAccounts.find((a) => a.id === t.toAccountId)?.type ===
+        "restricted"
+        ? "reversal"
+        : "transfer",
+    );
   if (t.kind === "loan_out" && F.loanBalance(s, t.ref) < t.amount)
     throw Error("Revierte primero los cobros asociados.");
   if (t.kind === "debt") {

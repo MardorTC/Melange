@@ -3,13 +3,21 @@
   "private": true,
   "description": "Melange Android: offline personal finance",
   "scripts": {
-    "test": "node --test tests/core.test.cjs tests/reconstruction.test.cjs tests/v8.test.mjs && node tests/dom.test.mjs && node tests/updates.test.mjs",
+    "test": "node --test tests/core.test.cjs tests/reconstruction.test.cjs tests/v8.test.mjs tests/dev-env.test.mjs && node tests/dom.test.mjs && node tests/updates.test.mjs",
     "format": "prettier --write app/src/main/assets tests scripts docs README.md package.json .github",
     "format:check": "prettier --check app/src/main/assets tests scripts docs README.md package.json .github",
     "check": "npm run format:check && npm test",
     "dev": "node scripts/preview.mjs",
-    "test:ui": "node tests/ui.test.cjs",
-    "release": "node scripts/release.mjs"
+    "setup": "sh scripts/run.sh sh scripts/setup.sh",
+    "setup:browsers": "sh scripts/run.sh ./node_modules/.bin/playwright install chromium",
+    "doctor": "sh scripts/run.sh node scripts/doctor.mjs",
+    "android:check": "sh scripts/run.sh ./gradlew :app:testDebugUnitTest :app:lintDebug",
+    "build:debug": "sh scripts/run.sh ./build.sh debug",
+    "build:release": "sh scripts/run.sh ./build.sh release",
+    "format:java": "sh scripts/run.sh bash scripts/java-format.sh write",
+    "format:java:check": "sh scripts/run.sh bash scripts/java-format.sh check",
+    "test:ui": "sh scripts/run.sh node tests/ui.test.cjs",
+    "release": "sh scripts/run.sh node scripts/release.mjs"
   },
   "devDependencies": {
     "esbuild": "0.25.10",

@@ -36,18 +36,41 @@ export function donut(tx) {
 
 export function lineChart(all) {
   const h = all.slice(-60);
-  if (h.length < 2)
+  if (!h.length)
     return empty(
       "Tu historia comienza aquí",
-      "El historial se construye con tus observaciones o movimientos reconstruidos.",
+      "Al registrar movimientos aparecerán tus saldos por fecha.",
     );
-  const min = Math.min(...h.map((x) => x.value)),
-    max = Math.max(...h.map((x) => x.value)),
+  const min = Math.min(...h.map((p) => p.value)),
+    max = Math.max(...h.map((p) => p.value)),
     range = max - min || 100;
   const start = Date.parse(h[0].date),
-    end = Date.parse(h.at(-1).date),
-    x = (d) => 15 + ((Date.parse(d) - start) / Math.max(1, end - start)) * 300,
-    y = (v) => 125 - ((v - min) / range) * 90;
-  const pts = h.map((p) => `${x(p.date)},${y(p.value)}`).join(" ");
-  return `<div class="history-chart"><div class="chart-labels"><span>${money(max)}</span><span>Último: ${money(h.at(-1).value)}</span></div><svg class="chart" viewBox="0 25 330 115" preserveAspectRatio="none" role="img" aria-label="Historial de liquidez de ${h[0].date} a ${h.at(-1).date}"><path d="M15 125H315M15 80H315M15 35H315" stroke="#e9e3d8" stroke-dasharray="3 5" fill="none"/><polygon points="15,130 ${pts} 315,130" fill="#efdfc2"/><polyline points="${pts}" fill="none" stroke="#986437" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>${h.map((p) => `<circle cx="${x(p.date)}" cy="${y(p.value)}" r="3" fill="#986437"><title>${p.date}: ${money(p.value)}</title></circle>`).join("")}</svg><div class="chart-labels"><span>${h[0].date}</span><span>${h.at(-1).date}</span></div></div>`;
+    end = Date.parse(h.at(-1).date);
+  const x = (d) =>
+    h.length === 1
+      ? 500
+      : 10 + ((Date.parse(d) - start) / Math.max(1, end - start)) * 980;
+  const y = (v) => (max === min ? 90 : 150 - ((v - min) / range) * 120);
+  const points = h.map((p) => `${x(p.date)},${y(p.value)}`).join(" "),
+    last = h.at(-1),
+    change = h.length > 1 ? last.value - h.at(-2).value : null;
+  return `<div class="history-chart"><div class="history-readout" aria-live="polite"><div><small data-chart-date>${last.date}</small><strong data-chart-value>${money(last.value)}</strong></div><span data-chart-change>${change === null ? "Primer registro" : `${change > 0 ? "+" : ""}${money(change)} vs anterior`}</span></div><p class="note">Saldo en efectivo y bancos, incluidas reservas y cajitas. Excluye vales. Toca un punto o desliza para ver cada registro.</p><div class="history-plot"><svg viewBox="0 0 1000 180" preserveAspectRatio="none" aria-hidden="true"><path d="M10 30H990M10 90H990M10 150H990" class="history-grid"/><polygon points="${x(h[0].date)},170 ${points} ${x(last.date)},170" class="history-area"/><polyline points="${points}" class="history-line" vector-effect="non-scaling-stroke"/></svg>${h.map((p, i) => `<button type="button" class="history-point" data-chart-point="${i}" data-date="${p.date}" data-value="${p.value}" data-change="${i ? p.value - h[i - 1].value : ""}" style="left:${x(p.date) / 10}%;top:${y(p.value) / 1.8}%" aria-label="${p.date}: ${money(p.value)}" aria-pressed="${i === h.length - 1}"></button>`).join("")}</div><input type="range" data-chart-slider min="0" max="${h.length - 1}" step="1" value="${h.length - 1}" aria-label="Explorar registros de saldo" ${h.length === 1 ? "disabled" : ""}><div class="chart-labels"><span>${h[0].date}</span><span>${last.date}</span></div><div class="history-range"><span>Mínimo <strong>${money(min)}</strong></span><span>Máximo <strong>${money(max)}</strong></span></div></div>`;
+}
+
+export function selectHistoryPoint(point) {
+  if (!point) return;
+  const chart = point.closest(".history-chart"),
+    change = point.dataset.change;
+  chart.querySelector("[data-chart-date]").textContent = point.dataset.date;
+  chart.querySelector("[data-chart-value]").textContent = money(
+    Number(point.dataset.value),
+  );
+  chart.querySelector("[data-chart-change]").textContent =
+    change === ""
+      ? "Primer registro"
+      : `${Number(change) > 0 ? "+" : ""}${money(Number(change))} vs anterior`;
+  chart
+    .querySelectorAll("[data-chart-point]")
+    .forEach((p) => p.setAttribute("aria-pressed", String(p === point)));
+  chart.querySelector("[data-chart-slider]").value = point.dataset.chartPoint;
 }

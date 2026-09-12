@@ -117,7 +117,9 @@ Se prepara una lista de los siguientes 12 meses y se actualiza al abrir o modifi
 
 Abre **Cuentas** desde Inicio. Crea cuentas con nombres como BBVA o Banamex, distribuye saldos mediante transferencias y selecciona la cuenta concreta al registrar cada movimiento. Los ajustes corrigen un saldo real sin contarlo como ingreso o gasto. Archivar conserva los antecedentes y requiere dejar saldo y reservas en cero.
 
-Los vales admiten ingresos y gastos de las categorías marcadas al editar la cuenta. No se usan para prestar, pagar deudas ni transferir dinero. Un gasto fijo también necesita una categoría compatible.
+Las cuentas normales solo necesitan nombre y tipo. Los vales usan despensa como categoría predeterminada; puedes personalizar las categorías en las opciones avanzadas. Admiten ingresos, gastos compatibles y transferencias desde cuentas libres para distribuir un saldo que ya tenías registrado, sin contarlo como ingreso. No permiten transferencias de salida, préstamos ni pagos de deudas. Un gasto fijo también necesita una categoría compatible.
+
+En **Las huellas de tu dinero**, toca un punto o mueve el selector para consultar su fecha, saldo y variación respecto al registro anterior. **Tu balance del mes** muestra ingresos recibidos, salidas registradas y compromisos pendientes; el margen restante no incluye ingresos futuros.
 
 Una cajita congela dinero sin crear un gasto. Su fecha prevista genera un aviso; pulsa **Confirmar liberación** cuando realmente puedas disponer del importe. Puedes liberar una parte. Si tiene una meta vinculada, la reserva sigue vigente después de descongelar; libérala desde Metas si deseas gastarla. Registrar rendimiento exige que ya se haya recibido.
 

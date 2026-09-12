@@ -58,7 +58,6 @@ test("named accounts transfer and income preserve totals; restricted funds canno
   for (const t of [
     tx("expense", 1, { accountId: "vales" }),
     tx("transfer", 1, { accountId: "vales", toAccountId: "debit" }),
-    tx("transfer", 1, { toAccountId: "vales" }),
     tx("debt", 1, { accountId: "vales" }),
   ])
     assert.throws(() => C.record(s, t));
@@ -329,4 +328,36 @@ test("calendar changes cannot duplicate a due that was paid in advance", () => {
   C.refreshAllBudgets(s);
   assert.equal(C.obligations(s, "2025-01").length, 1);
   assert.equal(C.obligations(s, "2025-01")[0].paid, true);
+});
+
+test("redistributing money into vouchers conserves totals and cannot route vouchers back out", () => {
+  const s = fixture(),
+    before = C.metrics(s),
+    t = C.record(s, tx("transfer", 50000, { toAccountId: "vales" }));
+  assert.equal(
+    C.metrics(s).liquidity + C.metrics(s).restricted,
+    before.liquidity + before.restricted,
+  );
+  assert.equal(C.metrics(s).received, 0);
+  assert.equal(C.metrics(s).outflow, 0);
+  assert.equal(C.balances(s).vales, 150000);
+  assert.throws(() =>
+    C.record(
+      s,
+      tx("transfer", 1, { accountId: "vales", toAccountId: "debit" }),
+    ),
+  );
+  C.reverseTransaction(s, t.id);
+  assert.equal(C.balances(s).vales, 100000);
+  C.freeze(s, {
+    name: "Reservado",
+    accountId: "debit",
+    amount: 490000,
+    createdDate: date,
+    availableDate: date,
+  });
+  assert.throws(
+    () => C.record(s, tx("transfer", 20000, { toAccountId: "vales" })),
+    /Faltan/,
+  );
 });

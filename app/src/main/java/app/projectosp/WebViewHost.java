@@ -15,6 +15,15 @@ final class WebViewHost extends WebViewClient {
     this.context = context;
   }
 
+  static String mimeType(String path) {
+    if (path.endsWith(".svg")) return "image/svg+xml";
+    if (path.endsWith(".js")) return "application/javascript";
+    if (path.endsWith(".css")) return "text/css";
+    if (path.endsWith(".png")) return "image/png";
+    if (path.endsWith(".json")) return "application/json";
+    return "text/html";
+  }
+
   @Override
   public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
     return true;
@@ -29,14 +38,7 @@ final class WebViewHost extends WebViewClient {
         && path != null
         && !path.contains("..")
         && path.matches("/[a-zA-Z0-9_/.-]+")) {
-      String mime =
-          path.endsWith(".js")
-              ? "application/javascript"
-              : path.endsWith(".css")
-                  ? "text/css"
-                  : path.endsWith(".png")
-                      ? "image/png"
-                      : path.endsWith(".json") ? "application/json" : "text/html";
+      String mime = mimeType(path);
       try {
         return new WebResourceResponse(mime, "UTF-8", context.getAssets().open(path.substring(1)));
       } catch (IOException ignored) {

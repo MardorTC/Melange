@@ -9,6 +9,13 @@ import org.json.*;
 import org.junit.Test;
 
 public class UpdateTests {
+  @Test
+  public void packagedDunesUseSvgMimeType() {
+    assertEquals("image/svg+xml", WebViewHost.mimeType("/art/dunes.svg"));
+    assertEquals("text/css", WebViewHost.mimeType("/css/visual-refresh.css"));
+    assertEquals("application/javascript", WebViewHost.mimeType("/js/bootstrap.js"));
+  }
+
   JSONObject descriptor() throws Exception {
     return new JSONObject()
         .put("version", "7.2.0")

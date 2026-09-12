@@ -5,13 +5,16 @@
 Node.js 24, JDK 17, Android Platform 35 y Build Tools 35.0.0. Gradle Wrapper fija Gradle 8.11.1 y el plugin Android 8.9.2. El primer build descarga dependencias.
 
 ```bash
-npm ci
+npm run setup
+npm run doctor -- --release
 npm run check
 npm run test:ui
-./gradlew :app:testDebugUnitTest :app:lintDebug
-./build.sh debug
-./build.sh release
+npm run android:check
+npm run build:debug
+npm run build:release
 ```
+
+Los comandos detectan las herramientas locales sin configurar variables a mano. Consulta [Entorno de desarrollo](entorno.md) para instalar requisitos en otro equipo. `build:release` solo compila; `npm run release` publica en GitHub.
 
 Los APK se generan en `app/build/outputs/apk/`. La versión se define exclusivamente en `app/build.gradle`; aumenta nombre y código juntos. Los datos mostrados en Android provienen de BuildConfig.
 

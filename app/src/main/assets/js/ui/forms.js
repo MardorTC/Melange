@@ -86,6 +86,9 @@ export function transactionForm(kind = "expense", existing) {
           t.toAccountId || "cash",
         )
       : "") +
+    (kind === "transfer"
+      ? '<p class="note">Puedes distribuir saldo hacia vales sin crear ingresos ni gastos. Una cuenta de vales no puede transferir dinero a cuentas libres.</p>'
+      : "") +
     (t.historical
       ? '<p class="note">Movimiento importado: editarlo no altera tu saldo inicial.</p>'
       : "");

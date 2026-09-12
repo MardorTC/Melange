@@ -319,6 +319,38 @@ console.log(
   "DOM: Melange 8 accounts, blocked spending, boxes, prior installments, loans and reminder time passed.",
 );
 
+// Touch/keyboard chart selection and simplified account form.
+const chartState = C.clone(stored.state);
+chartState.liquidityHistory = [
+  { date: C.addMonth(C.month(), -1) + "-01", value: 10000 },
+  { date: C.addMonth(C.month(), -1) + "-02", value: 20000 },
+];
+await w.receiveImport(
+  JSON.stringify({ format: "projectosp-backup", state: chartState }),
+);
+await click("confirmImport");
+await click("tab", "home");
+const firstPoint = doc.querySelector('[data-chart-point="0"]');
+assert.ok(firstPoint);
+firstPoint.click();
+assert.equal(doc.querySelector("[data-chart-value]").textContent, "$100.00");
+assert.equal(firstPoint.getAttribute("aria-pressed"), "true");
+const slider = doc.querySelector("[data-chart-slider]");
+slider.value = "1";
+slider.dispatchEvent(new w.Event("input", { bubbles: true }));
+assert.equal(doc.querySelector("[data-chart-value]").textContent, "$200.00");
+await click("tab", "accounts");
+await click("walletEdit");
+assert.equal(doc.querySelector("#wallet-restrictions").hidden, true);
+const walletType = doc.querySelector("#form [name=type]");
+walletType.value = "restricted";
+walletType.dispatchEvent(new w.Event("change", { bubbles: true }));
+assert.equal(doc.querySelector("#wallet-restrictions").hidden, false);
+await submit({ name: "Vales de prueba", type: "restricted" });
+assert.ok(
+  stored.state.walletAccounts.find((a) => a.name === "Vales de prueba")
+    .allowedCategories.length,
+);
 await w.happyDOM.abort();
 console.log(
   "DOM integration passed: event handlers, save rollback, payment/undo, partial fixed payment, goals, filters, invalid import, projection, timeline, backup round trip. Not visual or Android runtime QA.",

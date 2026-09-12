@@ -38,26 +38,17 @@ npm run test:ui   # Pruebas automáticas en Chromium, sin ventana interactiva
 
 Si `check` informa de formato, ejecuta `npm run format` y repite `npm run check`. Si falla una prueba, revisa el mensaje: dar formato no arregla errores funcionales.
 
-En una instalación nueva, ejecuta `npm ci`. Si Playwright informa que falta su navegador, ejecuta `npx playwright install chromium`. En este equipo también existe una instalación local que puedes seleccionar así:
-
-```bash
-PLAYWRIGHT_BROWSERS_PATH="$PWD/.tools/browsers" npm run test:ui
-```
+En una instalación nueva, ejecuta `npm run setup`: instala las dependencias fijadas y Chromium, y comprueba el entorno. Después, `npm run test:ui` encuentra automáticamente el navegador local, sin variables manuales.
 
 ## Comprobaciones Android opcionales para cambios de diseño
 
-No necesitas Gradle para ver CSS o HTML. Para ejecutar las comprobaciones nativas con las herramientas ya instaladas en este proyecto:
+No necesitas Gradle para ver CSS o HTML. Para ejecutar las comprobaciones nativas:
 
 ```bash
-cd /home/mardor/projects/melange
-export JAVA_HOME="$PWD/.tools/jdk"
-export ANDROID_HOME="$PWD/.tools/android"
-export GRADLE_USER_HOME="$PWD/.tools/gradle-home"
-export PATH="$JAVA_HOME/bin:$PATH"
-./gradlew :app:testDebugUnitTest :app:lintDebug
+npm run android:check
 ```
 
-Estos comandos no generan una APK. Las variables duran mientras esa terminal siga abierta; en otra terminal debes configurarlas de nuevo. Las carpetas `.tools/` son locales y no están en Git: otro equipo necesita instalar JDK 17 y SDK Android 35, y usar sus rutas correspondientes.
+Este comando no genera una APK. `./gradlew :app:testDebugUnitTest :app:lintDebug` también funciona directamente: ambos detectan las herramientas locales. Consulta [Entorno de desarrollo](entorno.md) para preparar otro equipo o diagnosticar requisitos faltantes.
 
 El navegador permite revisar el diseño y los flujos web. SQLite nativo, notificaciones, selector de archivos e instalación de actualizaciones necesitan comprobarse finalmente en Android.
 

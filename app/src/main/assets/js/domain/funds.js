@@ -93,7 +93,7 @@ export function requireFunds(
 export function requireDestination(s, id, kind) {
   const a = s.walletAccounts.find((a) => a.id === id && a.active !== false);
   if (!a) throw Error("Elige una cuenta de destino activa.");
-  if (a.type === "restricted" && kind !== "income")
+  if (a.type === "restricted" && !["income", "transfer"].includes(kind))
     throw Error(
       "Los vales solo admiten ingresos y gastos de sus categorías permitidas.",
     );

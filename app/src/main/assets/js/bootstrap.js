@@ -1,3 +1,4 @@
+import { selectHistoryPoint } from "./ui/charts.js";
 import H from "./domain/reconstruction.js";
 import { initializeUpdates } from "./platform/updates.js";
 import C from "./domain/finance.js";
@@ -19,6 +20,12 @@ import { openStore, readStore, writeStore } from "./platform/storage.js";
 import { syncReminders } from "./state/ledger.js";
 
 document.addEventListener("change", (e) => {
+  if (
+    e.target.name === "type" &&
+    document.querySelector("#wallet-restrictions")
+  )
+    document.querySelector("#wallet-restrictions").hidden =
+      e.target.value !== "restricted";
   if (e.target.name === "rebuildMonth") {
     const m = e.target.value;
     if (m < C.month(model.rebuildDraft.config.startDate) || m > C.month())
@@ -34,6 +41,11 @@ document.addEventListener("change", (e) => {
 ("use strict");
 
 document.addEventListener("click", (e) => {
+  const point = e.target.closest("[data-chart-point]");
+  if (point) {
+    selectHistoryPoint(point);
+    return;
+  }
   const el = e.target.closest("[data-action]");
   if (el)
     Promise.resolve(action(el.dataset.action, el.dataset.id || "", el)).catch(
@@ -58,6 +70,14 @@ document.addEventListener("submit", async (e) => {
 });
 
 document.addEventListener("input", (e) => {
+  if (e.target.matches("[data-chart-slider]")) {
+    selectHistoryPoint(
+      e.target.closest(".history-chart").querySelectorAll("[data-chart-point]")[
+        Number(e.target.value)
+      ],
+    );
+    return;
+  }
   if (e.target.id === "search") {
     const pos = e.target.selectionStart;
     model.filter.q = e.target.value;
