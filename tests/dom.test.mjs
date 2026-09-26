@@ -351,6 +351,78 @@ assert.ok(
   stored.state.walletAccounts.find((a) => a.name === "Vales de prueba")
     .allowedCategories.length,
 );
+// Credit is persisted separately; the grouped payment and undo are atomic.
+const creditFixture = C.empty();
+creditFixture.started = true;
+creditFixture.walletAccounts[1].opening = 500000;
+await w.receiveImport(JSON.stringify(creditFixture));
+await click("confirmImport");
+await click("tab", "home");
+await click("tab", "accounts");
+await click("creditEdit");
+await submit({
+  name: "BBVA crédito",
+  limit: "20000",
+  closingDay: 15,
+  paymentDay: 5,
+  openingBalance: "0",
+  openingDueDate: C.today(),
+});
+assert.equal(stored.state.creditCards.length, 1);
+const cardId = stored.state.creditCards[0].id;
+await click("tab", "home");
+await click("expense");
+const creditSelect = doc.querySelector('#form [name="accountId"]');
+creditSelect.value = "credit:" + cardId;
+creditSelect.dispatchEvent(new w.Event("change", { bubbles: true }));
+assert.equal(doc.querySelector("#credit-purchase-fields").hidden, false);
+await submit({
+  name: "Compra con crédito",
+  amount: "500",
+  accountId: "credit:" + cardId,
+  date: C.today(),
+  cardDueDate: C.today(),
+});
+assert.equal(C.metrics(stored.state).available, 500000);
+assert.equal(C.metrics(stored.state).consumption, 50000);
+await click("tab", "debt");
+await click("debtSub", "owe");
+await click("editDebt");
+await submit({
+  name: "MSI de prueba",
+  type: "msi",
+  creditCardId: cardId,
+  originalAmount: "1200",
+  balance: "1200",
+  payment: "100",
+  totalPayments: 12,
+  priorPaid: 0,
+  startDate: C.month() + "-01",
+  dueDay: Number(C.today().slice(8)),
+  financingCost: "0",
+});
+assert.equal(stored.state.debts[0].creditCardId, cardId);
+assert.equal(C.creditStatement(stored.state, cardId).remaining, 60000);
+await click("creditPay", cardId);
+failWrite = true;
+await submit({ amount: "600", accountId: "debit", date: C.today() });
+failWrite = false;
+assert.equal(C.balances(stored.state).debit, 500000);
+await click("close");
+await click("creditPay", cardId);
+await submit({ amount: "600", accountId: "debit", date: C.today() });
+assert.equal(C.balances(stored.state).debit, 440000);
+assert.equal(
+  stored.state.transactions.filter((t) => t.kind === "card_payment").length,
+  1,
+);
+assert.equal(stored.state.debts[0].balance, 110000);
+await click("undo");
+assert.equal(C.balances(stored.state).debit, 500000);
+assert.equal(stored.state.debts[0].balance, 120000);
+console.log(
+  "DOM: credit card, purchase, grouped MSI payment, failed save and undo passed.",
+);
 await w.happyDOM.abort();
 console.log(
   "DOM integration passed: event handlers, save rollback, payment/undo, partial fixed payment, goals, filters, invalid import, projection, timeline, backup round trip. Not visual or Android runtime QA.",

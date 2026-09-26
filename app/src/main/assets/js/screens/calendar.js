@@ -20,7 +20,7 @@ export function projectionPage() {
   return (
     pageHeading("Proyección de 12 meses", "Una mirada al horizonte") +
     periodChooser() +
-    `<p class="note">Presupuesto antes de variables: los pagos realizados siguen formando parte del compromiso mensual. No es un pronóstico de saldo bancario.</p><section class="card"><div class="scroll" tabindex="0" aria-label="Proyección de 12 meses"><table><thead><tr><th>Mes</th><th>Ingreso previsto</th><th>Fijos</th><th>Deudas</th><th>Libre antes de variables</th></tr></thead><tbody>${months
+    `<p class="note">Presupuesto antes de variables: los pagos realizados siguen formando parte del compromiso mensual. Incluye los cargos a tarjeta ya registrados y sus MSI, sin anticipar compras futuras. No es un pronóstico de saldo bancario.</p><section class="card"><div class="scroll" tabindex="0" aria-label="Proyección de 12 meses"><table><thead><tr><th>Mes</th><th>Ingreso previsto</th><th>Fijos</th><th>Deudas</th><th>Libre antes de variables</th></tr></thead><tbody>${months
       .map((m) => {
         const v = C.metrics(model.state, m);
         return `<tr><td>${mlabel(m)}</td><td>${money(v.income)}</td><td>${money(v.fixed)}</td><td>${money(v.debt)}</td><td class="${v.budgetFree < 0 ? "bad" : "good"}">${money(v.budgetFree)}</td></tr>`;
@@ -60,7 +60,7 @@ function timelineRow(ref, byMonth) {
   const rowMonths = byMonth.map((items) =>
     items.filter((i) => i.ref === ref.ref && i.kind === ref.kind),
   );
-  return `<tr><td>${esc(ref.name)}<br><small>${ref.kind === "debt" ? "Deuda" : "Gasto fijo"}</small></td>${rowMonths
+  return `<tr><td>${esc(ref.name)}<br><small>${ref.kind === "card_payment" ? "Tarjeta de crédito" : ref.kind === "debt" ? "Deuda" : "Gasto fijo"}</small></td>${rowMonths
     .map((occurrences, index) => {
       if (!occurrences.length)
         return '<td class="timeline-cell empty-cell">—</td>';

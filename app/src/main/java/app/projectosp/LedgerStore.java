@@ -38,17 +38,21 @@ final class LedgerStore extends SQLiteOpenHelper {
               + " NOT NULL)");
       if (!old.isEmpty() && !json.isEmpty()) {
         try {
-          if (new org.json.JSONObject(old).getJSONObject("state").getInt("schemaVersion") == 7
-              && new org.json.JSONObject(json).getJSONObject("state").getInt("schemaVersion")
-                  == 8) {
+          int previousVersion =
+              new org.json.JSONObject(old).getJSONObject("state").getInt("schemaVersion");
+          int nextVersion =
+              new org.json.JSONObject(json).getJSONObject("state").getInt("schemaVersion");
+          if (previousVersion < nextVersion) {
             ContentValues backup = new ContentValues();
-            backup.put("version", 7);
+            backup.put("version", previousVersion);
             backup.put("envelope", old);
             if (db.insertWithOnConflict(
                     "migration_backups", null, backup, SQLiteDatabase.CONFLICT_IGNORE)
                 == -1) {
               try (Cursor existing =
-                  db.rawQuery("SELECT version FROM migration_backups WHERE version=7", null)) {
+                  db.rawQuery(
+                      "SELECT version FROM migration_backups WHERE version=?",
+                      new String[] {String.valueOf(previousVersion)})) {
                 if (!existing.moveToFirst())
                   throw new IllegalStateException("No se pudo conservar el original");
               }

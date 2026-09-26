@@ -21,6 +21,12 @@ import { syncReminders } from "./state/ledger.js";
 
 document.addEventListener("change", (e) => {
   if (
+    e.target.name === "accountId" &&
+    document.querySelector("#credit-purchase-fields")
+  )
+    document.querySelector("#credit-purchase-fields").hidden =
+      !e.target.value.startsWith("credit:");
+  if (
     e.target.name === "type" &&
     document.querySelector("#wallet-restrictions")
   )

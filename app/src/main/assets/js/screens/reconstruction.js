@@ -17,6 +17,7 @@ import {
   kindName,
   select,
   accountOptions,
+  spendingOptions,
   modal,
   mlabel,
 } from "../ui/components.js";
@@ -66,7 +67,7 @@ export function startRebuild() {
   }
   form(
     "Elegir punto de partida",
-    `<p class="note">El borrador empieza sin movimientos, deudas ni metas; solo copia tus categorías y acreedores. Al confirmar sustituirá tus datos actuales, con opción de deshacer.</p>` +
+    `<p class="note">El borrador empieza sin movimientos, deudas ni metas; copia tus cuentas, tarjetas, categorías y acreedores. Indica los saldos de crédito anteriores sin incluir MSI. Al confirmar sustituirá tus datos actuales, con opción de deshacer.</p>` +
       input(
         "startDate",
         "Fecha de inicio",
@@ -76,6 +77,19 @@ export function startRebuild() {
       ) +
       model.state.walletAccounts
         .map((a) => signedField(a.id, a.name + " al comenzar ese día"))
+        .join("") +
+      model.state.creditCards
+        .map(
+          (c) =>
+            amount("credit_" + c.id, c.name + " · Saldo anterior sin MSI", 0) +
+            input(
+              "credit_due_" + c.id,
+              c.name + " · Vencimiento de ese saldo",
+              C.today(),
+              "date",
+              "required",
+            ),
+        )
         .join("") +
       amount(
         "income",
@@ -89,6 +103,15 @@ export function startRebuild() {
           startDate: f.startDate,
           openings: Object.fromEntries(
             model.state.walletAccounts.map((a) => [a.id, signedMoney(f[a.id])]),
+          ),
+          creditOpenings: Object.fromEntries(
+            model.state.creditCards.map((c) => [
+              c.id,
+              moneyValue(f["credit_" + c.id]),
+            ]),
+          ),
+          creditDueDates: Object.fromEntries(
+            model.state.creditCards.map((c) => [c.id, f["credit_due_" + c.id]]),
           ),
           income: moneyValue(f.income),
         },
@@ -226,6 +249,18 @@ export function rebuildDefinition(kind, id = "") {
           ],
           d.creditorId || "",
         ) +
+        select(
+          "creditCardId",
+          "Tarjeta para MSI (opcional)",
+          [
+            ["", "Sin tarjeta"],
+            ...(model.rebuildDraft.creditCards || []).map((c) => [
+              c.id,
+              c.name,
+            ]),
+          ],
+          d.creditCardId || "",
+        ) +
         amount("originalAmount", "Monto original", d.originalAmount) +
         amount("balance", "Saldo pendiente al inicio del periodo", d.balance) +
         select(
@@ -311,7 +346,8 @@ export function rebuildDefinition(kind, id = "") {
               );
           value = {
             ...value,
-            type: total ? "loan" : "loan-open",
+            type: f.creditCardId ? "msi" : total ? "loan" : "loan-open",
+            creditCardId: f.creditCardId || null,
             creditorId: f.creditorId,
             balance: moneyValue(f.balance),
             originalAmount: moneyValue(f.originalAmount),
@@ -362,7 +398,7 @@ export function rebuildEntry(kind, id = "") {
     toAccountId: "cash",
     categoryId: "",
   };
-  if (old && ["debt", "fixed"].includes(old.kind)) {
+  if (old && ["debt", "fixed", "card_payment"].includes(old.kind)) {
     rebuildPayForm(old.obligation, old.period, old);
     return;
   }
@@ -382,8 +418,10 @@ export function rebuildEntry(kind, id = "") {
       select(
         "accountId",
         kind === "income" ? "Recibir en" : "Origen",
-        accountOptions(model.rebuildDraft),
-        e.accountId,
+        kind === "expense"
+          ? spendingOptions(model.rebuildDraft)
+          : accountOptions(model.rebuildDraft),
+        e.creditCardId ? "credit:" + e.creditCardId : e.accountId,
       ) +
       (kind === "transfer"
         ? select(
@@ -412,7 +450,10 @@ export function rebuildEntry(kind, id = "") {
           name: f.name.trim(),
           amount: moneyValue(f.amount),
           date: f.date,
-          accountId: f.accountId,
+          accountId: f.accountId.startsWith("credit:") ? null : f.accountId,
+          ...(f.accountId.startsWith("credit:")
+            ? { creditCardId: f.accountId.slice(7) }
+            : {}),
           categoryId: f.categoryId || "",
           ...(kind === "transfer" ? { toAccountId: f.toAccountId } : {}),
         };
@@ -475,6 +516,7 @@ export function rebuildPayForm(key, m, old) {
         const value = {
           id: old?.id || C.id(),
           kind: item.kind,
+          ...(item.kind === "card_payment" ? { creditCardId: item.ref } : {}),
           ref: item.ref,
           obligation: key,
           period: m,
@@ -502,7 +544,7 @@ export function reviewRebuild() {
     b = C.balances(s);
   form(
     "Comparar con tus saldos de hoy",
-    `<p>Calculado: ${s.walletAccounts.map((a) => esc(a.name) + " " + money(b[a.id])).join(" · ")}.</p><p class="note">Introduce lo que tienes realmente. No uses cifras estimadas para ocultar una diferencia.</p>` +
+    `<p>Calculado: ${s.walletAccounts.map((a) => esc(a.name) + " " + money(b[a.id])).join(" · ")}.</p>${s.creditCards.length ? `<p>Crédito pendiente: ${s.creditCards.map((c) => esc(c.name) + " " + money(C.creditSummary(s, c.id).used)).join(" · ")}. Revisa también estos saldos contra tus estados de cuenta.</p>` : ""}<p class="note">Introduce lo que tienes realmente. No uses cifras estimadas para ocultar una diferencia.</p>` +
       s.walletAccounts
         .map((a) => signedField(a.id, a.name + " real hoy"))
         .join(""),
@@ -526,7 +568,7 @@ export function reviewRebuild() {
                 ],
                 "review",
               )) +
-          `<p class="note">Al confirmar reemplazarás los datos actuales, incluidas deudas y metas, por esta reconstrucción. La versión anterior quedará en Deshacer. Exporta un respaldo si deseas conservarla fuera de la app.</p>`,
+          `<p class="note">Al confirmar reemplazarás los datos actuales, incluidas deudas, tarjetas y metas, por esta reconstrucción. La versión anterior quedará en Deshacer. Exporta un respaldo si deseas conservarla fuera de la app.</p>`,
         async (choice) => {
           if (!result.matches && choice.resolve !== "adjust") {
             closeModal();

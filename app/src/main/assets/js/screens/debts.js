@@ -1,3 +1,4 @@
+import { creditCardsSection } from "./credit.js";
 import { receivablesPage } from "./receivables.js";
 import { model } from "../state/model.js";
 import {
@@ -18,7 +19,12 @@ export function debtsPage() {
   if (selected === "owed") return heading + tabs + receivablesPage();
 
   const visible = model.state.debts.filter((d) => !d.archived),
-    total = visible.reduce((a, d) => a + d.balance, 0),
+    total =
+      visible.reduce((a, d) => a + d.balance, 0) +
+      model.state.creditCards.reduce(
+        (n, c) => n + C.creditSummary(model.state, c.id).purchases,
+        0,
+      ),
     activeCount = visible.filter((d) => d.balance > 0).length,
     paidCount = visible.filter((d) => d.balance === 0).length;
 
@@ -38,7 +44,7 @@ export function debtsPage() {
           "Tus deudas, en orden",
           "Agrega una deuda para organizar sus cuotas.",
         )
-  }`;
+  }${creditCardsSection()}`;
 }
 
 function debtCard(d) {
@@ -51,13 +57,14 @@ function debtCard(d) {
     next = nextDebt(d),
     liquidated = d.balance === 0,
     creditor =
+      model.state.creditCards.find((c) => c.id === d.creditCardId)?.name ||
       model.state.creditors.find((a) => a.id === d.creditorId)?.name ||
       "Sin acreedor";
 
   if (liquidated)
     return `<section class="card debt-settled"><span class="debt-type-icon success">${svg("checkCircle")}</span><div><h2>${esc(d.name)}</h2><span class="pill good">Liquidada</span></div><button class="btn link-btn" data-action="debtDetails" data-id="${esc(d.id)}">Ver detalles</button>${icon("edit", "Editar deuda", "editDebt", d.id)}</section>`;
 
-  return `<section class="card debt-card ${liquidated ? "is-paid" : ""}"><div class="debt-type-icon ${liquidated ? "success" : ""}">${svg(debtIcon(d.type))}</div><div class="debt-card-content"><div class="debt-card-title"><div><h2>${esc(d.name)}</h2><small>${esc(creditor)} · ${esc(debtType(d.type))}</small></div><span class="pill ${liquidated ? "good" : "debt-active"}">${d.archived ? "Archivada" : liquidated ? "Liquidada" : "Activa"}</span></div><div class="debt-numbers"><div><small>Saldo pendiente</small><div class="metric">${money(d.balance)}</div></div><div><small>Pago habitual</small><strong>${money(d.payment)}</strong></div></div><div class="bar debt-progress"><span style="width:${liquidated ? 100 : pct}%"></span></div><div class="debt-meta"><small>${d.totalPayments ? `${paid} de ${d.totalPayments} cuotas` : "Sin plazo fijo"}</small><small>${next ? "Próximo: " + next.date : liquidated ? "Sin pagos pendientes" : "Sin fecha próxima"}</small></div></div><div class="debt-card-actions">${next ? `<button class="btn primary debt-pay" data-action="pay" data-id="${esc(next.key)}" data-period="${next.date.slice(0, 7)}">Registrar pago</button>` : ""}<button class="btn debt-details" data-action="debtDetails" data-id="${esc(d.id)}">Ver detalles ${svg("chevron")}</button><div class="debt-tools">${icon("edit", "Editar deuda", "editDebt", d.id)}${icon("trash", "Eliminar o archivar deuda", "deleteDebt", d.id)}</div></div></section>`;
+  return `<section class="card debt-card ${liquidated ? "is-paid" : ""}"><div class="debt-type-icon ${liquidated ? "success" : ""}">${svg(debtIcon(d.type))}</div><div class="debt-card-content"><div class="debt-card-title"><div><h2>${esc(d.name)}</h2><small>${esc(creditor)} · ${esc(debtType(d.type))}</small></div><span class="pill ${liquidated ? "good" : "debt-active"}">${d.archived ? "Archivada" : liquidated ? "Liquidada" : "Activa"}</span></div><div class="debt-numbers"><div><small>Saldo pendiente</small><div class="metric">${money(d.balance)}</div></div><div><small>Pago habitual</small><strong>${money(d.payment)}</strong></div></div><div class="bar debt-progress"><span style="width:${liquidated ? 100 : pct}%"></span></div><div class="debt-meta"><small>${d.totalPayments ? `${paid} de ${d.totalPayments} cuotas` : "Sin plazo fijo"}</small><small>${next ? "Próximo: " + next.date : liquidated ? "Sin pagos pendientes" : "Sin fecha próxima"}</small></div></div><div class="debt-card-actions">${next ? `<button class="btn primary debt-pay" data-action="pay" data-id="${esc(next.key)}" data-period="${next.date.slice(0, 7)}">${d.creditCardId ? "Pagar tarjeta" : "Registrar pago"}</button>` : ""}<button class="btn debt-details" data-action="debtDetails" data-id="${esc(d.id)}">Ver detalles ${svg("chevron")}</button><div class="debt-tools">${icon("edit", "Editar deuda", "editDebt", d.id)}${icon("trash", "Eliminar o archivar deuda", "deleteDebt", d.id)}</div></div></section>`;
 }
 
 function debtIcon(type) {

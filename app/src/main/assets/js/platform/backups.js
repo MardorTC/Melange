@@ -27,7 +27,7 @@ export function exportState(exported, filename = "Melange") {
   const json = JSON.stringify(
     {
       format: "projectosp-backup",
-      version: 8,
+      version: 9,
       exportedAt: new Date().toISOString(),
       state: exported,
     },

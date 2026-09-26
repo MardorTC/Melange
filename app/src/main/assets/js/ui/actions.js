@@ -1,3 +1,4 @@
+import { creditAction } from "../screens/credit.js";
 import { accountAction } from "../screens/accounts.js";
 import { loanAction } from "../screens/receivables.js";
 import { updateAction } from "../platform/updates.js";
@@ -40,7 +41,13 @@ import { showProjection, timeline } from "../screens/calendar.js";
 import { doExport } from "../platform/backups.js";
 
 export async function action(a, id, el) {
-  if (updateAction(a) || accountAction(a, id) || loanAction(a, id)) return;
+  if (
+    creditAction(a, id, el) ||
+    updateAction(a) ||
+    accountAction(a, id) ||
+    loanAction(a, id)
+  )
+    return;
   if (a === "debtSub") {
     model.debtSub = id;
     render();

@@ -1624,3 +1624,24 @@ nav button {
 .wallet-card .toolbar .icon:last-child {
   grid-column: 4;
 }
+
+/* Credit is shown separately from money held in wallet accounts. */
+.credit-card {
+  border-top: 3px solid var(--ui-brand);
+}
+.credit-card .details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 16px 0;
+}
+.credit-card h2,
+.credit-lines strong {
+  overflow-wrap: anywhere;
+}
+.credit-lines .item > div {
+  min-width: 0;
+}
+.credit-lines .item > strong {
+  flex-shrink: 0;
+}

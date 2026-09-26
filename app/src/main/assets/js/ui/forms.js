@@ -1,3 +1,4 @@
+import { creditPayForm } from "../screens/credit.js";
 import { recurrenceFields, recurrenceValue } from "./recurrence-fields.js";
 import { accountName } from "../ui/components.js";
 import {
@@ -8,6 +9,7 @@ import {
   amount,
   select,
   accountOptions,
+  spendingOptions,
   form,
   moneyValue,
   empty,
@@ -43,7 +45,14 @@ export function transactionForm(kind = "expense", existing) {
   };
   if (
     existing &&
-    ["debt", "fixed", "adjustment", "loan_in", "loan_out"].includes(t.kind)
+    [
+      "debt",
+      "fixed",
+      "adjustment",
+      "loan_in",
+      "loan_out",
+      "card_payment",
+    ].includes(t.kind)
   ) {
     modal(
       "Movimiento vinculado",
@@ -64,9 +73,12 @@ export function transactionForm(kind = "expense", existing) {
     select(
       "accountId",
       kind === "income" ? "Recibir en" : "Pagar desde",
-      accountOptions(),
-      t.accountId,
+      kind === "expense" ? spendingOptions() : accountOptions(),
+      t.creditCardId ? "credit:" + t.creditCardId : t.accountId,
     ) +
+    (kind === "expense"
+      ? `<div id="credit-purchase-fields" ${t.creditCardId ? "" : "hidden"}><p class="note">La compra cuenta como gasto y usa crédito. Tu disponible libre solo cambia cuando pagas la tarjeta.</p>${input("cardDueDate", "Vencimiento del estado de cuenta (opcional)", t.cardDueDate || "", "date")}<p class="note">Si lo dejas vacío, se calcula usando corte y día de pago. Las compras del día de corte se incluyen en ese corte.</p></div>`
+      : "") +
     (kind === "expense"
       ? select(
           "categoryId",
@@ -107,7 +119,13 @@ export function transactionForm(kind = "expense", existing) {
         name: f.name.trim(),
         amount: moneyValue(f.amount),
         date: f.date,
-        accountId: f.accountId,
+        accountId: f.accountId.startsWith("credit:") ? null : f.accountId,
+        ...(f.accountId.startsWith("credit:")
+          ? {
+              creditCardId: f.accountId.slice(7),
+              ...(f.cardDueDate ? { cardDueDate: f.cardDueDate } : {}),
+            }
+          : {}),
         categoryId: f.categoryId || "",
         ...(kind === "transfer" ? { toAccountId: f.toAccountId } : {}),
       };
@@ -134,6 +152,10 @@ export function choosePayment() {
 }
 
 export function payForm(key, m) {
+  const linked = model.state.debts.find(
+    (d) => d.creditCardId && key.startsWith(`debt:${d.id}:`),
+  );
+  if (linked) return creditPayForm(linked.creditCardId, m);
   const item =
     C.obligations(model.state, m).find((i) => i.key === key) ||
     C.planned(model.state, m).find((i) => i.key === key);
@@ -141,17 +163,19 @@ export function payForm(key, m) {
     toast("Este compromiso ya está pagado o no está disponible.");
     return;
   }
+  if (item.kind === "card_payment") return creditPayForm(item.ref, m);
   const d =
     item.kind === "debt"
       ? model.state.debts.find((d) => d.id === item.ref)
       : null;
   form(
     "Pagar " + item.name,
-    `<p class="note">${item.n ? "Cuota " + item.n + " · " : ""}Vencimiento: ${item.date}. Se registrará una salida y se descontará del origen elegido. Puedes abonar una parte; el resto seguirá pendiente.</p>` +
+    `<p class="note">${item.n ? "Cuota " + item.n + " · " : ""}Vencimiento: ${item.date}. Con dinero propio se descontará del origen; a crédito se agregará al pago de la tarjeta. Puedes abonar una parte; el resto seguirá pendiente.</p>` +
       paymentFields(
         d?.balanceMode === "total"
           ? Math.min(d.balance, item.remaining ?? item.amount)
           : (item.remaining ?? item.amount),
+        item.kind === "fixed",
       ) +
       (d?.balanceMode === "principal"
         ? amount(
@@ -171,7 +195,7 @@ export function payForm(key, m) {
             "",
           )
         : "") +
-      '<p class="note">El pago requiere saldo disponible. Puedes liberar reservas o cajitas desde Cuentas antes de pagarlo.</p>',
+      '<p class="note">Necesitas saldo disponible o crédito suficiente, según el origen elegido.</p>',
     async (f) => {
       if (f.date > C.today())
         throw Error("La fecha real de pago no puede ser futura.");
@@ -180,7 +204,10 @@ export function payForm(key, m) {
         C.pay(s, key, {
           period: m,
           amount: moneyValue(f.amount),
-          accountId: f.accountId,
+          accountId: f.accountId.startsWith("credit:") ? null : f.accountId,
+          creditCardId: f.accountId.startsWith("credit:")
+            ? f.accountId.slice(7)
+            : undefined,
           date: f.date,
           categoryId: f.categoryId,
           principal: f.principal ? moneyValue(f.principal) : undefined,
@@ -209,7 +236,8 @@ export function editDebt(id) {
   };
   const hasPaid =
     (d.paidPayments?.length || 0) > 0 ||
-    model.state.transactions.some((t) => t.ref === id);
+    model.state.transactions.some((t) => t.ref === id) ||
+    C.allocations(model.state).some((a) => a.ref === id);
   form(
     id ? "Editar deuda" : "Nueva deuda",
     input("name", "Nombre", d.name, "text", 'required maxlength="120"') +
@@ -231,6 +259,18 @@ export function editDebt(id) {
         ]),
         d.type,
       ) +
+      select(
+        "creditCardId",
+        "Pagar MSI junto con una tarjeta",
+        [
+          ["", "Sin tarjeta vinculada"],
+          ...model.state.creditCards
+            .filter((c) => c.active !== false || c.id === d.creditCardId)
+            .map((c) => [c.id, c.name]),
+        ],
+        d.creditCardId || "",
+      ) +
+      '<p class="note">Solo para MSI. El saldo pendiente completo ocupa crédito; cada mensualidad se agrega al pago de la tarjeta. No registres también esta compra como gasto normal. Usa el día de vencimiento real de la tarjeta.</p>' +
       amount("originalAmount", "Monto original", d.originalAmount) +
       amount("balance", "Saldo pendiente registrado", d.balance) +
       select(
@@ -294,6 +334,7 @@ export function editDebt(id) {
         const value = {
           name: f.name.trim(),
           creditorId: f.creditorId,
+          creditCardId: f.creditCardId || null,
           type: f.type,
           originalAmount: moneyValue(f.originalAmount),
           balance: moneyValue(f.balance),
@@ -306,6 +347,23 @@ export function editDebt(id) {
           notes: f.notes,
           balanceMode: f.balanceMode,
         };
+        if (
+          id &&
+          C.allocations(s).some((a) => a.ref === id) &&
+          [
+            "creditCardId",
+            "balance",
+            "payment",
+            "dueDay",
+            "startDate",
+            "totalPayments",
+            "balanceMode",
+            "type",
+          ].some((k) => (d[k] ?? null) !== (value[k] ?? null))
+        )
+          throw Error(
+            "La deuda tiene pagos de tarjeta. Revierte esos pagos antes de cambiar su saldo, vínculo o calendario.",
+          );
         if (!value.name) throw Error("Escribe un nombre.");
         if (value.payment <= 0) throw Error("La cuota debe ser mayor a cero.");
         if (id)
@@ -486,6 +544,7 @@ export function deleteEntity(type, id) {
     const d = model.state.debts.find((x) => x.id === id),
       linked =
         model.state.transactions.some((t) => t.ref === id) ||
+        C.allocations(model.state).some((a) => a.ref === id) ||
         d.paidPayments.length > 0;
     confirmAction(
       linked ? "Archivar deuda" : "Eliminar deuda",
@@ -494,6 +553,11 @@ export function deleteEntity(type, id) {
         : "Se eliminará esta deuda y sus compromisos pendientes. Puedes deshacerlo.",
       linked ? "Deuda archivada" : "Deuda eliminada",
       (s) => {
+        if (
+          s.debts.find((d) => d.id === id)?.creditCardId &&
+          s.debts.find((d) => d.id === id).balance > 0
+        )
+          throw Error("Liquida o desvincula los MSI antes de archivarlos.");
         if (linked) {
           s.debts.find((x) => x.id === id).archived = true;
         } else s.debts = s.debts.filter((x) => x.id !== id);
@@ -557,7 +621,7 @@ export function transactionDetails(id) {
   const t = model.state.transactions.find((x) => x.id === id);
   modal(
     t.name,
-    `<div class="details"><div><small>Importe</small><strong>${money(t.amount)}</strong></div><div><small>Tipo</small>${kindName(t.kind)}</div><div><small>Fecha</small>${t.date}</div><div><small>Origen</small>${esc(accountName(t.accountId))}</div></div>${t.historical ? '<p class="note">Importado de v6. Este gasto ya está contemplado en el saldo inicial; no se volvió a descontar.</p>' : ""}${t.obligation ? '<p class="note">Vinculado a un compromiso de ' + mlabel(t.period) + ".</p>" : ""}`,
+    `<div class="details"><div><small>Importe</small><strong>${money(t.amount)}</strong></div><div><small>Tipo</small>${kindName(t.kind)}</div><div><small>Fecha</small>${t.date}</div><div><small>Origen</small>${esc(accountName(t.accountId || t.creditCardId))}</div></div>${t.historical ? '<p class="note">Importado de v6. Este gasto ya está contemplado en el saldo inicial; no se volvió a descontar.</p>' : ""}${t.kind === "card_payment" ? `<h3>Desglose del pago</h3>${t.allocations.map((a) => `<p>${esc(a.kind === "debt" ? model.state.debts.find((d) => d.id === a.ref)?.name + " · Cuota " + a.n : a.kind === "opening" ? "Saldo anterior" : model.state.transactions.find((p) => p.id === a.ref)?.name)}: ${money(a.amount)}</p>`).join("")}` : t.creditCardId ? `<p class="note">Compra a crédito · Vence ${t.cardDueDate}. No descontó dinero de tus cuentas.</p>` : ""}${t.obligation ? '<p class="note">Vinculado a un compromiso de ' + mlabel(t.period) + ".</p>" : ""}`,
   );
 }
 
@@ -595,6 +659,7 @@ export function debtDetails(id) {
 
 export function extraPayment(id) {
   const d = model.state.debts.find((x) => x.id === id);
+  if (d.creditCardId) return creditPayForm(d.creditCardId);
   form(
     "Abono adicional",
     paymentFields(0) +

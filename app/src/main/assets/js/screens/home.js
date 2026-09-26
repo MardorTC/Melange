@@ -19,7 +19,12 @@ export function homePage() {
       .sort((a, b) => a.date.localeCompare(b.date)),
     accounts = C.accountSummary(model.state).filter((a) => a.active !== false),
     debts = model.state.debts.filter((d) => !d.archived),
-    debtTotal = debts.reduce((sum, d) => sum + d.balance, 0),
+    debtTotal =
+      debts.reduce((sum, d) => sum + d.balance, 0) +
+      model.state.creditCards.reduce(
+        (n, c) => n + C.creditSummary(model.state, c.id).purchases,
+        0,
+      ),
     firstGoal = model.state.goals[0],
     goalPct = firstGoal?.target
       ? Math.min(100, (firstGoal.balance / firstGoal.target) * 100)
@@ -61,7 +66,7 @@ export function homePage() {
   <section class="card home-link-card"><span class="visual-icon goal">${svg("goal")}</span><div><small>Metas de ahorro</small><div class="metric small">${money(firstGoal?.balance || m.reserved)}</div><p class="note">${firstGoal ? `de ${money(firstGoal.target)}` : `${money(m.reserved)} reservado`}</p>${firstGoal ? `<div class="bar mini"><span style="width:${goalPct}%"></span></div>` : ""}</div>${btn("Ver", "tab", "goal", "round-link")}</section>
 </div>
 <section class="card home-secondary"><div class="row"><h2>Las huellas de tu dinero</h2><span class="pill">${hist.length} ${model.state.reconstruction ? "saldos calculados" : "observaciones"}</span></div>${lineChart(hist)}<p class="note">${delta === null ? "Aún no hay suficientes puntos históricos." : `${money(delta)} de variación entre el primer y último saldo registrado.`} No equivale a ahorro mensual.</p></section>
-<section class="card home-secondary health-card"><div class="row"><h2>Tu balance del mes</h2><small>${mlabel(C.month())}</small></div><div class="health-grid"><div><small>Ingresos recibidos</small><strong class="good">${money(m.received)}</strong></div><div><small>Salidas registradas</small><strong>${money(m.outflow)}</strong></div><div><small>Diferencia del mes</small><strong class="${m.received - m.outflow < 0 ? "bad" : "good"}">${money(m.received - m.outflow)}</strong></div><div><small>Compromisos pendientes</small><strong>${money(m.pending)}</strong></div></div><div class="health-outlook"><small>Disponible libre después de cubrir pendientes</small><strong class="${m.available - m.pending < 0 ? "bad" : ""}">${money(m.available - m.pending)}</strong><p class="note">${m.available - m.pending < 0 ? "Los pendientes superan tu disponible libre." : "Este margen aún debe cubrir tus gastos variables."} Estimación con saldos actuales; no incluye ingresos futuros.</p></div><p class="note">Las salidas incluyen gastos y pagos de deuda. Transferencias, ajustes y capital prestado o recuperado no cuentan como ingresos ni gastos. Solo refleja lo que has registrado.</p>${btn("Revisar pendientes", "tab", "calendar", "full")}${btn("Explorar proyección", "projection", "", "link-btn full")}</section>`;
+<section class="card home-secondary health-card"><div class="row"><h2>Tu balance del mes</h2><small>${mlabel(C.month())}</small></div><div class="health-grid"><div><small>Ingresos recibidos</small><strong class="good">${money(m.received)}</strong></div><div><small>Salidas registradas</small><strong>${money(m.outflow)}</strong></div><div><small>Diferencia del mes</small><strong class="${m.received - m.outflow < 0 ? "bad" : "good"}">${money(m.received - m.outflow)}</strong></div><div><small>Compromisos pendientes</small><strong>${money(m.pending)}</strong></div></div><div class="health-outlook"><small>Disponible libre después de cubrir pendientes</small><strong class="${m.available - m.pending < 0 ? "bad" : ""}">${money(m.available - m.pending)}</strong><p class="note">${m.available - m.pending < 0 ? "Los pendientes superan tu disponible libre." : "Este margen aún debe cubrir tus gastos variables."} Estimación con saldos actuales; no incluye ingresos futuros.</p></div><p class="note">Las salidas incluyen pagos desde tus cuentas, también los de tarjetas. Las compras a crédito cuentan en consumo, pero no son salidas hasta pagarlas. Transferencias, ajustes y capital prestado o recuperado no cuentan como ingresos ni gastos. Solo refleja lo que has registrado.</p>${btn("Revisar pendientes", "tab", "calendar", "full")}${btn("Explorar proyección", "projection", "", "link-btn full")}</section>`;
 }
 
 function accountPreview(a) {

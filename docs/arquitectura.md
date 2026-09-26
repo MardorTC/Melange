@@ -38,3 +38,11 @@ Las metas mantienen asignaciones por cuenta. Una asignación vinculada a cajita 
 `recurrence.js` genera vencimientos desde reglas con ancla y vigencia. Las identidades incluyen regla y fecha; dos fechas mensuales que se ajusten al mismo último día mantienen identidades distintas. Los presupuestos conservan vencimientos con pagos y reglas anteriores a la nueva vigencia.
 
 `legacy-v7.js` conserva la conversión v6/v7. `migrateEnvelope` convierte libro, historial y borrador sin mutarlos. El arranque valida también la reconstrucción antes de escribir. SQLite guarda el original v7 una sola vez en `migration_backups`, dentro de la misma transacción que reemplaza `vault`; IndexedDB hace lo equivalente en `migration-v7`. El historial rotativo no elimina esta copia. Los respaldos exportados son v8.
+
+## Crédito y libro v9
+
+`domain/credit.js` mantiene las tarjetas separadas de `walletAccounts`, calcula crédito utilizado y vencimientos y valida los desgloses de pago. Las compras siguen siendo `expense` o `fixed`, con `creditCardId` y `cardDueDate`, sin cuenta de dinero propio. `funds.balances` las excluye. `card_payment` sí descuenta de una cuenta propia y guarda aplicaciones a compras, saldo anterior o cuotas MSI. Las aplicaciones permiten calcular lo pagado y revertir la operación completa sin crear salidas por cada mensualidad.
+
+`finance.obligations` agrupa MSI y cargos por tarjeta y mes; `baseObligations` conserva los vencimientos individuales para la asignación del pago. El consumo reconoce compras; las salidas de efectivo reconocen pagos, excluyendo compras a crédito. El calendario de cada compra queda guardado, de modo que cambiar los días de una tarjeta no reescribe cargos anteriores.
+
+La migración v8 → v9 agrega el catálogo vacío a libro y deshacer. SQLite y la previsualización conservan el sobre original por versión en una operación de guardado atómica. Los borradores v2 admiten ahora tarjetas; los anteriores se leen con un catálogo vacío. El número de esquema no equivale al número de versión Android.

@@ -134,3 +134,25 @@ Al registrar una deuda con plazo, indica el saldo pendiente actual y las cuotas 
 Los gastos fijos tienen importe por vencimiento, fecha de inicio, final opcional y periodicidad. Cada 14 días es distinto de dos veces al mes. Los días inexistentes se ajustan al último día sin desplazar los siguientes meses. Un pago anual se cuenta completo en su mes de vencimiento. Para cambiar el calendario, indica desde qué fecha aplica; los vencimientos anteriores y sus pagos permanecen.
 
 En Ajustes, elige la hora común y anticipación para pagos, cobros pendientes y cajitas por liberar. Android puede retrasar el aviso. Los respaldos v8 no pueden importarse en versiones antiguas.
+
+## Tarjetas de crédito y pagos agrupados
+
+En **Cuentas → Agregar tarjeta** registra un nombre, límite, día de corte y día límite de pago. La cuenta **BBVA débito** y la tarjeta **BBVA crédito** son independientes: puedes tener cualquiera de las dos o ambas, y pagar la tarjeta desde otra cuenta libre.
+
+El **saldo anterior sin MSI** sirve para incorporar compras que ya debías antes de comenzar el registro. No crea gastos ni retira dinero. No incluyas aquí el capital de tus MSI: se incorpora al vincular las deudas existentes.
+
+En **Nuevo gasto → Pagar desde**, elige la opción terminada en **Crédito**. La compra aparece en consumo y reduce el crédito disponible, pero no el disponible libre. El vencimiento se estima con corte y pago; las compras del día de corte se incluyen en ese corte. Puedes indicar otra fecha de vencimiento al registrar o editar una compra si tu estado de cuenta difiere. Los días inexistentes se ajustan al último día del mes. Cambiar el calendario de la tarjeta afecta nuevas compras; las ya registradas conservan su vencimiento.
+
+En **Editar deuda**, vincula los MSI a su tarjeta. Deben tener plazo y saldo total pendiente. Conserva las cuotas ya pagadas y verifica la fecha de primera cuota y día de vencimiento. El capital pendiente completo ocupa crédito; solo la mensualidad de cada periodo se agrega al pago de la tarjeta. No registres además el importe de esa misma compra como gasto ordinario a crédito, porque duplicarías la deuda. Las vinculaciones son manuales: no se deduce una tarjeta a partir del nombre de un acreedor.
+
+**Pagar tarjeta** registra una sola salida desde una cuenta con fondos disponibles. Su desglose cubre los cargos del periodo y las mensualidades MSI vinculadas. Puedes ver otros periodos desde **Ver desglose**. Los abonos parciales se distribuyen en el orden mostrado: por vencimiento, MSI primero en caso de empate y después compras. Es una distribución de tu registro local, no una consulta al banco; compárala con la aplicación real del pago. No se calculan intereses, comisiones, pago mínimo ni un importe certificado para evitar intereses.
+
+El consumo reconoce la compra una vez. El pago de la tarjeta aparece como salida de dinero y reduce el crédito utilizado, pero no vuelve a incrementar consumo. En **Movimientos** puedes filtrar por tarjeta o por **Pago de tarjeta**, y abrir el desglose del pago. **Deshacer** revierte el pago completo; también puedes revertirlo desde Movimientos. Para editar o eliminar una compra cubierta por un pago, primero revierte ese pago.
+
+Los gastos fijos también se pueden cargar a crédito desde su formulario de pago. Su obligación de efectivo pasa al vencimiento de la tarjeta y no se suma dos veces en calendario y proyección. Las tarjetas con saldo pendiente no se pueden archivar.
+
+### Compatibilidad del libro de crédito
+
+El esquema del libro pasa a **v9** (independiente del número de versión de la app). Los libros v8 se convierten automáticamente con un catálogo de tarjetas vacío, conservando saldos, movimientos, presupuestos, deshacer y borradores. No se atribuyen tarjetas ni créditos a datos antiguos. Antes de reemplazar el libro se conserva el estado original en una copia de migración fuera del historial de deshacer, tanto en SQLite como en la previsualización.
+
+Los respaldos v9 necesitan esta versión del código; las versiones anteriores no los pueden importar. Sigue siendo posible importar respaldos v6, v7 y v8. La reconstrucción copia las tarjetas y permite indicar sus saldos anteriores, capturar compras a crédito y pagos agrupados; revisa también los saldos de crédito antes de confirmar el resultado.

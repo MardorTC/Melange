@@ -1,12 +1,19 @@
 import L from "./legacy-v7.js";
+import { isCreditPurchase } from "./credit.js";
 const integer = (n) => Number.isSafeInteger(n) && Math.abs(n) <= 1e14;
-export const cashKinds = ["expense", "fixed", "debt", "loan_out"];
+export const cashKinds = [
+  "expense",
+  "fixed",
+  "debt",
+  "loan_out",
+  "card_payment",
+];
 export function balances(s) {
   const out = Object.fromEntries(
     s.walletAccounts.map((a) => [a.id, a.opening]),
   );
   for (const t of s.transactions) {
-    if (t.historical) continue;
+    if (t.historical || isCreditPurchase(t)) continue;
     if (cashKinds.includes(t.kind)) out[t.accountId] -= t.amount;
     else if (["income", "loan_in"].includes(t.kind))
       out[t.accountId] += t.amount;
@@ -309,7 +316,7 @@ export function validateFunds(s) {
     if (
       !integer(t.amount) ||
       t.amount < 0 ||
-      !wallet(t.accountId) ||
+      (!isCreditPurchase(t) && !wallet(t.accountId)) ||
       !L.validDate(t.date) ||
       ![
         "expense",
@@ -320,6 +327,7 @@ export function validateFunds(s) {
         "adjustment",
         "loan_out",
         "loan_in",
+        "card_payment",
       ].includes(t.kind)
     )
       throw Error("Movimiento inválido.");

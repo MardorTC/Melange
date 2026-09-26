@@ -1,3 +1,4 @@
+import { creditCardsSection } from "./credit.js";
 import C from "../domain/finance.js";
 import { model } from "../state/model.js";
 import { commit } from "../state/ledger.js";
@@ -51,7 +52,7 @@ export function accountsPage() {
           )
           .join("")}</section>`,
     )
-    .join("")}`;
+    .join("")}${creditCardsSection()}`;
 }
 export function accountAction(action, id) {
   if (!action.startsWith("wallet") && !action.startsWith("box")) return false;

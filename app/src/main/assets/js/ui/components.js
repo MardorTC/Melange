@@ -154,16 +154,31 @@ export function accountOptions(source = model.state, freeOnly = false) {
     .filter((a) => a.active !== false && (!freeOnly || a.type !== "restricted"))
     .map((a) => [a.id, a.name]);
 }
+export function spendingOptions(source = model.state) {
+  return [
+    ...accountOptions(source),
+    ...(source.creditCards || [])
+      .filter((c) => c.active !== false)
+      .map((c) => ["credit:" + c.id, c.name + " · Crédito"]),
+  ];
+}
 export function accountName(id, source = model.state) {
   return (
-    source.walletAccounts.find((a) => a.id === id)?.name || "Cuenta archivada"
+    source.walletAccounts.find((a) => a.id === id)?.name ||
+    source.creditCards?.find((c) => c.id === id)?.name ||
+    "Cuenta archivada"
   );
 }
 
-export function paymentFields(a) {
+export function paymentFields(a, credit = false) {
   return (
     amount("amount", "Importe", a) +
-    select("accountId", "Pagar desde", accountOptions(), "debit") +
+    select(
+      "accountId",
+      "Pagar desde",
+      credit ? spendingOptions() : accountOptions(),
+      "debit",
+    ) +
     input(
       "date",
       "Fecha real de pago",
@@ -193,6 +208,7 @@ export const colors = [
 export const kindName = (k) =>
   ({
     expense: "Gasto",
+    card_payment: "Pago de tarjeta",
     fixed: "Gasto fijo",
     debt: "Pago de deuda",
     income: "Ingreso",

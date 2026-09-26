@@ -25,6 +25,12 @@ function create(source, config, revision) {
     categories: C.clone(source.categories),
     creditors: C.clone(source.creditors),
     walletAccounts: C.clone(source.walletAccounts),
+    creditCards: C.clone(source.creditCards).map((c) => ({
+      ...c,
+      openingBalance: config.creditOpenings?.[c.id] ?? 0,
+      openingDueDate:
+        config.creditDueDates?.[c.id] || C.creditDueDate(c, config.startDate),
+    })),
     settings: C.clone(source.settings),
     debts: [],
     fixedExpenses: [],
@@ -49,6 +55,7 @@ function build(draft, end = C.today()) {
     creditors: C.clone(draft.creditors),
     categories: C.clone(draft.categories),
     settings: C.clone(draft.settings),
+    creditCards: C.clone(draft.creditCards || []),
     debts: C.clone(draft.debts),
     fixedExpenses: C.clone(draft.fixedExpenses),
     reconstruction: { startDate: start, basis: "ledger" },
@@ -69,7 +76,13 @@ function build(draft, end = C.today()) {
     while (pos < sorted.length && C.month(sorted[pos].date) === m) {
       const e = sorted[pos++];
       try {
-        if (e.kind === "debt" || e.kind === "fixed") {
+        if (e.kind === "card_payment") {
+          const t = C.payCard(s, e.creditCardId || e.ref, e.period, {
+            ...e,
+            replay: true,
+          });
+          t.id = e.id;
+        } else if (e.kind === "debt" || e.kind === "fixed") {
           if (
             !/^\d{4}-(0[1-9]|1[0-2])$/.test(e.period) ||
             e.period < C.month(start) ||

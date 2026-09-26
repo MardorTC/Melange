@@ -53,13 +53,11 @@ export async function writeStore(v) {
     const objects = tx.objectStore("state");
     const old = objects.get("current");
     old.onsuccess = () => {
-      if (
-        old.result?.state?.schemaVersion === 7 &&
-        v.state.schemaVersion === 8
-      ) {
-        const backup = objects.get("migration-v7");
+      if (old.result?.state?.schemaVersion < v.state.schemaVersion) {
+        const key = "migration-v" + old.result.state.schemaVersion;
+        const backup = objects.get(key);
         backup.onsuccess = () => {
-          if (!backup.result) objects.put(old.result, "migration-v7");
+          if (!backup.result) objects.put(old.result, key);
           objects.put(v, "current");
         };
       } else objects.put(v, "current");

@@ -1,11 +1,13 @@
 import L from "./legacy-v7.js";
 import * as F from "./funds.js";
 import * as R from "./recurrence.js";
+import * as K from "./credit.js";
 const { id, clone, cents, today, month, addMonth, dueDate, validDate } = L;
 const balances = F.balances;
 function empty() {
   const s = L.empty();
-  s.schemaVersion = 8;
+  s.schemaVersion = 9;
+  s.creditCards = [];
   s.creditors = s.accounts;
   delete s.accounts;
   delete s.opening;
@@ -43,10 +45,13 @@ function convertTransaction(t) {
 }
 function migrate(raw) {
   if (raw?.format === "projectosp-backup") raw = raw.state;
-  if (raw?.schemaVersion === 8) return validate(clone(raw));
+  if (raw?.schemaVersion === 9) return validate(clone(raw));
+  if (raw?.schemaVersion === 8)
+    return validate({ ...clone(raw), schemaVersion: 9, creditCards: [] });
   const old = L.migrate(raw),
     s = clone(old);
-  s.schemaVersion = 8;
+  s.schemaVersion = 9;
+  s.creditCards = [];
   s.creditors = s.accounts;
   delete s.accounts;
   s.walletAccounts = empty().walletAccounts.map((a) => ({
@@ -87,7 +92,8 @@ function migrate(raw) {
 }
 function migrateDraft(d) {
   if (!d) return null;
-  if (d.version === 2) return clone(d);
+  if (d.version === 2)
+    return { ...clone(d), creditCards: clone(d.creditCards || []) };
   if (d.version !== 1) throw Error("Borrador incompatible.");
   const base = empty(),
     v = clone(d);
@@ -137,14 +143,15 @@ function migrateEnvelope(saved) {
 function validate(s) {
   if (
     !s ||
-    s.schemaVersion !== 8 ||
+    s.schemaVersion !== 9 ||
     !s.settings ||
     !s.budgets ||
     !Number.isSafeInteger(s.income) ||
     s.income < 0
   )
-    throw Error("Formato de Melange 8 inválido.");
+    throw Error("Formato del libro inválido.");
   F.validateFunds(s);
+  K.validateCredit(s);
   if (
     !/^([01]\d|2[0-3]):[0-5]\d$/.test(s.settings.reminderTime) ||
     !Number.isInteger(s.settings.reminderDays) ||
@@ -272,25 +279,32 @@ function refreshBudget(s, m = month()) {
     existing = new Map(prev.items.map((i) => [i.key, i]));
   const items = planned(s, m).map((i) => {
     const old = existing.get(i.key);
-    return old &&
-      (isPaid(s, old) || s.transactions.some((t) => t.obligation === old.key))
+    return old && (isPaid(s, old) || obligationRecorded(s, old.key) > 0)
       ? old
       : { ...i, legacyPaid: i.paid };
   });
   for (const i of prev.items)
     if (
       !items.some((x) => x.key === i.key) &&
-      (isPaid(s, i) || s.transactions.some((t) => t.obligation === i.key))
+      (isPaid(s, i) || obligationRecorded(s, i.key) > 0)
     )
       items.push(i);
   s.budgets[m] = { income: s.income, items };
 }
+function obligationRecorded(s, key) {
+  return (
+    s.transactions
+      .filter((t) => t.obligation === key)
+      .reduce((n, t) => n + t.amount, 0) +
+    K.allocations(s)
+      .filter((a) => a.obligation === key)
+      .reduce((n, a) => n + a.amount, 0)
+  );
+}
 function isPaid(s, i) {
   return (
     !!i.legacyPaid ||
-    s.transactions
-      .filter((t) => t.obligation === i.key)
-      .reduce((a, t) => a + t.amount, 0) >= i.amount ||
+    obligationRecorded(s, i.key) >= i.amount ||
     !!(
       i.kind === "debt" &&
       s.debts.find((d) => d.id === i.ref) &&
@@ -300,11 +314,9 @@ function isPaid(s, i) {
     )
   );
 }
-function obligations(s, m = month()) {
+function baseObligations(s, m = month()) {
   return (s.budgets[m]?.items || planned(s, m)).map((i) => {
-    const recorded = s.transactions
-        .filter((t) => t.obligation === i.key)
-        .reduce((a, t) => a + t.amount, 0),
+    const recorded = obligationRecorded(s, i.key),
       paid = isPaid(s, i);
     return {
       ...i,
@@ -313,6 +325,106 @@ function obligations(s, m = month()) {
       remaining: paid ? 0 : Math.max(0, i.amount - recorded),
     };
   });
+}
+function creditStatement(s, cardId, period = month()) {
+  return K.statement(s, cardId, period, baseObligations(s, period));
+}
+function obligations(s, m = month()) {
+  const ordinary = baseObligations(s, m)
+    .filter(
+      (i) =>
+        !(
+          i.kind === "debt" && s.debts.find((d) => d.id === i.ref)?.creditCardId
+        ),
+    )
+    .map((i) => {
+      // A fixed expense charged to a card is payable through that card, not twice.
+      const charged = s.transactions
+        .filter((t) => K.isCreditPurchase(t) && t.obligation === i.key)
+        .reduce((n, t) => n + t.amount, 0);
+      return {
+        ...i,
+        amount: i.amount - charged,
+        recorded: i.recorded - charged,
+      };
+    })
+    .filter((i) => i.amount > 0);
+  return [
+    ...ordinary,
+    ...s.creditCards
+      .map((c) => creditStatement(s, c.id, m))
+      .filter((i) => i.amount > 0),
+  ];
+}
+function creditPeriods(s, cardId) {
+  const card = s.creditCards.find((c) => c.id === cardId),
+    periods = new Set([month()]);
+  if (card.openingBalance) periods.add(month(card.openingDueDate));
+  for (const t of s.transactions)
+    if (K.isCreditPurchase(t) && t.creditCardId === cardId)
+      periods.add(month(t.cardDueDate));
+  for (const d of s.debts.filter((d) => d.creditCardId === cardId))
+    for (let i = 0; i < d.totalPayments; i++)
+      periods.add(addMonth(month(d.startDate), i));
+  return [...periods].sort();
+}
+function payCard(s, cardId, period, opts) {
+  const statement = creditStatement(s, cardId, period),
+    card = s.creditCards.find((c) => c.id === cardId);
+  if (!card || card.active === false) throw Error("Tarjeta archivada.");
+  const amount = opts.amount ?? statement.remaining,
+    date = opts.date || today();
+  if (
+    !validDate(date) ||
+    date > today() ||
+    !Number.isSafeInteger(amount) ||
+    amount <= 0 ||
+    amount > statement.remaining
+  )
+    throw Error("Revisa la fecha y el importe pendiente de la tarjeta.");
+  if (!opts.replay) F.requireFunds(s, opts.accountId, amount, "card_payment");
+  else F.requireDestination(s, opts.accountId, "card_payment");
+  let left = amount;
+  const allocations = [];
+  for (const line of statement.lines) {
+    const part = Math.min(left, line.remaining);
+    if (!part) continue;
+    const purchase =
+      line.kind === "purchase" && s.transactions.find((t) => t.id === line.ref);
+    if (purchase && purchase.date > date)
+      throw Error("El pago no puede preceder a la compra.");
+    allocations.push({
+      kind: line.kind,
+      ref: line.ref,
+      amount: part,
+      ...(line.kind === "debt"
+        ? { obligation: line.obligation, period, n: line.n }
+        : {}),
+    });
+    left -= part;
+  }
+  if (left) throw Error("No se pudo distribuir el pago.");
+  const t = {
+    id: id(),
+    kind: "card_payment",
+    name: "Pago de tarjeta: " + card.name,
+    amount,
+    date,
+    accountId: opts.accountId,
+    creditCardId: cardId,
+    period,
+    allocations,
+  };
+  s.transactions.push(t);
+  for (const a of allocations.filter((a) => a.kind === "debt")) {
+    const d = s.debts.find((d) => d.id === a.ref),
+      line = statement.lines.find((i) => i.obligation === a.obligation);
+    d.balance -= a.amount;
+    if (a.amount === line.remaining && !d.paidPayments.includes(a.n))
+      d.paidPayments.push(a.n);
+    if (!d.balance) d.active = false;
+  }
+  return t;
 }
 function metrics(s, m = month()) {
   const accounts = F.accountSummary(s),
@@ -325,7 +437,7 @@ function metrics(s, m = month()) {
       (i) => i.amount,
     ),
     debt = sum(
-      items.filter((i) => i.kind === "debt"),
+      items.filter((i) => ["debt", "card_payment"].includes(i.kind)),
       (i) => i.amount,
     );
   return {
@@ -364,7 +476,11 @@ function metrics(s, m = month()) {
       (t) => t.amount,
     ),
     outflow: sum(
-      tx.filter((t) => ["expense", "fixed", "debt"].includes(t.kind)),
+      tx.filter(
+        (t) =>
+          ["expense", "fixed", "debt", "card_payment"].includes(t.kind) &&
+          !K.isCreditPurchase(t),
+      ),
       (t) => t.amount,
     ),
     received: sum(
@@ -376,7 +492,7 @@ function metrics(s, m = month()) {
 }
 function pay(s, key, opts) {
   const m = opts.period || month(),
-    item = obligations(s, m).find((i) => i.key === key);
+    item = baseObligations(s, m).find((i) => i.key === key);
   if (!item) throw Error("No se encontró el vencimiento.");
   if (item.paid) throw Error("Este pago ya fue registrado.");
   const amount = opts.amount ?? item.amount;
@@ -389,6 +505,8 @@ function pay(s, key, opts) {
   const complete = amount >= item.remaining;
   const d =
     item.kind === "debt" ? s.debts.find((x) => x.id === item.ref) : null;
+  if (d?.creditCardId)
+    throw Error("Paga esta mensualidad junto con su tarjeta.");
   const reduction = d
     ? d.balanceMode === "principal"
       ? opts.principal
@@ -410,7 +528,8 @@ function pay(s, key, opts) {
     name: item.name,
     amount,
     date: opts.date || today(),
-    accountId: opts.accountId || "debit",
+    accountId: opts.creditCardId ? null : opts.accountId || "debit",
+    ...(opts.creditCardId ? { creditCardId: opts.creditCardId } : {}),
     categoryId: item.categoryId || opts.categoryId || "",
     obligation: key,
     ref: item.ref,
@@ -438,6 +557,21 @@ function checkMovement(s, t, replay = false) {
     t.date > today()
   )
     throw Error("Revisa concepto, importe y fecha real.");
+  if (K.isCreditPurchase(t)) {
+    const c = K.creditSummary(s, t.creditCardId);
+    if (c.active === false || t.accountId || t.historical)
+      throw Error("Elige una tarjeta activa sin cuenta de débito como origen.");
+    if (!replay && t.amount > c.available)
+      throw Error("La compra supera el crédito disponible.");
+    t.cardDueDate = t.cardDueDate || K.creditDueDate(c, t.date);
+    if (!validDate(t.cardDueDate) || t.cardDueDate < t.date)
+      throw Error("Vencimiento de tarjeta inválido.");
+    return;
+  }
+  if (t.kind === "debt" && s.debts.find((d) => d.id === t.ref)?.creditCardId)
+    throw Error("Paga los MSI desde el pago agrupado de su tarjeta.");
+  if (t.creditCardId || t.kind === "card_payment")
+    throw Error("Usa el pago agrupado de tarjeta.");
   const a = s.walletAccounts.find((a) => a.id === t.accountId);
   if (!a || (!replay && a.active === false))
     throw Error("Elige una cuenta activa.");
@@ -511,6 +645,20 @@ function reverseTransaction(s, idTx) {
     );
   if (t.kind === "loan_out" && F.loanBalance(s, t.ref) < t.amount)
     throw Error("Revierte primero los cobros asociados.");
+  if (K.isCreditPurchase(t) && K.allocated(s, "purchase", t.id))
+    throw Error(
+      "Revierte primero los pagos de tarjeta que cubren esta compra.",
+    );
+  if (t.kind === "card_payment") {
+    for (const a of t.allocations.filter((a) => a.kind === "debt")) {
+      const d = s.debts.find((d) => d.id === a.ref);
+      d.balance += a.amount;
+      d.active = true;
+      d.paidPayments = d.paidPayments.filter(
+        (n) => n !== a.n || d.historicalPaidPayments.includes(n),
+      );
+    }
+  }
   if (t.kind === "debt") {
     const d = s.debts.find((d) => d.id === t.ref);
     d.balance += t.principal;
@@ -533,6 +681,8 @@ function editTransaction(s, idTx, value) {
   if (!original) throw Error("Movimiento no encontrado.");
   if (!["income", "expense", "transfer"].includes(original.kind))
     throw Error("Revierte y vuelve a registrar el movimiento vinculado.");
+  if (K.isCreditPurchase(original) && K.allocated(s, "purchase", original.id))
+    throw Error("Revierte primero los pagos que cubren esta compra.");
   if (original.historical) {
     Object.assign(original, value);
     return;
@@ -553,13 +703,18 @@ function editTransaction(s, idTx, value) {
     throw Error(
       "El cambio utilizaría dinero reservado o dejaría un saldo insuficiente.",
     );
+  K.validateCredit(copy);
   s.transactions = s.transactions.map((t) =>
-    t.id === idTx ? { ...value, id: idTx } : t,
+    t.id === idTx ? copy.transactions.find((x) => x.id === idTx) : t,
   );
 }
 function setPriorPayments(s, d, count) {
   if (!Number.isInteger(count) || count < 0 || count > d.totalPayments)
     throw Error("Revisa las cuotas pagadas antes del registro.");
+  if (d.creditCardId && K.allocations(s).some((a) => a.ref === d.id))
+    throw Error(
+      "No cambies antecedentes mientras existan pagos de tarjeta asociados.",
+    );
   const prior = Array.from({ length: count }, (_, i) => i + 1);
   if (
     prior.some((n) =>
@@ -646,6 +801,8 @@ function snapshot(s) {
 function reminders(s) {
   const dates = [],
     months = new Set(Object.keys(s.budgets));
+  for (const c of s.creditCards)
+    for (const m of creditPeriods(s, c.id)) months.add(m);
   let earliest = month();
   for (const d of s.debts)
     if (d.startDate && month(d.startDate) < earliest)
@@ -701,6 +858,11 @@ export default {
   ledgerEntries,
   ledgerHistory,
   reminders,
+  ...K,
+  creditStatement,
+  creditPeriods,
+  payCard,
+  baseObligations,
   ...F,
   ...R,
 };
