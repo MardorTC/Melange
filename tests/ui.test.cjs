@@ -68,6 +68,16 @@ const fs = require("fs");
       .locator("#form")
       .getByRole("button", { name: "Registrar pago", exact: true })
       .click();
+    await page.waitForFunction(async () => {
+      const { model } = await import("/js/state/model.js");
+      return (
+        !model.busy &&
+        model.history.at(-1)?.label === "Pago registrado" &&
+        document
+          .querySelector("#toast")
+          ?.textContent.includes("Pago registrado")
+      );
+    });
     const after = await page.evaluate(async () => {
       const { model } = await import("/js/state/model.js");
       const state = model.state;
@@ -79,13 +89,15 @@ const fs = require("fs");
     assert.equal(after.debit, before.debit - 100000);
     assert.equal(after.budgetFree, before.budgetFree);
     await page.locator("#toast [data-action=undo]").click();
-    await page.waitForFunction(async () => {
+    await page.waitForFunction(async (expectedDebit) => {
       const { model } = await import("/js/state/model.js");
+      const { default: OSP } = await import("/js/domain/finance.js");
       return (
         !model.busy &&
+        OSP.metrics(model.state).debit === expectedDebit &&
         document.querySelector("#toast").textContent.includes("Se deshizo")
       );
-    });
+    }, before.debit);
     const restored = await page.evaluate(async () => {
       const { model } = await import("/js/state/model.js");
       const state = model.state;
