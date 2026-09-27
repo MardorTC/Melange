@@ -40,12 +40,14 @@ export function creditSummary(s, cardId) {
     s.debts.filter((d) => d.creditCardId === cardId),
     (d) => d.balance,
   );
+  const unassigned = allocated(s, "unassigned", cardId);
   return {
     ...card,
     purchases,
     installments,
-    used: purchases + installments,
-    available: card.limit - purchases - installments,
+    unassigned,
+    used: purchases + installments - unassigned,
+    available: card.limit - purchases - installments + unassigned,
   };
 }
 export function statement(s, cardId, period, items) {
@@ -201,6 +203,9 @@ export function validateCredit(s) {
           throw Error(
             "El pago no corresponde a una compra anterior de esta tarjeta.",
           );
+      } else if (a.kind === "unassigned") {
+        if (a.ref !== t.creditCardId)
+          throw Error("Abono sin asignar de otra tarjeta.");
       } else if (a.kind === "opening") {
         if (a.ref !== t.creditCardId)
           throw Error("Saldo inicial de otra tarjeta.");

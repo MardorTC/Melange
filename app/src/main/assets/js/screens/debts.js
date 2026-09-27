@@ -1,4 +1,3 @@
-import { creditCardsSection } from "./credit.js";
 import { receivablesPage } from "./receivables.js";
 import { model } from "../state/model.js";
 import {
@@ -21,10 +20,10 @@ export function debtsPage() {
   const visible = model.state.debts.filter((d) => !d.archived),
     total =
       visible.reduce((a, d) => a + d.balance, 0) +
-      model.state.creditCards.reduce(
-        (n, c) => n + C.creditSummary(model.state, c.id).purchases,
-        0,
-      ),
+      model.state.creditCards.reduce((n, c) => {
+        const credit = C.creditSummary(model.state, c.id);
+        return n + credit.purchases - credit.unassigned;
+      }, 0),
     activeCount = visible.filter((d) => d.balance > 0).length,
     paidCount = visible.filter((d) => d.balance === 0).length;
 
@@ -44,7 +43,22 @@ export function debtsPage() {
           "Tus deudas, en orden",
           "Agrega una deuda para organizar sus cuotas.",
         )
-  }${creditCardsSection()}`;
+  }${creditDebtSection()}`;
+}
+
+function creditDebtSection() {
+  const cards = model.state.creditCards
+    .map((card) => ({ card, summary: C.creditSummary(model.state, card.id) }))
+    .filter(({ summary }) => summary.used > 0);
+  if (!cards.length) return "";
+  return `<div class="debt-list-heading"><h2>Tarjetas por pagar</h2></div>${cards
+    .map(({ card, summary }) => {
+      const next = C.creditPeriods(model.state, card.id)
+        .map((period) => C.creditStatement(model.state, card.id, period))
+        .find((item) => !item.paid && item.amount);
+      return `<section class="card credit-debt-row"><div><h3>${esc(card.name)}</h3><small>${next ? `Próximo vencimiento: ${next.date}` : "Sin vencimiento próximo"}</small></div><strong>${money(summary.used)}</strong><button class="btn" data-action="creditDetails" data-id="${esc(card.id)}">Ver desglose</button></section>`;
+    })
+    .join("")}`;
 }
 
 function debtCard(d) {

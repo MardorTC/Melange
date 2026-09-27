@@ -176,6 +176,7 @@ export function payForm(key, m) {
           ? Math.min(d.balance, item.remaining ?? item.amount)
           : (item.remaining ?? item.amount),
         item.kind === "fixed",
+        item.creditCardId ? "credit:" + item.creditCardId : "debit",
       ) +
       (d?.balanceMode === "principal"
         ? amount(
@@ -192,7 +193,7 @@ export function payForm(key, m) {
               ["", "Gastos fijos"],
               ...model.state.categories.map((c) => [c.id, c.name]),
             ],
-            "",
+            item.categoryId || "",
           )
         : "") +
       '<p class="note">Necesitas saldo disponible o crédito suficiente, según el origen elegido.</p>',
@@ -438,6 +439,7 @@ export function editFixed(id) {
           kind: v.kind,
           amount: rule.amount,
           categoryId: rule.categoryId,
+          creditCardId: rule.creditCardId,
           active: rule.active,
         });
         C.refreshAllBudgets(s);

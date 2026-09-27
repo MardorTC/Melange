@@ -265,7 +265,7 @@ test("v7 envelope migration is pure, preserves ids, undo, budgets and draft and 
   assert.deepEqual(C.balances(v.state), L.balances(old));
   assert.equal(v.history[0].state.transactions[0].id, old.transactions[0].id);
   assert.deepEqual(v.state.budgets, old.budgets);
-  assert.equal(H.build(v.draft).schemaVersion, 9);
+  assert.equal(H.build(v.draft).schemaVersion, 10);
   assert.throws(() =>
     C.migrateEnvelope({ ...envelope, history: [{ state: { bad: true } }] }),
   );

@@ -350,6 +350,32 @@ nav button.active svg {
 
 .home-hero .hero-bottom {
   margin-top: 20px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.home-hero .hero-account {
+  min-width: 0;
+}
+.home-hero .hero-account strong {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 560px) {
+  .home-hero .hero-bottom {
+    gap: 7px;
+  }
+  .home-hero .hero-account {
+    align-items: flex-start;
+    gap: 5px;
+    flex-direction: column;
+  }
+  .home-hero .hero-account .visual-icon {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+  .home-hero .hero-account strong {
+    font-size: 14px;
+  }
 }
 
 .hero-account {
@@ -1644,4 +1670,28 @@ nav button {
 }
 .credit-lines .item > strong {
   flex-shrink: 0;
+}
+.credit-debt-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 16px 18px;
+}
+.credit-debt-row h3 {
+  margin: 0 0 4px;
+}
+.credit-debt-row small {
+  display: block;
+}
+.credit-debt-row > strong {
+  white-space: nowrap;
+}
+@media (max-width: 430px) {
+  .credit-debt-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .credit-debt-row .btn {
+    grid-column: 1 / -1;
+  }
 }

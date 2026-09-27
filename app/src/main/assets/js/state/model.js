@@ -10,6 +10,7 @@ export const model = {
   tab: "home",
   sub: "all",
   debtSub: "owe",
+  accountSub: "wallet",
   period: C.month(),
   busy: false,
   formSubmit: null,

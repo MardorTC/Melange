@@ -21,16 +21,19 @@ export function homePage() {
     debts = model.state.debts.filter((d) => !d.archived),
     debtTotal =
       debts.reduce((sum, d) => sum + d.balance, 0) +
-      model.state.creditCards.reduce(
-        (n, c) => n + C.creditSummary(model.state, c.id).purchases,
-        0,
-      ),
+      model.state.creditCards.reduce((n, c) => {
+        const credit = C.creditSummary(model.state, c.id);
+        return n + credit.purchases - credit.unassigned;
+      }, 0),
     firstGoal = model.state.goals[0],
     goalPct = firstGoal?.target
       ? Math.min(100, (firstGoal.balance / firstGoal.target) * 100)
       : 0,
     hist = model.state.liquidityHistory,
-    delta = hist.length > 1 ? hist.at(-1).value - hist[0].value : null;
+    delta = hist.length > 1 ? hist.at(-1).value - hist[0].value : null,
+    creditAvailable = model.state.creditCards
+      .filter((c) => c.active !== false)
+      .reduce((n, c) => n + C.creditSummary(model.state, c.id).available, 0);
 
   return `<div class="home-heading"><div><div class="eyebrow">${new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}</div><h1>Cada grano cuenta.</h1></div></div>
 <section class="card hero home-hero">
@@ -38,6 +41,7 @@ export function homePage() {
   <div class="hero-bottom">
     <div class="hero-account"><span class="visual-icon neutral">${svg("bank")}</span><div><small>En débito</small><strong>${money(m.debit)}</strong></div></div>
     <div class="hero-account"><span class="visual-icon cash">${svg("cash")}</span><div><small>En efectivo</small><strong>${money(m.cash)}</strong></div></div>
+    <div class="hero-account"><span class="visual-icon debt">${svg("card")}</span><div><small>Crédito disponible</small><strong>${money(creditAvailable)}</strong></div></div>
   </div>
 </section>
 <div class="quick home-actions">

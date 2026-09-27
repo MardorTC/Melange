@@ -40,7 +40,7 @@ public final class NativeBridge {
     try {
       if (json.length() > 40 * 1024 * 1024) throw new Exception("Respaldo demasiado grande");
       JSONObject obj = new JSONObject(json);
-      if (obj.getJSONObject("state").getInt("schemaVersion") != 9)
+      if (obj.getJSONObject("state").getInt("schemaVersion") != 10)
         throw new Exception("Versión incompatible");
       store.write(json);
       return "OK";

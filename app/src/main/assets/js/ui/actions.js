@@ -53,6 +53,11 @@ export async function action(a, id, el) {
     render();
     return;
   }
+  if (a === "accountSub") {
+    model.accountSub = id;
+    render();
+    return;
+  }
   if (a.startsWith("rebuild")) {
     await reconstructionAction(a, id, el);
     return;

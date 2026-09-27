@@ -46,3 +46,7 @@ Las metas mantienen asignaciones por cuenta. Una asignación vinculada a cajita 
 `finance.obligations` agrupa MSI y cargos por tarjeta y mes; `baseObligations` conserva los vencimientos individuales para la asignación del pago. El consumo reconoce compras; las salidas de efectivo reconocen pagos, excluyendo compras a crédito. El calendario de cada compra queda guardado, de modo que cambiar los días de una tarjeta no reescribe cargos anteriores.
 
 La migración v8 → v9 agrega el catálogo vacío a libro y deshacer. SQLite y la previsualización conservan el sobre original por versión en una operación de guardado atómica. Los borradores v2 admiten ahora tarjetas; los anteriores se leen con un catálogo vacío. El número de esquema no equivale al número de versión Android.
+
+## Libro v10 y abonos sin asignar
+
+El esquema v10 admite aplicaciones `unassigned` en `card_payment`. El pago sigue siendo una transacción única que descuenta efectivo. El crédito utilizado resta esas aplicaciones sin alterar saldos de MSI ni marcar obligaciones pagadas. `applyCardCredit` traslada aplicaciones del mismo pago a líneas existentes, conservando el importe y la fecha originales; al completar una cuota se actualiza la deuda. La validación comprueba referencias, suma de aplicaciones y saldo no negativo. Deshacer el pago revierte también cualquier aplicación conciliada. La migración v9 → v10 transforma libro e historial sin tocar sus importes; las reglas de gastos fijos pueden guardar `creditCardId` como origen previsto por vigencia.

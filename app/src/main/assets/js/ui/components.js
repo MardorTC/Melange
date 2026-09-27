@@ -170,14 +170,14 @@ export function accountName(id, source = model.state) {
   );
 }
 
-export function paymentFields(a, credit = false) {
+export function paymentFields(a, credit = false, defaultAccount = "debit") {
   return (
     amount("amount", "Importe", a) +
     select(
       "accountId",
       "Pagar desde",
       credit ? spendingOptions() : accountOptions(),
-      "debit",
+      defaultAccount,
     ) +
     input(
       "date",

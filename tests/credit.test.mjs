@@ -117,6 +117,66 @@ test("partial card payments are distributed, cannot overpay, and can be reversed
   assert.equal(C.creditStatement(s, "bbva-credit", period).remaining, 150000);
   C.validate(s);
 });
+test("unassigned deposits lower card debt without paying MSI until reconciled", () => {
+  const s = fixture();
+  msi(s);
+  purchase(s);
+  const payment = C.payCard(s, "bbva-credit", period, {
+    amount: 100000,
+    accountId: "debit",
+    date: "2026-02-04",
+    unassigned: true,
+  });
+  assert.equal(C.balances(s).debit, 400000);
+  assert.equal(C.creditSummary(s, "bbva-credit").used, 650000);
+  assert.equal(C.creditSummary(s, "bbva-credit").unassigned, 100000);
+  assert.equal(C.creditStatement(s, "bbva-credit", period).remaining, 150000);
+  assert.deepEqual(s.debts[0].paidPayments, [1, 2, 3, 4, 5]);
+  assert.throws(() =>
+    C.payCard(s, "bbva-credit", period, {
+      amount: 700000,
+      accountId: "debit",
+      date: "2026-02-04",
+      unassigned: true,
+    }),
+  );
+  C.validate(s);
+  C.applyCardCredit(s, "bbva-credit", period, 40000);
+  assert.equal(s.debts[0].balance, 660000);
+  assert.equal(s.debts[0].paidPayments.length, 5);
+  assert.equal(C.creditSummary(s, "bbva-credit").used, 650000);
+  C.applyCardCredit(s, "bbva-credit", period, 60000);
+  assert.equal(s.debts[0].balance, 600000);
+  assert.deepEqual(s.debts[0].paidPayments, [1, 2, 3, 4, 5, 6]);
+  assert.equal(C.creditSummary(s, "bbva-credit").unassigned, 0);
+  assert.equal(C.creditSummary(s, "bbva-credit").used, 650000);
+  C.validate(s);
+  C.reverseTransaction(s, payment.id);
+  assert.equal(C.balances(s).debit, 500000);
+  assert.equal(s.debts[0].balance, 700000);
+  assert.deepEqual(s.debts[0].paidPayments, [1, 2, 3, 4, 5]);
+  C.validate(s);
+});
+test("reconciliation can target a purchase before an MSI according to the bank statement", () => {
+  const s = fixture();
+  msi(s);
+  const p = purchase(s);
+  C.payCard(s, "bbva-credit", period, {
+    amount: 50000,
+    accountId: "debit",
+    date: "2026-02-04",
+    unassigned: true,
+  });
+  C.applyCardCredit(s, "bbva-credit", period, 50000, {
+    kind: "purchase",
+    ref: p.id,
+  });
+  assert.equal(C.creditStatement(s, "bbva-credit", period).remaining, 100000);
+  assert.equal(s.debts[0].balance, 700000);
+  assert.deepEqual(s.debts[0].paidPayments, [1, 2, 3, 4, 5]);
+  assert.equal(C.creditSummary(s, "bbva-credit").used, 700000);
+  C.validate(s);
+});
 test("limits, reserves, vouchers, invalid dates and card operations are guarded", () => {
   const s = fixture();
   msi(s);
@@ -214,11 +274,29 @@ test("opening balances are liabilities without invented spending and migrations 
     draft: null,
     revision: 5,
   });
-  assert.equal(migrated.state.schemaVersion, 9);
-  assert.equal(migrated.history[0].state.schemaVersion, 9);
+  assert.equal(migrated.state.schemaVersion, 10);
+  assert.equal(migrated.history[0].state.schemaVersion, 10);
   assert.deepEqual(migrated.state.creditCards, []);
   assert.equal(JSON.stringify(old), before);
   assert.deepEqual(C.migrate(JSON.parse(JSON.stringify(s))), s);
+});
+test("v9 backup and undo history migrate to v10 without changing balances or card charges", () => {
+  const old = fixture();
+  purchase(old);
+  old.schemaVersion = 9;
+  const original = structuredClone(old);
+  const envelope = C.migrateEnvelope({
+    state: old,
+    history: [{ state: structuredClone(old) }],
+    draft: null,
+    revision: 3,
+  });
+  assert.equal(envelope.state.schemaVersion, 10);
+  assert.equal(envelope.history[0].state.schemaVersion, 10);
+  assert.equal(envelope.state.transactions[0].id, old.transactions[0].id);
+  assert.deepEqual(C.balances(envelope.state), C.balances(old));
+  assert.equal(C.creditSummary(envelope.state, "bbva-credit").used, 50000);
+  assert.deepEqual(old, original);
 });
 test("malformed payment allocations and missing cards are rejected", () => {
   const s = fixture();

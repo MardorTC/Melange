@@ -379,10 +379,10 @@ const fs = require("fs");
       };
     });
     assert.deepEqual(migrated, {
-      schema: 9,
+      schema: 10,
       balances: { cash: 12300, debit: 500000 },
       draft: 2,
-      history: 9,
+      history: 10,
       available: 212300,
     });
     const backup = await page.evaluate(

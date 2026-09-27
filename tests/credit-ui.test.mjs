@@ -69,10 +69,11 @@ try {
       original: original.state,
     };
   });
-  assert.equal(migrated.schema, 9);
-  assert.equal(migrated.history, 9);
+  assert.equal(migrated.schema, 10);
+  assert.equal(migrated.history, 10);
   assert.deepEqual(migrated.original, old);
   await page.locator('[data-action="tab"][data-id="accounts"]').first().click();
+  await page.locator('[data-action="accountSub"][data-id="credit"]').click();
   await page
     .getByRole("button", { name: "Agregar tarjeta", exact: true })
     .click();
@@ -100,6 +101,7 @@ try {
     "500000",
   );
   await page.locator('[data-action="tab"][data-id="accounts"]').first().click();
+  await page.locator('[data-action="accountSub"][data-id="credit"]').click();
   mkdirSync("build/previews", { recursive: true });
   for (const width of [360, 390, 844]) {
     await page.setViewportSize({ width, height: width === 844 ? 390 : 844 });
@@ -129,6 +131,117 @@ try {
   assert.equal(
     await page.locator('[data-metric="available"]').getAttribute("data-value"),
     "450000",
+  );
+  await page.getByRole("button", { name: "Nuevo gasto", exact: true }).click();
+  await page.locator('[name="name"]').fill("Compra por conciliar");
+  await page.locator('[name="amount"]').fill("300");
+  await page.locator('[name="accountId"]').selectOption("credit:" + cardId);
+  await page.locator('[name="cardDueDate"]').fill(C.today());
+  await page.locator('#form [type="submit"]').click();
+  await page.locator("dialog").waitFor({ state: "hidden" });
+  await page.locator('[data-action="tab"][data-id="accounts"]').first().click();
+  await page.locator('[data-action="accountSub"][data-id="credit"]').click();
+  await page
+    .locator(`[data-action="creditDetails"][data-id="${cardId}"]`)
+    .click();
+  assert.match(
+    await page.locator("dialog").innerText(),
+    /Compra por conciliar/,
+  );
+  await page.locator('dialog [data-action="close"]').click();
+  await page
+    .locator(`[data-action="creditUnassigned"][data-id="${cardId}"]`)
+    .click();
+  await page.locator('[name="amount"]').fill("100");
+  await page.locator('#form [type="submit"]').click();
+  await page.locator("dialog").waitFor({ state: "hidden" });
+  let reconciled = await page.evaluate(async (cardId) => {
+    const { model } = await import("/js/state/model.js");
+    const { default: C } = await import("/js/domain/finance.js");
+    return {
+      summary: C.creditSummary(model.state, cardId),
+      remaining: C.creditStatement(model.state, cardId, C.month()).remaining,
+      debit: C.balances(model.state).debit,
+    };
+  }, cardId);
+  assert.equal(reconciled.summary.used, 20000);
+  assert.equal(reconciled.summary.unassigned, 10000);
+  assert.equal(reconciled.remaining, 30000);
+  assert.equal(reconciled.debit, 440000);
+  await page
+    .locator(`[data-action="creditApply"][data-id="${cardId}"]`)
+    .click();
+  await page.locator('[name="amount"]').fill("100");
+  await page.locator('#form [type="submit"]').click();
+  await page.locator("dialog").waitFor({ state: "hidden" });
+  reconciled = await page.evaluate(async (cardId) => {
+    const { model } = await import("/js/state/model.js");
+    const { default: C } = await import("/js/domain/finance.js");
+    return {
+      summary: C.creditSummary(model.state, cardId),
+      remaining: C.creditStatement(model.state, cardId, C.month()).remaining,
+      debit: C.balances(model.state).debit,
+    };
+  }, cardId);
+  assert.equal(reconciled.summary.used, 20000);
+  assert.equal(reconciled.summary.unassigned, 0);
+  assert.equal(reconciled.remaining, 20000);
+  assert.equal(reconciled.debit, 440000);
+  await page.locator('nav [data-id="expense"]').click();
+  await page.locator('[data-action="expenseSub"][data-id="fixed"]').click();
+  await page.locator('[data-action="editFixed"]').first().click();
+  assert.equal(await page.locator("[data-recurrence-days]").isVisible(), false);
+  await page.locator('[name="unit"]').selectOption("twiceMonthly");
+  assert.equal(await page.locator("[data-recurrence-days]").isVisible(), true);
+  assert.equal(
+    await page.locator("[data-recurrence-interval]").isVisible(),
+    false,
+  );
+  await page.locator('[name="unit"]').selectOption("months");
+  assert.equal(
+    await page.locator("[data-recurrence-interval]").isVisible(),
+    true,
+  );
+  await page.locator('[name="name"]').fill("Suscripción en tarjeta");
+  await page.locator('[name="amount"]').fill("120");
+  await page.locator('[name="creditCardId"]').selectOption(cardId);
+  await page.locator('#form [type="submit"]').click();
+  await page.locator("dialog").waitFor({ state: "hidden" });
+  assert.equal(
+    await page.evaluate(
+      async () =>
+        (await import("/js/state/model.js")).model.state.fixedExpenses
+          .at(-1)
+          .rules.at(-1).creditCardId,
+    ),
+    cardId,
+  );
+  await page.evaluate(async () => {
+    const { model } = await import("/js/state/model.js");
+    const { render } = await import("/js/ui/navigation.js");
+    const { default: C } = await import("/js/domain/finance.js");
+    model.state.categories = Array.from({ length: 7 }, (_, i) => ({
+      id: `synthetic-${i}`,
+      name: i === 0 ? "Otros" : `Categoría ${i}`,
+    }));
+    model.state.transactions = Array.from({ length: 7 }, (_, i) => ({
+      id: `synthetic-${i}`,
+      kind: "expense",
+      name: "Prueba",
+      amount: 10000 - i * 100,
+      date: C.today(),
+      categoryId: `synthetic-${i}`,
+      accountId: "debit",
+    }));
+    model.tab = "home";
+    render();
+  });
+  assert.equal(
+    await page
+      .locator(".home-spending .legend")
+      .getByText("Otros", { exact: true })
+      .count(),
+    1,
   );
   assert.deepEqual(errors, []);
   console.log(

@@ -37,6 +37,7 @@ export function rulesFor(f) {
         effectiveFrom: (f.startMonth || "1900-01") + "-01",
         amount: f.amount,
         categoryId: f.categoryId || "",
+        creditCardId: f.creditCardId || "",
         active: f.active !== false,
         legacy: true,
         anchorDay: f.dueDay || 1,
@@ -93,6 +94,7 @@ export function occurrences(f, m) {
           name: f.name,
           amount: r.amount,
           categoryId: r.categoryId || "",
+          creditCardId: r.creditCardId || "",
           date,
           paid: false,
         });

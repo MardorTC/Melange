@@ -20,6 +20,16 @@ import { openStore, readStore, writeStore } from "./platform/storage.js";
 import { syncReminders } from "./state/ledger.js";
 
 document.addEventListener("change", (e) => {
+  if (e.target.name === "unit") {
+    const twice = e.target.value === "twiceMonthly";
+    const interval = document.querySelector("[data-recurrence-interval]");
+    const days = document.querySelector("[data-recurrence-days]");
+    if (interval && days) {
+      interval.hidden = twice;
+      days.hidden = !twice;
+      interval.querySelector('[name="interval"]').required = !twice;
+    }
+  }
   if (
     e.target.name === "accountId" &&
     document.querySelector("#credit-purchase-fields")

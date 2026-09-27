@@ -6,7 +6,7 @@ const { id, clone, cents, today, month, addMonth, dueDate, validDate } = L;
 const balances = F.balances;
 function empty() {
   const s = L.empty();
-  s.schemaVersion = 9;
+  s.schemaVersion = 10;
   s.creditCards = [];
   s.creditors = s.accounts;
   delete s.accounts;
@@ -45,12 +45,14 @@ function convertTransaction(t) {
 }
 function migrate(raw) {
   if (raw?.format === "projectosp-backup") raw = raw.state;
-  if (raw?.schemaVersion === 9) return validate(clone(raw));
+  if (raw?.schemaVersion === 10) return validate(clone(raw));
+  if (raw?.schemaVersion === 9)
+    return validate({ ...clone(raw), schemaVersion: 10 });
   if (raw?.schemaVersion === 8)
-    return validate({ ...clone(raw), schemaVersion: 9, creditCards: [] });
+    return validate({ ...clone(raw), schemaVersion: 10, creditCards: [] });
   const old = L.migrate(raw),
     s = clone(old);
-  s.schemaVersion = 9;
+  s.schemaVersion = 10;
   s.creditCards = [];
   s.creditors = s.accounts;
   delete s.accounts;
@@ -143,7 +145,7 @@ function migrateEnvelope(saved) {
 function validate(s) {
   if (
     !s ||
-    s.schemaVersion !== 9 ||
+    s.schemaVersion !== 10 ||
     !s.settings ||
     !s.budgets ||
     !Number.isSafeInteger(s.income) ||
@@ -191,6 +193,8 @@ function validate(s) {
       R.validateRule(r);
       if (r.categoryId && !s.categories.some((c) => c.id === r.categoryId))
         throw Error("Categoría de compromiso inválida.");
+      if (r.creditCardId && !s.creditCards.some((c) => c.id === r.creditCardId))
+        throw Error("Tarjeta del gasto fijo inválida.");
     }
     const rules = R.rulesFor(f);
     if (
@@ -379,14 +383,17 @@ function payCard(s, cardId, period, opts) {
     date > today() ||
     !Number.isSafeInteger(amount) ||
     amount <= 0 ||
-    amount > statement.remaining
+    amount >
+      (opts.unassigned
+        ? K.creditSummary(s, cardId).used
+        : Math.min(statement.remaining, K.creditSummary(s, cardId).used))
   )
     throw Error("Revisa la fecha y el importe pendiente de la tarjeta.");
   if (!opts.replay) F.requireFunds(s, opts.accountId, amount, "card_payment");
   else F.requireDestination(s, opts.accountId, "card_payment");
   let left = amount;
   const allocations = [];
-  for (const line of statement.lines) {
+  for (const line of opts.unassigned ? [] : statement.lines) {
     const part = Math.min(left, line.remaining);
     if (!part) continue;
     const purchase =
@@ -403,7 +410,9 @@ function payCard(s, cardId, period, opts) {
     });
     left -= part;
   }
-  if (left) throw Error("No se pudo distribuir el pago.");
+  if (opts.unassigned)
+    allocations.push({ kind: "unassigned", ref: cardId, amount });
+  else if (left) throw Error("No se pudo distribuir el pago.");
   const t = {
     id: id(),
     kind: "card_payment",
@@ -425,6 +434,79 @@ function payCard(s, cardId, period, opts) {
     if (!d.balance) d.active = false;
   }
   return t;
+}
+function applyCardCredit(s, cardId, period, amount, target = null) {
+  const card = s.creditCards.find((c) => c.id === cardId);
+  if (!card) throw Error("Tarjeta no encontrada.");
+  const statement = creditStatement(s, cardId, period);
+  const lines = target
+    ? statement.lines.filter(
+        (line) =>
+          line.kind === target.kind &&
+          line.ref === target.ref &&
+          (line.obligation || "") === (target.obligation || ""),
+      )
+    : statement.lines;
+  if (
+    !lines.length ||
+    !Number.isSafeInteger(amount) ||
+    amount <= 0 ||
+    amount > lines.reduce((n, line) => n + line.remaining, 0) ||
+    amount > K.allocated(s, "unassigned", cardId)
+  )
+    throw Error(
+      "El importe supera el abono sin asignar o el periodo pendiente.",
+    );
+  let left = amount;
+  for (const payment of s.transactions.filter(
+    (t) => t.kind === "card_payment" && t.creditCardId === cardId,
+  )) {
+    for (const unapplied of [...payment.allocations].filter(
+      (a) => a.kind === "unassigned",
+    )) {
+      let sourceLeft = Math.min(left, unapplied.amount);
+      for (const line of lines) {
+        const previously = K.allocated(s, line.kind, line.ref);
+        const remaining = Math.max(
+          0,
+          line.remaining - (previously - line.recorded),
+        );
+        const part = Math.min(sourceLeft, remaining);
+        if (!part) continue;
+        const purchase =
+          line.kind === "purchase" &&
+          s.transactions.find((t) => t.id === line.ref);
+        if (purchase && purchase.date > payment.date) continue;
+        payment.allocations.push({
+          kind: line.kind,
+          ref: line.ref,
+          amount: part,
+          ...(line.kind === "debt"
+            ? { obligation: line.obligation, period, n: line.n }
+            : {}),
+        });
+        if (line.kind === "debt") {
+          const d = s.debts.find((d) => d.id === line.ref);
+          d.balance -= part;
+          if (part === remaining && !d.paidPayments.includes(line.n))
+            d.paidPayments.push(line.n);
+          if (!d.balance) d.active = false;
+        }
+        unapplied.amount -= part;
+        sourceLeft -= part;
+        left -= part;
+        if (!sourceLeft) break;
+      }
+      if (!unapplied.amount)
+        payment.allocations = payment.allocations.filter(
+          (a) => a !== unapplied,
+        );
+      if (!left) return;
+    }
+  }
+  throw Error(
+    "No se pudo aplicar todo el abono a cargos existentes antes de su fecha de pago.",
+  );
 }
 function metrics(s, m = month()) {
   const accounts = F.accountSummary(s),
@@ -862,6 +944,7 @@ export default {
   creditStatement,
   creditPeriods,
   payCard,
+  applyCardCredit,
   baseObligations,
   ...F,
   ...R,

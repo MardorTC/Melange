@@ -20,7 +20,18 @@ import {
 } from "../ui/components.js";
 export function accountsPage() {
   const m = C.metrics(model.state);
-  return `<div class="debt-page-heading"><div><div class="eyebrow">Cada saldo en su lugar</div><h1>Cuentas</h1><p>Separa lo que puedes usar de lo que has apartado.</p></div>${icon("plus", "Agregar cuenta", "walletEdit")}</div><section class="card hero"><small>Disponible libre</small>${metric(m.available, "walletFree")}<div class="hero-bottom"><div><small>Vales / despensa</small><strong>${money(m.restricted)}</strong></div><div><small>Congelado</small><strong>${money(m.frozen)}</strong></div></div></section>${
+  const selected = model.accountSub || "wallet";
+  const tabs = `<div class="debt-segments" role="tablist" aria-label="Tipo de cuenta"><button class="debt-segment ${selected === "wallet" ? "active" : ""}" role="tab" aria-selected="${selected === "wallet"}" data-action="accountSub" data-id="wallet">Efectivo y débito</button><button class="debt-segment ${selected === "credit" ? "active" : ""}" role="tab" aria-selected="${selected === "credit"}" data-action="accountSub" data-id="credit">Crédito</button></div>`;
+  if (selected === "credit") {
+    const cards = model.state.creditCards.filter((c) => c.active !== false),
+      used = cards.reduce(
+        (n, c) => n + C.creditSummary(model.state, c.id).used,
+        0,
+      ),
+      limit = cards.reduce((n, c) => n + c.limit, 0);
+    return `<div class="debt-page-heading"><div><div class="eyebrow">Tus líneas de crédito</div><h1>Cuentas</h1><p>Consulta el crédito disponible y lo que deberás pagar.</p></div></div>${tabs}<section class="card hero credit-hero"><small>Crédito disponible</small>${metric(limit - used, "creditAvailable")}<div class="hero-bottom"><div><small>Crédito usado</small><strong>${money(used)}</strong></div><div><small>Límite total</small><strong>${money(limit)}</strong></div></div></section>${creditCardsSection()}`;
+  }
+  return `<div class="debt-page-heading"><div><div class="eyebrow">Cada saldo en su lugar</div><h1>Cuentas</h1><p>Separa lo que puedes usar de lo que has apartado.</p></div>${icon("plus", "Agregar cuenta", "walletEdit")}</div>${tabs}<section class="card hero"><small>Disponible libre</small>${metric(m.available, "walletFree")}<div class="hero-bottom"><div><small>Vales / despensa</small><strong>${money(m.restricted)}</strong></div><div><small>Congelado</small><strong>${money(m.frozen)}</strong></div></div></section>${
     m.unassigned
       ? `<section class="card"><h2>Reservas pendientes de asignar</h2><p>${money(m.unassigned)} ya se descuentan del disponible global.</p>${model.state.goals
           .filter((g) => g.allocations.some((r) => !r.accountId))
@@ -52,7 +63,7 @@ export function accountsPage() {
           )
           .join("")}</section>`,
     )
-    .join("")}${creditCardsSection()}`;
+    .join("")}`;
 }
 export function accountAction(action, id) {
   if (!action.startsWith("wallet") && !action.startsWith("box")) return false;

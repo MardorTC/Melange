@@ -92,7 +92,6 @@ await submit({
   name: "Internet",
   amount: "500",
   startDate: C.month() + "-20",
-  effectiveFrom: C.month() + "-01",
 });
 assert.equal(stored.state.fixedExpenses.length, 1);
 await click("pay");
@@ -359,6 +358,7 @@ await w.receiveImport(JSON.stringify(creditFixture));
 await click("confirmImport");
 await click("tab", "home");
 await click("tab", "accounts");
+await click("accountSub", "credit");
 await click("creditEdit");
 await submit({
   name: "BBVA crédito",
@@ -403,12 +403,14 @@ await submit({
 });
 assert.equal(stored.state.debts[0].creditCardId, cardId);
 assert.equal(C.creditStatement(stored.state, cardId).remaining, 60000);
+await click("creditDetails", cardId);
 await click("creditPay", cardId);
 failWrite = true;
 await submit({ amount: "600", accountId: "debit", date: C.today() });
 failWrite = false;
 assert.equal(C.balances(stored.state).debit, 500000);
 await click("close");
+await click("creditDetails", cardId);
 await click("creditPay", cardId);
 await submit({ amount: "600", accountId: "debit", date: C.today() });
 assert.equal(C.balances(stored.state).debit, 440000);

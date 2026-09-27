@@ -10,11 +10,19 @@ export function donut(tx) {
     map[name] = (map[name] || 0) + t.amount;
   });
   let pairs = Object.entries(map).sort((a, b) => b[1] - a[1]);
-  if (pairs.length > 5)
+  if (pairs.length > 5) {
+    const named = pairs.filter(([name]) => name !== "Otros");
     pairs = [
-      ...pairs.slice(0, 5),
-      ["Otros", pairs.slice(5).reduce((a, x) => a + x[1], 0)],
-    ];
+      ...named.slice(0, 5),
+      [
+        "Otros",
+        pairs
+          .filter(([name]) => name === "Otros")
+          .reduce((n, x) => n + x[1], 0) +
+          named.slice(5).reduce((n, x) => n + x[1], 0),
+      ],
+    ].filter(([, value]) => value > 0);
+  }
   const total = pairs.reduce((a, x) => a + x[1], 0);
   if (!total)
     return empty(

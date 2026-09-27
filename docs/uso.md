@@ -156,3 +156,11 @@ Los gastos fijos también se pueden cargar a crédito desde su formulario de pag
 El esquema del libro pasa a **v9** (independiente del número de versión de la app). Los libros v8 se convierten automáticamente con un catálogo de tarjetas vacío, conservando saldos, movimientos, presupuestos, deshacer y borradores. No se atribuyen tarjetas ni créditos a datos antiguos. Antes de reemplazar el libro se conserva el estado original en una copia de migración fuera del historial de deshacer, tanto en SQLite como en la previsualización.
 
 Los respaldos v9 necesitan esta versión del código; las versiones anteriores no los pueden importar. Sigue siendo posible importar respaldos v6, v7 y v8. La reconstrucción copia las tarjetas y permite indicar sus saldos anteriores, capturar compras a crédito y pagos agrupados; revisa también los saldos de crédito antes de confirmar el resultado.
+
+### Cuentas y abonos desde 8.4
+
+**Cuentas** separa efectivo/débito de tarjetas. El crédito disponible se muestra junto a las cifras de Inicio para consultarlo, pero no forma parte del dinero libre. En **Deudas**, las tarjetas con saldo aparecen en formato compacto; **Ver desglose** abre sus cargos y vencimientos.
+
+Si depositaste a la tarjeta sin saber cómo aplicó el banco el pago, usa **Abonar sin asignar**. El importe sale una sola vez de la cuenta elegida y reduce de inmediato el saldo usado de la tarjeta. Las compras y cuotas MSI continúan pendientes en el desglose. Cuando tengas el estado de cuenta, usa **Aplicar abonos** y elige el cargo concreto y el importe: esta acción no hace otra salida de dinero. Las cuotas MSI solo se marcan pagadas al completar su importe. Los cargos futuros que aún no existían en la fecha del depósito no se pueden conciliar con él; comprueba la fecha y el desglose del banco. Si ya sabes la aplicación, usa **Pagar tarjeta** para asignar el pago en el orden mostrado.
+
+En **Nuevo gasto fijo**, selecciona cada cuántos días, semanas, meses o años vence; los dos días solo aparecen con **Dos veces al mes**. Puedes elegir una tarjeta como origen previsto. La tarjeta se carga únicamente cuando confirmas el pago del vencimiento; antes de eso permanece como compromiso pendiente. Los libros y respaldos nuevos usan esquema v10; la app convierte los v9 automáticamente junto con el historial. Las versiones anteriores no importan respaldos v10.
