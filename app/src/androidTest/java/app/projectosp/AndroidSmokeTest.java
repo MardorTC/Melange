@@ -89,7 +89,8 @@ public class AndroidSmokeTest {
           "true", eval(instrumentation, web, "JSON.parse(NativeOSP.read()).state.started"));
       assertEquals(
           "10", eval(instrumentation, web, "JSON.parse(NativeOSP.read()).state.schemaVersion"));
-      assertEquals("2", eval(instrumentation, web, "JSON.parse(NativeOSP.read()).draft.version"));
+      assertEquals(
+          "\"undefined\"", eval(instrumentation, web, "typeof JSON.parse(NativeOSP.read()).draft"));
       assertEquals(
           "10",
           eval(
@@ -103,6 +104,14 @@ public class AndroidSmokeTest {
       assertEquals(
           "100000",
           eval(instrumentation, web, "JSON.parse(NativeOSP.read()).state.goals[0].balance"));
+      assertEquals("true", eval(instrumentation, web, "!!document.querySelector('.home-hero')"));
+      assertEquals("true", eval(instrumentation, web, "!!document.querySelector('#topbar')"));
+      assertEquals(
+          "0",
+          eval(
+              instrumentation,
+              web,
+              "document.querySelectorAll('[data-action=rebuildStart]').length"));
       assertEquals("\"undefined\"", eval(instrumentation, web, "typeof window.OSP"));
       assertEquals("\"function\"", eval(instrumentation, web, "typeof window.nativeUpdate"));
       assertEquals("true", eval(instrumentation, web, "window.handleBack() === false"));
