@@ -1,6 +1,48 @@
-import { btn, icon, esc } from "../ui/components.js";
+import { icon, esc, svg, money, screenHead } from "../ui/components.js";
 import { model } from "../state/model.js";
 
 export function settingsPage() {
-  return `<div class="eyebrow">A tu manera</div><h1>Ajustes</h1><section class="card"><h2>Tu punto de partida</h2><p class="note">Corrige saldos mediante un ajuste registrado. Define por separado el ingreso mensual esperado.</p><div class="toolbar">${btn("Ajustar saldos", "balances")}${btn("Ingreso previsto", "expectedIncome")}</div></section><section class="card"><div class="row"><h2>Acreedores</h2>${icon("plus", "Agregar acreedor", "editAccount")}</div>${model.state.creditors.map((a) => `<div class="item row"><span>${esc(a.name)}</span><div class="actions">${icon("edit", "Editar acreedor", "editAccount", a.id)}${icon("trash", "Eliminar acreedor", "deleteAccount", a.id)}</div></div>`).join("") || '<p class="muted">Sin acreedores.</p>'}</section><section class="card"><div class="row"><h2>Categorías</h2>${icon("plus", "Agregar categoría", "editCategory")}</div>${model.state.categories.map((a) => `<div class="item row"><span>${esc(a.name)}</span><div class="actions">${icon("edit", "Editar categoría", "editCategory", a.id)}${icon("trash", "Eliminar categoría", "deleteCategory", a.id)}</div></div>`).join("")}</section><section class="card"><h2>Recordatorios</h2><p>Avisos locales de próximos pagos, alrededor de las 9:00. Android puede retrasarlos por ahorro de batería.</p><p class="note">${model.state.settings.reminders ? "Activados en la app. " + (window.NativeOSP ? esc(window.NativeOSP.notificationStatus()) : "Solo disponibles en Android.") : "Desactivados."}</p>${btn(model.state.settings.reminders ? "Configurar recordatorios" : "Activar recordatorios", "reminders", "", "full")}</section><section class="card"><h2>Datos y recuperación</h2><div class="grid">${btn("Exportar respaldo", "export")}${btn("Importar respaldo", "import")}</div><div class="toolbar">${btn("Historial / deshacer", "history")}${btn("Buscar actualizaciones", "update")}</div><p class="note">Melange ${window.NativeOSP?.appInfo ? esc(JSON.parse(window.NativeOSP.appInfo()).version) : "· Vista previa"} · Android · Base local SQLite.<br>Actualizar con un APK firmado con la misma clave conserva tus datos. Desinstalar borra los datos locales.</p>${model.state.migration ? '<p class="note">Migración v6: los gastos anteriores ya están incluidos en el saldo inicial. No se descontaron otra vez.</p>' : ""}</section><section class="card"><h2>Sincronización</h2><p class="muted">Esta versión funciona localmente. La conexión con Google Drive aún no está disponible.</p><p class="note">Puedes guardar un respaldo en Drive desde el selector de archivos de Android. Eso es una copia, no sincronización entre dispositivos.</p></section>`;
+  const version = window.NativeOSP?.appInfo
+    ? JSON.parse(window.NativeOSP.appInfo()).version
+    : "Vista previa";
+  const reminders = model.state.settings.reminders;
+  return (
+    screenHead("Ajustes", "Tu información y tus respaldos.", { back: true }) +
+    `<div class="settings-section-title">Tu base</div>
+    <section class="card settings-group">
+      ${row("Ajustar saldos", "Corrige el saldo real de tus cuentas.", "balances", "", svg("wallet"))}
+      ${row("Ingreso previsto", "Presupuesto mensual, no dinero recibido.", "expectedIncome", money(model.state.income), svg("trending"))}
+    </section>
+    <div class="settings-section-title">Preferencias</div>
+    <section class="card settings-group">
+      ${row("Recordatorios", reminders ? "Avisos locales activados." : "Sin avisos de pago.", "reminders", reminders ? "Activos" : "Inactivos", svg("notifications"))}
+    </section>
+    <div class="settings-section-title">Catálogos</div>
+    <details class="card catalog-details">
+      <summary>Acreedores<span>${model.state.creditors.length}</span></summary>
+      <div class="catalog-list">${model.state.creditors.map((a) => `<div class="catalog-row"><span>${esc(a.name)}</span><div class="actions">${icon("edit", "Editar acreedor", "editAccount", a.id)}${icon("trash", "Eliminar acreedor", "deleteAccount", a.id)}</div></div>`).join("") || '<p class="muted">Sin acreedores.</p>'}</div>
+      <button class="btn full" data-action="editAccount">${svg("plus")} Agregar acreedor</button>
+    </details>
+    <details class="card catalog-details">
+      <summary>Categorías<span>${model.state.categories.length}</span></summary>
+      <div class="catalog-list">${model.state.categories.map((a) => `<div class="catalog-row"><span>${esc(a.name)}</span><div class="actions">${icon("edit", "Editar categoría", "editCategory", a.id)}${icon("trash", "Eliminar categoría", "deleteCategory", a.id)}</div></div>`).join("")}</div>
+      <button class="btn full" data-action="editCategory">${svg("plus")} Agregar categoría</button>
+    </details>
+    <div class="settings-section-title">Datos</div>
+    <section class="card settings-group">
+      ${row("Exportar respaldo", "Copia manual de todo tu libro.", "export", "", svg("download"))}
+      ${row("Importar respaldo", "Reemplaza los datos con un archivo.", "import", "", svg("upload"))}
+      ${row("Historial y deshacer", "Últimos 15 cambios guardados.", "history", "", svg("history"))}
+      ${row("Buscar actualizaciones", "Revisa si hay una versión nueva.", "update", "", svg("update"))}
+    </section>
+    <section class="card about-card">
+      <div class="row"><div><h2>Melange</h2><small>Finanzas personales, sin cuenta ni servidor.</small></div><span class="visual-icon goal">${svg("goal")}</span></div>
+      <p class="note">Versión ${esc(version)} · Android · Base local SQLite. Sin sincronización automática: tus respaldos son copias manuales.</p>
+      ${model.state.migration ? '<p class="note">Migración v6: los gastos anteriores ya están incluidos en el saldo inicial. No se descontaron otra vez.</p>' : ""}
+    </section>`
+  );
+}
+
+function row(title, subtitle, action, value, iconSvg) {
+  return `<button class="settings-row" data-action="${action}" aria-label="${esc(title)}"><span class="row-icon gray">${iconSvg}</span><span class="settings-copy"><strong>${title}</strong><small>${subtitle}</small></span><span class="settings-value">${value}</span><span class="row-chevron">${svg("chevron")}</span></button>`;
 }

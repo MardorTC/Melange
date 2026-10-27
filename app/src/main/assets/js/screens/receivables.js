@@ -13,6 +13,7 @@ import {
   accountOptions,
   empty,
   svg,
+  dlabel,
 } from "../ui/components.js";
 
 export function receivablesPage() {
@@ -20,16 +21,16 @@ export function receivablesPage() {
     open = model.state.receivables.filter(
       (l) => C.loanBalance(model.state, l.id) > 0,
     ).length;
-  return `<div class="receivable-toolbar">${btn("Registrar préstamo", "loanCreate", "", "primary")}</div><section class="card hero debt-hero receivable-hero"><small>Dinero por recuperar</small><div class="metric">${money(receivable)}</div><p>${open ? `${open} ${open === 1 ? "préstamo pendiente" : "préstamos pendientes"}` : "No forma parte del disponible."}</p></section><div class="debt-list-heading"><h2>Dinero que me deben</h2></div>${
+  return `<section class="card hero receivable-hero"><small>Dinero por recuperar</small><div class="metric">${money(receivable)}</div><p>${open ? `${open} ${open === 1 ? "préstamo pendiente" : "préstamos pendientes"}` : "No forma parte del disponible."}</p></section><div class="section-head"><h2>Dinero que me deben</h2></div>${
     model.state.receivables
       .map((l) => {
         const balance = C.loanBalance(model.state, l.id),
           recovered = balance <= 0;
-        return `<section class="card receivable-card ${recovered ? "is-paid" : ""}"><div class="debt-type-icon ${recovered ? "success" : "info"}">${svg("wallet")}</div><div class="receivable-content"><div class="row"><div><h2>${esc(l.person)}</h2><small>${esc(l.name)}</small></div>${recovered ? '<span class="pill good">Recuperado</span>' : ""}</div><div class="metric">${money(balance)}</div><p class="note">${l.dueDate ? "Vence: " + l.dueDate : "Sin vencimiento"} · Antecedente: ${money(l.opening)}</p>${model.state.transactions
+        return `<section class="card receivable-card ${recovered ? "is-paid" : ""}"><div class="debt-type-icon ${recovered ? "success" : "info"}">${svg("wallet")}</div><div class="receivable-content"><div class="row"><div><h2>${esc(l.person)}</h2><small>${esc(l.name)}</small></div>${recovered ? '<span class="pill good">Recuperado</span>' : ""}</div><div class="metric">${money(balance)}</div><p class="note">${l.dueDate ? "Vence: " + dlabel(l.dueDate) : "Sin vencimiento"} · Antecedente: ${money(l.opening)}</p>${model.state.transactions
           .filter((t) => t.ref === l.id)
           .map(
             (t) =>
-              `<div class="item row receivable-movement"><span>${t.date} · ${t.kind === "loan_in" ? "Cobro" : "Préstamo"} · ${money(t.amount)}</span>${btn("Revertir", "deleteTransaction", t.id)}</div>`,
+              `<div class="item row receivable-movement"><span>${dlabel(t.date, false)} · ${t.kind === "loan_in" ? "Cobro" : "Préstamo"} · ${money(t.amount)}</span>${btn("Revertir", "deleteTransaction", t.id)}</div>`,
           )
           .join(
             "",

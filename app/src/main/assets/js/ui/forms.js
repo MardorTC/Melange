@@ -1,8 +1,8 @@
 import { creditPayForm } from "../screens/credit.js";
 import { recurrenceFields, recurrenceValue } from "./recurrence-fields.js";
-import { accountName } from "../ui/components.js";
 import {
   modal,
+  accountName,
   svg,
   btn,
   input,
@@ -21,11 +21,20 @@ import {
   confirmAction,
   kindName,
   mlabel,
+  dlabel,
 } from "./components.js";
 import C from "../domain/finance.js";
 import { model } from "../state/model.js";
 import { commit } from "../state/ledger.js";
 import { paymentRow } from "../screens/home.js";
+
+const nameKey = (s) =>
+  String(s || "")
+    .toLowerCase()
+    .replace(/\bmsi\b|meses sin intereses/g, "")
+    .replace(/[^a-z0-9áéíóúüñ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 export function newMovement() {
   modal(
@@ -77,7 +86,7 @@ export function transactionForm(kind = "expense", existing) {
       t.creditCardId ? "credit:" + t.creditCardId : t.accountId,
     ) +
     (kind === "expense"
-      ? `<div id="credit-purchase-fields" ${t.creditCardId ? "" : "hidden"}><p class="note">La compra cuenta como gasto y usa crédito. Tu disponible libre solo cambia cuando pagas la tarjeta.</p>${input("cardDueDate", "Vencimiento del estado de cuenta (opcional)", t.cardDueDate || "", "date")}<p class="note">Si lo dejas vacío, se calcula usando corte y día de pago. Las compras del día de corte se incluyen en ese corte.</p></div>`
+      ? `<div id="credit-purchase-fields" ${t.creditCardId ? "" : "hidden"}><p class="note">La compra cuenta como gasto y usa crédito. Tu disponible libre solo cambia cuando pagas la tarjeta.</p>${input("cardDueDate", "Vencimiento del estado de cuenta (opcional)", t.cardDueDate || "", "date")}<p class="note">Si lo dejas vacío, se calcula usando corte y día de pago. Las compras del día de corte se incluyen en ese corte.</p><p class="note warning">Si esta compra es a MSI, regístrala como deuda vinculada a la tarjeta y no la dupliques aquí.</p></div>`
       : "") +
     (kind === "expense"
       ? select(
@@ -131,6 +140,22 @@ export function transactionForm(kind = "expense", existing) {
       };
       if (kind === "transfer" && f.toAccountId === f.accountId)
         throw Error("El origen y destino deben ser diferentes.");
+      if (kind === "expense" && value.creditCardId) {
+        const duplicate = model.state.debts.find(
+          (d) =>
+            d.creditCardId === value.creditCardId &&
+            d.originalAmount === value.amount &&
+            d.balance > 0 &&
+            !d.archived &&
+            d.startDate &&
+            nameKey(d.name) === nameKey(value.name) &&
+            C.month(d.startDate) === C.month(value.date),
+        );
+        if (duplicate)
+          throw Error(
+            `Ya registraste el MSI "${duplicate.name}" por ese importe. No registres también la compra normal: duplicaría la deuda.`,
+          );
+      }
       await commit(
         existing ? "Movimiento actualizado" : "Movimiento registrado",
         (s) => {
@@ -170,7 +195,7 @@ export function payForm(key, m) {
       : null;
   form(
     "Pagar " + item.name,
-    `<p class="note">${item.n ? "Cuota " + item.n + " · " : ""}Vencimiento: ${item.date}. Con dinero propio se descontará del origen; a crédito se agregará al pago de la tarjeta. Puedes abonar una parte; el resto seguirá pendiente.</p>` +
+    `<p class="note">${item.n ? "Cuota " + item.n + " · " : ""}Vencimiento: ${dlabel(item.date)}. Con dinero propio se descontará del origen; a crédito se agregará al pago de la tarjeta. Puedes abonar una parte; el resto seguirá pendiente.</p>` +
       paymentFields(
         d?.balanceMode === "total"
           ? Math.min(d.balance, item.remaining ?? item.amount)
@@ -271,7 +296,7 @@ export function editDebt(id) {
         ],
         d.creditCardId || "",
       ) +
-      '<p class="note">Solo para MSI. El saldo pendiente completo ocupa crédito; cada mensualidad se agrega al pago de la tarjeta. No registres también esta compra como gasto normal. Usa el día de vencimiento real de la tarjeta.</p>' +
+      '<p class="note">Solo para MSI. El saldo pendiente completo ocupa crédito; cada mensualidad se agrega al pago de la tarjeta. No registres también esta compra como gasto normal: duplicaría la deuda y el crédito usado. Al vincular una tarjeta, la deuda se guarda como MSI con saldo total y plazo. Los MSI creados como deuda no se suman a la dona de consumo.</p>' +
       amount("originalAmount", "Monto original", d.originalAmount) +
       amount("balance", "Saldo pendiente registrado", d.balance) +
       select(
@@ -331,22 +356,28 @@ export function editDebt(id) {
         : ""),
     async (f) => {
       await commit(id ? "Deuda actualizada" : "Deuda agregada", (s) => {
-        const debtId = id || C.id();
+        const debtId = id || C.id(),
+          linkedCard = f.creditCardId || "",
+          totalPayments = Number(f.totalPayments);
+        if (linkedCard && (!totalPayments || !f.startDate))
+          throw Error(
+            "Un MSI vinculado a tarjeta necesita un plazo mayor a cero y una fecha de primera cuota.",
+          );
         const value = {
           name: f.name.trim(),
           creditorId: f.creditorId,
-          creditCardId: f.creditCardId || null,
-          type: f.type,
+          creditCardId: linkedCard || null,
+          type: linkedCard ? "msi" : f.type,
           originalAmount: moneyValue(f.originalAmount),
           balance: moneyValue(f.balance),
           payment: moneyValue(f.payment),
-          totalPayments: Number(f.totalPayments),
+          totalPayments,
           startDate: f.startDate,
           dueDay: Number(f.dueDay),
           financingCost: moneyValue(f.financingCost || "0"),
           annualRate: Number(f.annualRate),
           notes: f.notes,
-          balanceMode: f.balanceMode,
+          balanceMode: linkedCard ? "total" : f.balanceMode,
         };
         if (
           id &&
@@ -367,6 +398,26 @@ export function editDebt(id) {
           );
         if (!value.name) throw Error("Escribe un nombre.");
         if (value.payment <= 0) throw Error("La cuota debe ser mayor a cero.");
+        if (
+          linkedCard &&
+          (!id ||
+            d.creditCardId !== linkedCard ||
+            d.originalAmount !== value.originalAmount ||
+            d.startDate !== value.startDate)
+        ) {
+          const duplicate = s.transactions.find(
+            (t) =>
+              C.isCreditPurchase(t) &&
+              t.creditCardId === linkedCard &&
+              t.amount === value.originalAmount &&
+              nameKey(t.name) === nameKey(value.name) &&
+              C.month(t.date) === C.month(value.startDate),
+          );
+          if (duplicate)
+            throw Error(
+              `Ya registraste "${duplicate.name}" por ese importe en esta tarjeta. Si es la misma compra, no la dupliques como MSI: revisa la compra o elimina una de las dos fuentes.`,
+            );
+        }
         if (id)
           Object.assign(
             s.debts.find((x) => x.id === id),
@@ -543,11 +594,18 @@ export function contribute(id) {
 
 export function deleteEntity(type, id) {
   if (type === "Debt") {
-    const d = model.state.debts.find((x) => x.id === id),
-      linked =
-        model.state.transactions.some((t) => t.ref === id) ||
-        C.allocations(model.state).some((a) => a.ref === id) ||
-        d.paidPayments.length > 0;
+    const d = model.state.debts.find((x) => x.id === id);
+    if (d.balance > 0) {
+      modal(
+        "Esta deuda tiene saldo",
+        `<p>Liquida o corrige el saldo antes de eliminarla o archivarla. Así no desaparece una deuda pendiente de tus totales.</p>${btn("Entendido", "close", "", "full")}`,
+      );
+      return;
+    }
+    const linked =
+      model.state.transactions.some((t) => t.ref === id) ||
+      C.allocations(model.state).some((a) => a.ref === id) ||
+      d.paidPayments.length > 0;
     confirmAction(
       linked ? "Archivar deuda" : "Eliminar deuda",
       linked
@@ -623,7 +681,7 @@ export function transactionDetails(id) {
   const t = model.state.transactions.find((x) => x.id === id);
   modal(
     t.name,
-    `<div class="details"><div><small>Importe</small><strong>${money(t.amount)}</strong></div><div><small>Tipo</small>${kindName(t.kind)}</div><div><small>Fecha</small>${t.date}</div><div><small>Origen</small>${esc(accountName(t.accountId || t.creditCardId))}</div></div>${t.historical ? '<p class="note">Importado de v6. Este gasto ya está contemplado en el saldo inicial; no se volvió a descontar.</p>' : ""}${t.kind === "card_payment" ? `<h3>Desglose del pago</h3>${t.allocations.map((a) => `<p>${esc(a.kind === "debt" ? model.state.debts.find((d) => d.id === a.ref)?.name + " · Cuota " + a.n : a.kind === "opening" ? "Saldo anterior" : model.state.transactions.find((p) => p.id === a.ref)?.name)}: ${money(a.amount)}</p>`).join("")}` : t.creditCardId ? `<p class="note">Compra a crédito · Vence ${t.cardDueDate}. No descontó dinero de tus cuentas.</p>` : ""}${t.obligation ? '<p class="note">Vinculado a un compromiso de ' + mlabel(t.period) + ".</p>" : ""}`,
+    `<div class="details"><div><small>Importe</small><strong>${money(t.amount)}</strong></div><div><small>Tipo</small>${kindName(t.kind)}</div><div><small>Fecha</small>${dlabel(t.date)}</div><div><small>Origen</small>${esc(accountName(t.accountId || t.creditCardId))}</div></div>${t.historical ? '<p class="note">Importado de v6. Este gasto ya está contemplado en el saldo inicial; no se volvió a descontar.</p>' : ""}${t.kind === "card_payment" ? `<h3>Desglose del pago</h3>${t.allocations.map((a) => `<p>${esc(a.kind === "debt" ? model.state.debts.find((d) => d.id === a.ref)?.name + " · Cuota " + a.n : a.kind === "opening" ? "Saldo anterior" : model.state.transactions.find((p) => p.id === a.ref)?.name)}: ${money(a.amount)}</p>`).join("")}` : t.creditCardId ? `<p class="note">Compra a crédito · Vence ${dlabel(t.cardDueDate)}. No descontó dinero de tus cuentas.</p>` : ""}${t.obligation ? '<p class="note">Vinculado a un compromiso de ' + mlabel(t.period) + ".</p>" : ""}<div class="toolbar wrap"><button class="btn" data-action="editTransaction" data-id="${esc(t.id)}">Editar</button><button class="btn danger" data-action="deleteTransaction" data-id="${esc(t.id)}">Eliminar</button></div>`,
   );
 }
 
@@ -652,7 +710,7 @@ export function debtDetails(id) {
         .filter((t) => t.ref === id)
         .map(
           (t) =>
-            `<div class="item row"><span>${t.date}</span><strong>${money(t.amount)}</strong></div>`,
+            `<div class="item row"><span>${dlabel(t.date, false)}</span><strong>${money(t.amount)}</strong></div>`,
         )
         .join("") || '<p class="muted">Sin movimientos nuevos.</p>'
     }`,

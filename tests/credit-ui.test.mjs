@@ -149,6 +149,7 @@ try {
     /Compra por conciliar/,
   );
   await page.locator('dialog [data-action="close"]').click();
+  await page.locator(".more-actions summary").first().click();
   await page
     .locator(`[data-action="creditUnassigned"][data-id="${cardId}"]`)
     .click();
@@ -168,6 +169,7 @@ try {
   assert.equal(reconciled.summary.unassigned, 10000);
   assert.equal(reconciled.remaining, 30000);
   assert.equal(reconciled.debit, 440000);
+  await page.locator(".more-actions summary").first().click();
   await page
     .locator(`[data-action="creditApply"][data-id="${cardId}"]`)
     .click();
@@ -243,9 +245,63 @@ try {
       .count(),
     1,
   );
+  await page.locator("nav [data-id=debt]").click();
+  await page.locator('[data-action="editDebt"]').first().click();
+  await page.locator("[name=name]").fill("MSI de prueba");
+  await page.locator("[name=creditCardId]").selectOption(cardId);
+  await page.locator("[name=originalAmount]").fill("1200");
+  await page.locator("[name=balance]").fill("1200");
+  await page.locator("[name=payment]").fill("100");
+  await page.locator("[name=totalPayments]").fill("12");
+  await page.locator("[name=priorPaid]").fill("0");
+  await page.locator("[name=startDate]").fill(C.month() + "-01");
+  await page.locator("[name=dueDay]").fill("20");
+  await page.locator("[name=financingCost]").fill("0");
+  await page.locator("[name=annualRate]").fill("0");
+  await page.locator("[name=type]").selectOption("loan");
+  await page.locator("[name=balanceMode]").selectOption("principal");
+  await page.locator('#form [type="submit"]').click();
+  await page.locator("dialog").waitFor({ state: "hidden" });
+  const forced = await page.evaluate(async () => {
+    const { model } = await import("/js/state/model.js");
+    const d = model.state.debts.at(-1);
+    return {
+      type: d.type,
+      balanceMode: d.balanceMode,
+      creditCardId: d.creditCardId,
+    };
+  });
+  assert.deepEqual(forced, {
+    type: "msi",
+    balanceMode: "total",
+    creditCardId: cardId,
+  });
+  await page.locator("nav [data-id=calendar]").click();
+  await page.getByRole("button", { name: "Ruta de deudas" }).click();
+  const routeText = await page.locator("#view").innerText();
+  assert.match(routeText, /MSI de prueba/);
+  assert.doesNotMatch(routeText, /Suscripción en tarjeta/);
+  await page.getByRole("button", { name: "Volver" }).click();
+  await page.locator("nav [data-id=home]").click();
+  await page.getByRole("button", { name: "Nuevo gasto", exact: true }).click();
+  await page.locator("[name=name]").fill("MSI de prueba");
+  await page.locator("[name=amount]").fill("1200");
+  await page.locator("[name=accountId]").selectOption("credit:" + cardId);
+  await page.locator('#form [type="submit"]').click();
+  assert.match(
+    await page.locator(".form-error").innerText(),
+    /Ya registraste el MSI "MSI de prueba"/,
+  );
+  await page.locator('dialog [data-action="close"]').first().click();
+  await page.getByRole("button", { name: "Nuevo gasto", exact: true }).click();
+  await page.locator("[name=name]").fill("Otra compra");
+  await page.locator("[name=amount]").fill("1200");
+  await page.locator("[name=accountId]").selectOption("credit:" + cardId);
+  await page.locator('#form [type="submit"]').click();
+  await page.locator("dialog").waitFor({ state: "hidden" });
   assert.deepEqual(errors, []);
   console.log(
-    "Credit UI: v8 migration and original backup, card creation, purchase, reload, payment and mobile/landscape layout passed.",
+    "Credit UI: v8 migration and original backup, card creation, purchase, reload, payment, forced MSI fields, debt route, duplicate-name guard and mobile/landscape layout passed.",
   );
 } finally {
   await browser?.close();

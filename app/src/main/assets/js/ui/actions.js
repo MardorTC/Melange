@@ -2,8 +2,7 @@ import { creditAction } from "../screens/credit.js";
 import { accountAction } from "../screens/accounts.js";
 import { loanAction } from "../screens/receivables.js";
 import { updateAction } from "../platform/updates.js";
-import { reconstructionAction } from "../screens/reconstruction.js";
-import { backPage, render } from "./navigation.js";
+import { backPage, openPage, render } from "./navigation.js";
 import { model } from "../state/model.js";
 import C from "../domain/finance.js";
 import {
@@ -19,6 +18,7 @@ import {
   select,
   esc,
   empty,
+  confirmAction,
 } from "./components.js";
 import { commit, undo } from "../state/ledger.js";
 import {
@@ -58,10 +58,6 @@ export async function action(a, id, el) {
     render();
     return;
   }
-  if (a.startsWith("rebuild")) {
-    await reconstructionAction(a, id, el);
-    return;
-  }
   if (a === "screenBack") {
     backPage();
     return;
@@ -74,26 +70,38 @@ export async function action(a, id, el) {
   if (a === "tab") {
     model.tab = id;
     model.period = C.month();
+    model.calendarDay = "";
     closeModal();
     render();
     window.scrollTo(0, 0);
   } else if (a === "close") closeModal();
-  else if (a === "settings") {
-    model.tab = "settings";
-    render();
-    window.scrollTo(0, 0);
-  } else if (a === "start")
-    await commit("App preparada", (s) => {
+  else if (a === "settings") openPage("settings");
+  else if (a === "start") startSetup();
+  else if (a === "startEmpty")
+    await commit("Libro iniciado", (s) => {
       s.started = true;
       C.ensureBudget(s);
     });
-  else if (a === "undo") await undo();
+  else if (a === "calendarDay") {
+    model.calendarDay = id && id !== model.calendarDay ? String(id) : "";
+    render();
+  } else if (a === "undo") await undo();
   else if (a === "expense" || a === "income" || a === "transfer")
     transactionForm(a);
   else if (a === "newMovement") newMovement();
   else if (a === "choosePayment") choosePayment();
   else if (a === "pay") payForm(id, el.dataset.period || C.month());
   else if (a === "editDebt") editDebt(id);
+  else if (a === "debtUnarchive")
+    confirmAction(
+      "Reactivar deuda",
+      "Volverá a generar sus compromisos pendientes.",
+      "Deuda reactivada",
+      (s) => {
+        s.debts.find((d) => d.id === id).archived = false;
+        C.refreshAllBudgets(s);
+      },
+    );
   else if (a === "editFixed") editFixed(id);
   else if (a === "editGoal") editGoal(id);
   else if (a === "contribute") contribute(id);
@@ -125,10 +133,8 @@ export async function action(a, id, el) {
   } else if (a === "expenseSub") {
     model.sub = id;
     render();
-  } else if (a === "filters") {
-    model.showFilters = !model.showFilters;
-    render();
-  } else if (a === "clearFilters") {
+  } else if (a === "filters") openFilters();
+  else if (a === "clearFilters") {
     model.filter = {
       q: "",
       from: "",
@@ -139,9 +145,11 @@ export async function action(a, id, el) {
       min: "",
       max: "",
     };
+    closeModal();
     render();
   } else if (a === "prev" || a === "next") {
     model.period = C.addMonth(model.period, a === "prev" ? -1 : 1);
+    model.calendarDay = "";
     render();
   } else if (a === "projection") showProjection();
   else if (a === "timeline") timeline();
@@ -252,4 +260,52 @@ export async function action(a, id, el) {
         empty("Sin cambios", "Tus próximas acciones aparecerán aquí.")
       }`,
     );
+}
+
+function openFilters() {
+  form(
+    "Filtrar movimientos",
+    `<p class="note">Los filtros se aplican a la lista y al consumo del periodo.</p><div class="filters">${input("from", "Desde", model.filter.from, "date")}${input("to", "Hasta", model.filter.to, "date")}${select("category", "Categoría", [["", "Todas"], ...model.state.categories.map((c) => [c.id, c.name])], model.filter.category)}${select("accountId", "Origen", [["", "Todos"], ...[...model.state.walletAccounts, ...model.state.creditCards].map((a) => [a.id, a.name])], model.filter.accountId)}${select("kind", "Tipo", [["", "Todos"], ...["expense", "fixed", "debt", "income", "transfer", "adjustment", "loan_out", "loan_in", "card_payment"].map((k) => [k, kindLabel(k)])], model.filter.kind)}${input("min", "Importe mínimo", model.filter.min, "number", 'min="0" step="0.01"')}${input("max", "Importe máximo", model.filter.max, "number", 'min="0" step="0.01"')}</div><button type="button" class="btn" data-action="clearFilters">Limpiar filtros</button>`,
+    async (f) => {
+      model.filter = { ...model.filter, ...f };
+      closeModal();
+      render();
+    },
+    "Aplicar filtros",
+  );
+}
+
+function kindLabel(k) {
+  return (
+    {
+      expense: "Gasto",
+      card_payment: "Pago de tarjeta",
+      fixed: "Gasto fijo",
+      debt: "Pago de deuda",
+      income: "Ingreso",
+      transfer: "Transferencia",
+      adjustment: "Ajuste",
+      loan_out: "Dinero prestado",
+      loan_in: "Cobro de préstamo",
+    }[k] || k
+  );
+}
+
+function startSetup() {
+  form(
+    "Tu punto de partida",
+    `<p class="note">Saldos de hoy, no un historial. Puedes corregirlos después.</p><div class="start-fields">${amount("cash", "Efectivo actual", 0)}${amount("debit", "Débito actual", 0)}${amount("income", "Ingreso mensual previsto", 0)}</div>`,
+    async (f) =>
+      commit("Libro iniciado", (s) => {
+        s.started = true;
+        const cash = s.walletAccounts.find((a) => a.id === "cash"),
+          debit = s.walletAccounts.find((a) => a.id === "debit");
+        if (cash) cash.opening = moneyValue(f.cash || "0");
+        if (debit) debit.opening = moneyValue(f.debit || "0");
+        s.income = moneyValue(f.income || "0");
+        C.ensureBudget(s);
+      }),
+    "Empezar",
+    { cancelLabel: "Omitir", cancelAction: "startEmpty" },
+  );
 }

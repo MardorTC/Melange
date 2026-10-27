@@ -102,6 +102,12 @@ export function statement(s, cardId, period, items) {
           : Math.min(i.remaining, d.balance)),
     });
   }
+  const explicit = lines
+      .filter((line) => line.kind === "opening" || line.kind === "purchase")
+      .map((line) => line.date)
+      .sort(),
+    statementDate = explicit[0] || L.dueDate(period, card.paymentDay);
+  for (const line of lines) if (line.kind === "debt") line.date = statementDate;
   lines.sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
@@ -116,7 +122,7 @@ export function statement(s, cardId, period, items) {
     ref: cardId,
     name: card.name,
     period,
-    date: lines[0]?.date || L.dueDate(period, card.paymentDay),
+    date: statementDate,
     amount,
     remaining,
     recorded: amount - remaining,
@@ -153,10 +159,13 @@ export function validateCredit(s) {
       (!ids.has(d.creditCardId) ||
         d.type !== "msi" ||
         d.balanceMode !== "total" ||
-        !d.totalPayments)
+        !d.totalPayments ||
+        !L.validDate(d.startDate) ||
+        !money(d.payment) ||
+        !d.payment)
     )
       throw Error(
-        "Solo se pueden vincular MSI con plazo y saldo total a una tarjeta.",
+        "Un MSI vinculado a tarjeta necesita plazo, fecha de primera cuota y cuota mayor a cero.",
       );
   for (const t of s.transactions) {
     if (

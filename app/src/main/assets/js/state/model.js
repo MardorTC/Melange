@@ -1,16 +1,15 @@
 import C from "../domain/finance.js";
 
 export const model = {
-  rebuildDraft: null,
   revision: 0,
   routes: [],
-  rebuildPaymentMonth: "",
   state: undefined,
   history: [],
   tab: "home",
   sub: "all",
   debtSub: "owe",
   accountSub: "wallet",
+  calendarDay: "",
   period: C.month(),
   busy: false,
   formSubmit: null,
@@ -26,5 +25,4 @@ export const model = {
     min: "",
     max: "",
   },
-  showFilters: false,
 };

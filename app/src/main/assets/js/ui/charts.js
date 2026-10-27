@@ -1,5 +1,5 @@
 import { model } from "../state/model.js";
-import { empty, esc, money, colors } from "./components.js";
+import { empty, esc, money, colors, dlabel } from "./components.js";
 
 export function donut(tx) {
   const map = {};
@@ -30,12 +30,14 @@ export function donut(tx) {
       "Los movimientos del periodo aparecerán aquí.",
     );
   let offset = 0;
+  const circumference = 320.442;
   return `<div class="donut-wrap"><svg class="donut" viewBox="0 0 140 140" role="img" aria-label="Gasto por categoría: ${esc(pairs.map(([n, a]) => n + " " + money(a)).join(", "))}"><circle cx="70" cy="70" r="51" fill="none" stroke="#eee8dd" stroke-width="20"/>${pairs
     .map(([name, a], i) => {
-      const len = (a / total) * 320.442,
+      const exact = (a / total) * circumference,
+        len = Math.min(circumference, exact + 0.6),
         off = offset;
-      offset += len;
-      return `<circle cx="70" cy="70" r="51" fill="none" stroke="${colors[i]}" stroke-width="20" stroke-dasharray="${len} ${320.442 - len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${esc(name)}: ${money(a)}</title></circle>`;
+      offset += exact;
+      return `<circle cx="70" cy="70" r="51" fill="none" stroke="${colors[i]}" stroke-width="20" stroke-dasharray="${len} ${Math.max(0, circumference - len)}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${esc(name)}: ${money(a)}</title></circle>`;
     })
     .join(
       "",
@@ -62,14 +64,16 @@ export function lineChart(all) {
   const points = h.map((p) => `${x(p.date)},${y(p.value)}`).join(" "),
     last = h.at(-1),
     change = h.length > 1 ? last.value - h.at(-2).value : null;
-  return `<div class="history-chart"><div class="history-readout" aria-live="polite"><div><small data-chart-date>${last.date}</small><strong data-chart-value>${money(last.value)}</strong></div><span data-chart-change>${change === null ? "Primer registro" : `${change > 0 ? "+" : ""}${money(change)} vs anterior`}</span></div><p class="note">Saldo en efectivo y bancos, incluidas reservas y cajitas. Excluye vales. Toca un punto o desliza para ver cada registro.</p><div class="history-plot"><svg viewBox="0 0 1000 180" preserveAspectRatio="none" aria-hidden="true"><path d="M10 30H990M10 90H990M10 150H990" class="history-grid"/><polygon points="${x(h[0].date)},170 ${points} ${x(last.date)},170" class="history-area"/><polyline points="${points}" class="history-line" vector-effect="non-scaling-stroke"/></svg>${h.map((p, i) => `<button type="button" class="history-point" data-chart-point="${i}" data-date="${p.date}" data-value="${p.value}" data-change="${i ? p.value - h[i - 1].value : ""}" style="left:${x(p.date) / 10}%;top:${y(p.value) / 1.8}%" aria-label="${p.date}: ${money(p.value)}" aria-pressed="${i === h.length - 1}"></button>`).join("")}</div><input type="range" data-chart-slider min="0" max="${h.length - 1}" step="1" value="${h.length - 1}" aria-label="Explorar registros de saldo" ${h.length === 1 ? "disabled" : ""}><div class="chart-labels"><span>${h[0].date}</span><span>${last.date}</span></div><div class="history-range"><span>Mínimo <strong>${money(min)}</strong></span><span>Máximo <strong>${money(max)}</strong></span></div></div>`;
+  return `<div class="history-chart"><div class="history-readout" aria-live="polite"><div><small data-chart-date>${dlabel(last.date)}</small><strong data-chart-value>${money(last.value)}</strong></div><span data-chart-change>${change === null ? "Primer registro" : `${change > 0 ? "+" : ""}${money(change)} vs anterior`}</span></div><p class="note">Saldo en efectivo y bancos, incluidas reservas y cajitas. Excluye vales. Toca un punto o desliza para ver cada registro.</p><div class="history-plot"><svg viewBox="0 0 1000 180" preserveAspectRatio="none" aria-hidden="true"><path d="M10 30H990M10 90H990M10 150H990" class="history-grid"/><polygon points="${x(h[0].date)},170 ${points} ${x(last.date)},170" class="history-area"/><polyline points="${points}" class="history-line" vector-effect="non-scaling-stroke"/></svg>${h.map((p, i) => `<button type="button" class="history-point" data-chart-point="${i}" data-date="${p.date}" data-value="${p.value}" data-change="${i ? p.value - h[i - 1].value : ""}" style="left:${x(p.date) / 10}%;top:${y(p.value) / 1.8}%" aria-label="${dlabel(p.date)}: ${money(p.value)}" aria-pressed="${i === h.length - 1}"></button>`).join("")}</div><input type="range" data-chart-slider min="0" max="${h.length - 1}" step="1" value="${h.length - 1}" aria-label="Explorar registros de saldo" ${h.length === 1 ? "disabled" : ""}><div class="chart-labels"><span>${dlabel(h[0].date, false)}</span><span>${dlabel(last.date, false)}</span></div><div class="history-range"><span>Mínimo <strong>${money(min)}</strong></span><span>Máximo <strong>${money(max)}</strong></span></div></div>`;
 }
 
 export function selectHistoryPoint(point) {
   if (!point) return;
   const chart = point.closest(".history-chart"),
     change = point.dataset.change;
-  chart.querySelector("[data-chart-date]").textContent = point.dataset.date;
+  chart.querySelector("[data-chart-date]").textContent = dlabel(
+    point.dataset.date,
+  );
   chart.querySelector("[data-chart-value]").textContent = money(
     Number(point.dataset.value),
   );

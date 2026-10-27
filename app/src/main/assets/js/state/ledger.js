@@ -32,7 +32,6 @@ export async function commit(label, fn) {
     await writeStore({
       state: model.state,
       history: nextHistory,
-      draft: model.rebuildDraft,
       revision: model.revision + 1,
     });
     model.revision++;
@@ -62,7 +61,6 @@ export async function undo() {
     await writeStore({
       state: next,
       history: model.history.slice(0, -1),
-      draft: model.rebuildDraft,
       revision: model.revision + 1,
     });
     model.revision++;

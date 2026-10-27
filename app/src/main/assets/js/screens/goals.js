@@ -1,22 +1,41 @@
 import C from "../domain/finance.js";
 import { model } from "../state/model.js";
-import { icon, metric, money, esc, empty, btn, svg } from "../ui/components.js";
+import {
+  icon,
+  metric,
+  money,
+  esc,
+  empty,
+  btn,
+  svg,
+  screenHead,
+  sectionHead,
+  dlabel,
+} from "../ui/components.js";
 
 export function goalsPage() {
   const m = C.metrics(model.state);
-  return `<div class="debt-page-heading"><div><div class="eyebrow">Dale un propósito</div><h1>Metas de ahorro</h1><p>Tu próximo objetivo, un paso más cerca.</p></div>${icon("plus", "Crear meta", "editGoal")}</div><div class="card hero"><small>Dinero reservado</small>${metric(m.reserved, "reserved")}<small>Disponible para otros usos: ${money(m.available)}</small></div><p class="note">Reservar dinero no crea un gasto ni una cuenta nueva. Las reservas forman parte de tu efectivo y débito.</p>${
-    model.state.goals.length
+  return (
+    screenHead("Metas", "Lo que estás construyendo.", {
+      action: "editGoal",
+      actionLabel: "Crear meta",
+    }) +
+    `<section class="card hero goal-summary"><div><small>Dinero reservado</small><div class="metric">${money(m.reserved)}</div><p class="note">Disponible para otros usos: ${money(m.available)}</p></div><span class="visual-icon goal">${svg("goal")}</span></section>` +
+    sectionHead(
+      "Tus objetivos",
+      "",
+      "Reservar dinero no crea un gasto ni una cuenta nueva.",
+    ) +
+    (model.state.goals.length
       ? model.state.goals
           .map((g) => {
             const pct = g.target
               ? Math.min(100, (g.balance / g.target) * 100)
               : 0;
-            return `<section class="card goal-card"><div class="row"><div class="wallet-title"><span class="visual-icon goal">${svg("goal")}</span><h2>${esc(g.name)}</h2></div><span class="pill ${pct >= 100 ? "good" : ""}">${Math.round(pct)}%</span></div><div class="goal-amount"><div class="metric">${money(g.balance)}</div><small>de ${money(g.target)}</small></div><div class="bar"><span style="width:${pct}%"></span></div><p class="goal-remaining">${pct >= 100 ? "Objetivo alcanzado" : "Faltan " + money(g.target - g.balance)}</p><div class="goal-footer"><small>${g.date ? "Objetivo: " + g.date : g.emergency ? "Tu colchón de tranquilidad" : "A tu ritmo"}</small><div class="actions">${btn("Reservar / liberar", "contribute", g.id, "primary")}${icon("edit", "Editar meta", "editGoal", g.id)}${icon("trash", "Eliminar meta y liberar reserva", "deleteGoal", g.id)}</div></div></section>`;
+            return `<section class="card goal-card-new"><div class="goal-top"><div class="goal-ring" style="--p:${pct}"><span>${Math.round(pct)}%</span></div><div class="goal-copy"><h2>${esc(g.name)}</h2><small>${g.date ? "Objetivo " + dlabel(g.date) : "A tu ritmo"}</small></div>${icon("edit", "Editar meta", "editGoal", g.id)}</div><div class="goal-figures"><strong>${money(g.balance)}</strong><span>de ${money(g.target)}</span></div><p class="goal-remaining">${pct >= 100 ? "Objetivo alcanzado" : "Faltan " + money(g.target - g.balance)}</p><div class="bar"><span style="--p:${pct}%"></span></div><div class="goal-actions">${btn("Reservar / liberar", "contribute", g.id, "primary")}${icon("trash", "Eliminar meta y liberar reserva", "deleteGoal", g.id)}</div></section>`;
           })
           .join("")
-      : empty(
-          "¿Qué quieres hacer posible?",
-          "Crea una meta para tu fondo de emergencia, un viaje o una compra.",
-        )
-  }`;
+      : `<section class="card">${empty("¿Qué quieres hacer posible?", "Crea una meta para tu fondo de emergencia, un viaje o una compra.")}</section>`) +
+    `<details class="fine-print"><summary>Cómo funciona</summary><p>Las reservas forman parte de tu efectivo y débito, pero no están disponibles para gastar. Puedes liberarlas cuando quieras.</p></details>`
+  );
 }

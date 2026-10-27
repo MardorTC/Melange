@@ -22,15 +22,15 @@ public class MainActivity extends Activity {
     super.onCreate(saved);
     store = new LedgerStore(this);
     backups = new BackupController(this);
-    getWindow().setStatusBarColor(Color.rgb(242, 232, 214));
-    getWindow().setNavigationBarColor(Color.rgb(255, 253, 248));
+    getWindow().setStatusBarColor(Color.rgb(247, 242, 233));
+    getWindow().setNavigationBarColor(Color.rgb(255, 253, 249));
     getWindow()
         .getDecorView()
         .setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
     LinearLayout root = new LinearLayout(this);
     root.setOrientation(LinearLayout.VERTICAL);
-    root.setBackgroundColor(Color.rgb(242, 232, 214));
+    root.setBackgroundColor(Color.rgb(247, 242, 233));
     root.setOnApplyWindowInsetsListener(
         (v, insets) -> {
           v.setPadding(
@@ -53,7 +53,7 @@ public class MainActivity extends Activity {
     settings.setSupportZoom(false);
     settings.setMediaPlaybackRequiresUserGesture(true);
     updates = new UpdateController(this, backups);
-    web.setBackgroundColor(Color.rgb(242, 232, 214));
+    web.setBackgroundColor(Color.rgb(247, 242, 233));
     web.addJavascriptInterface(new NativeBridge(this, store, backups, updates), "NativeOSP");
     web.setWebViewClient(new WebViewHost(this));
     web.setWebChromeClient(new WebChromeClient());

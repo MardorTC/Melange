@@ -25,10 +25,26 @@ const fs = require("fs");
       throw Error("Unexpected native browser dialog");
     });
     await page.goto(testUrl);
+    assert.equal(await page.locator("nav button").count(), 0);
+    assert.equal(
+      await page
+        .getByText("Reconstruir meses anteriores", { exact: true })
+        .count(),
+      0,
+    );
     await page
       .getByRole("button", { name: "Empezar desde cero", exact: true })
       .click();
+    await page.getByRole("button", { name: "Omitir", exact: true }).click();
     await page.getByRole("heading", { name: "Cada grano cuenta." }).waitFor();
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    assert.equal(
+      await page.evaluate(
+        () => getComputedStyle(document.querySelector(".page")).animationName,
+      ),
+      "none",
+    );
+    await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.getByRole("button", { name: "Ajustes", exact: true }).click();
     await page
       .getByRole("button", { name: "Ajustar saldos", exact: true })
@@ -41,6 +57,7 @@ const fs = require("fs");
       .click();
     await page.locator("[name=income]").fill("20000");
     await page.getByRole("button", { name: "Guardar", exact: true }).click();
+    await page.getByRole("button", { name: "Volver", exact: true }).click();
     await page.locator("nav [data-id=debt]").click();
     await page
       .getByRole("button", { name: "Agregar deuda", exact: true })
@@ -173,10 +190,14 @@ const fs = require("fs");
     await page
       .getByRole("button", { name: "Mostrar filtros", exact: true })
       .click();
-    await page.locator("#filters [name=kind]").selectOption("fixed");
+    await page.locator("#form [name=kind]").selectOption("fixed");
+    await page
+      .getByRole("button", { name: "Aplicar filtros", exact: true })
+      .click();
     assert.equal(await page.locator(".item-title").count(), 1);
     await page.locator("#search").fill("no existe");
     assert.equal(await page.locator(".item-title").count(), 0);
+    await page.locator("nav [data-id=home]").click();
     await page.getByRole("button", { name: "Ajustes", exact: true }).click();
     await page
       .getByRole("button", { name: "Importar respaldo", exact: true })
@@ -244,6 +265,21 @@ const fs = require("fs");
       path: "build/previews/Melange-metas.png",
       fullPage: true,
     });
+    await page.locator("nav [data-id=calendar]").click();
+    await page.getByRole("button", { name: "Ruta de deudas" }).click();
+    const routeText = await page.locator("#view").innerText();
+    assert.match(routeText, /Equipo de trabajo/);
+    assert.doesNotMatch(routeText, /Internet/);
+    await page.setViewportSize({ width: 360, height: 844 });
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > innerWidth,
+      ),
+      false,
+      "timeline overflow at 360",
+    );
+    await page.getByRole("button", { name: "Volver" }).click();
+    await page.setViewportSize({ width: 390, height: 844 });
     for (const width of [360, 390, 430, 1000]) {
       await page.setViewportSize({ width, height: 844 });
       for (const name of ["home", "expense", "debt", "calendar", "goal"]) {
@@ -259,6 +295,42 @@ const fs = require("fs");
         assert.equal(overflow, false, `${name} overflow at ${width}`);
       }
     }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator("nav [data-id=home]").click();
+    await page.getByRole("button", { name: "Ajustes", exact: true }).click();
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > innerWidth,
+      ),
+      false,
+      "settings overflow at 390",
+    );
+    await page.getByRole("button", { name: "Volver", exact: true }).click();
+    await page.locator("nav [data-id=calendar]").click();
+    await page.getByRole("button", { name: "Proyección", exact: true }).click();
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > innerWidth,
+      ),
+      false,
+      "projection overflow at 390",
+    );
+    await page.getByRole("button", { name: "Volver", exact: true }).click();
+    await page.getByRole("button", { name: "Ruta de deudas" }).click();
+    await page.getByRole("button", { name: "Volver", exact: true }).click();
+    await page.locator("nav [data-id=home]").click();
+    await page
+      .getByRole("button", { name: "Nuevo gasto", exact: true })
+      .click();
+    assert.equal(
+      await page.evaluate(
+        () => document.querySelector("dialog").scrollWidth > innerWidth,
+      ),
+      false,
+      "movement sheet overflow at 390",
+    );
+    await page.locator('dialog [data-action="close"]').first().click();
+
     await page.evaluate(async () => {
       const { model } = await import("/js/state/model.js");
       const { default: C } = await import("/js/domain/finance.js");
@@ -373,7 +445,7 @@ const fs = require("fs");
       return {
         schema: model.state.schemaVersion,
         balances: C.balances(model.state),
-        draft: model.rebuildDraft.version,
+        draft: "rebuildDraft" in model,
         history: model.history[0].state.schemaVersion,
         available: C.available(model.state),
       };
@@ -381,7 +453,7 @@ const fs = require("fs");
     assert.deepEqual(migrated, {
       schema: 10,
       balances: { cash: 12300, debit: 500000 },
-      draft: 2,
+      draft: false,
       history: 10,
       available: 212300,
     });

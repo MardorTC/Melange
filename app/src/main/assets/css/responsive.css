@@ -1,41 +1,53 @@
-@media (min-width: 650px) {
-  dialog {
-    margin: auto;
-    border-radius: 25px;
+/* The app is phone-first. Wider screens keep a comfortable reading column. */
+@media (min-width: 700px) {
+  main {
+    max-width: 640px;
   }
-  nav {
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: 760px;
-    border-radius: 22px 22px 0 0;
+
+  .home-hero {
+    margin-left: -16px;
+    margin-right: -16px;
+    border-radius: 0 0 34px 34px;
+  }
+
+  .snap-rail {
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
+
 @media (max-width: 359px) {
-  .donut-wrap {
-    grid-template-columns: 110px 1fr;
-    gap: 8px;
+  main {
+    padding-left: 13px;
+    padding-right: 13px;
   }
-  .donut {
-    width: 110px;
-    height: 110px;
+  .home-hero {
+    margin-left: -13px;
+    margin-right: -13px;
+    padding-left: 15px;
+    padding-right: 15px;
   }
-  .hero .metric {
-    font-size: 32px;
+  .screen-head h1 {
+    font-size: 26px;
   }
   .metric {
-    font-size: 22px;
+    font-size: 24px;
   }
   .actions {
-    gap: 2px;
+    gap: 3px;
   }
   .icon {
     min-width: 40px;
     width: 40px;
+    height: 40px;
+    padding: 9px;
   }
-}
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation: none !important;
-    transition: none !important;
+  .segmented button {
+    font-size: 12px;
+  }
+  .timeline-months span {
+    font-size: 8px;
   }
 }

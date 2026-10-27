@@ -3,13 +3,11 @@ import { model } from "../state/model.js";
 import {
   icon,
   esc,
-  input,
-  select,
-  accountOptions,
   kindName,
-  btn,
   money,
   empty,
+  svg,
+  screenHead,
 } from "../ui/components.js";
 import { donut } from "../ui/charts.js";
 import C from "../domain/finance.js";
@@ -34,6 +32,53 @@ export function filtered() {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
+const dayLabel = (date) => {
+  const today = C.today();
+  const d = new Date(today + "T12:00:00");
+  d.setDate(d.getDate() - 1);
+  const yesterday = d.toLocaleDateString("en-CA");
+  if (date === today) return "Hoy";
+  if (date === yesterday) return "Ayer";
+  return new Date(date + "T12:00:00").toLocaleDateString("es-MX", {
+    day: "numeric",
+    month: "long",
+  });
+};
+
+function movementRow(t) {
+  const iconName =
+    t.kind === "income"
+      ? "plus"
+      : ["debt", "card_payment"].includes(t.kind)
+        ? "card"
+        : t.kind === "transfer"
+          ? "transfer"
+          : "receipt";
+  const tone =
+    t.kind === "income"
+      ? "green"
+      : ["debt", "card_payment"].includes(t.kind)
+        ? "blue"
+        : t.kind === "transfer"
+          ? "gray"
+          : "";
+  return `<button class="movement-row" data-action="transactionDetails" data-id="${esc(t.id)}"><span class="row-icon ${tone}">${svg(iconName)}</span><span class="movement-copy"><strong class="item-title">${esc(t.name)}</strong><small>${esc(kindName(t.kind))} · ${esc(accountName(t.creditCardId || t.accountId))}${t.historical ? " · Importado" : ""}</small></span><span class="movement-amount ${t.kind === "income" ? "good" : ""}">${t.kind === "income" ? "+" : ""}${money(t.amount)}</span><span class="row-chevron">${svg("chevron")}</span></button>`;
+}
+
+function groupedMovements(tx) {
+  const groups = new Map();
+  for (const t of tx) {
+    if (!groups.has(t.date)) groups.set(t.date, []);
+    groups.get(t.date).push(t);
+  }
+  return [...groups.entries()]
+    .map(
+      ([date, items]) =>
+        `<div class="date-group"><div class="date-label">${dayLabel(date)}</div><section class="card expense-group">${items.map(movementRow).join("")}</section></div>`,
+    )
+    .join("");
+}
+
 export function expensesPage() {
   const tx = filtered(),
     out = tx
@@ -43,9 +88,31 @@ export function expensesPage() {
           !C.isCreditPurchase(t),
       )
       .reduce((a, t) => a + t.amount, 0);
-  return `<div class="row"><div><div class="eyebrow">Cada movimiento cuenta</div><h1>Movimientos</h1></div>${icon("plus", "Agregar movimiento", "newMovement")}</div><div class="chips"><button class="chip ${model.sub === "all" ? "selected" : ""}" data-action="expenseSub" data-id="all">Movimientos</button><button class="chip ${model.sub === "fixed" ? "selected" : ""}" data-action="expenseSub" data-id="fixed">Fijos y suscripciones</button></div>${model.sub === "fixed" ? fixedList() : `<div class="toolbar"><input id="search" aria-label="Buscar movimientos" placeholder="Buscar movimiento…" value="${esc(model.filter.q)}">${icon("settings", "Mostrar filtros", "filters")}</div>${model.showFilters ? `<div class="card filters" id="filters">${input("from", "Desde", model.filter.from, "date")}${input("to", "Hasta", model.filter.to, "date")}${select("category", "Categoría", [["", "Todas"], ...model.state.categories.map((c) => [c.id, c.name])], model.filter.category)}${select("accountId", "Origen", [["", "Todos"], ...[...model.state.walletAccounts, ...model.state.creditCards].map((a) => [a.id, a.name])], model.filter.accountId)}${select("kind", "Tipo", [["", "Todos"], ...["expense", "fixed", "debt", "income", "transfer", "adjustment", "loan_out", "loan_in", "card_payment"].map((k) => [k, kindName(k)])], model.filter.kind)}${input("min", "Importe mínimo", model.filter.min, "number", 'min="0" step="0.01"')}${input("max", "Importe máximo", model.filter.max, "number", 'min="0" step="0.01"')}${btn("Limpiar filtros", "clearFilters")}</div>` : ""}<div class="expenses-layout"><section class="card expense-chart"><h2>Consumo del periodo filtrado</h2>${donut(tx.filter((t) => ["expense", "fixed"].includes(t.kind)))}<p class="note">Mismos filtros que la lista. Pagos de deuda, transferencias y ajustes se muestran en movimientos, no en consumo.</p></section><section class="expense-list"><div class="row"><span class="muted">${tx.length} movimientos</span><strong>Salidas: ${money(out)}</strong></div><section class="card">${tx.length ? tx.map((t) => `<div class="item"><div class="row"><div><div class="item-title">${esc(t.name)}</div><p class="muted">${t.date} · ${kindName(t.kind)} · ${esc(accountName(t.creditCardId || t.accountId))} ${t.historical ? '<span class="badge">Importado</span>' : ""}</p></div><strong class="amount ${t.kind === "income" ? "good" : ""}">${t.kind === "income" ? "+" : ""}${money(t.amount)}</strong></div><div class="row" style="margin-top:8px"><small>${esc(model.state.categories.find((c) => c.id === t.categoryId)?.name || "Sin categoría")}</small><div class="actions">${icon("eye", "Ver movimiento", "transactionDetails", t.id)}${icon("edit", "Editar movimiento", "editTransaction", t.id)}${icon("trash", "Eliminar o revertir movimiento", "deleteTransaction", t.id)}</div></div></div>`).join("") : empty("Sin coincidencias", "Cambia los filtros o registra un movimiento.")}</section></section></div>`}`;
+  return (
+    screenHead("Movimientos", "Lo que entró y salió.", {
+      action: model.sub === "fixed" ? "editFixed" : "newMovement",
+      actionLabel:
+        model.sub === "fixed" ? "Agregar gasto fijo" : "Agregar movimiento",
+    }) +
+    `<div class="chips"><button class="chip ${model.sub === "all" ? "selected" : ""}" data-action="expenseSub" data-id="all">Movimientos</button><button class="chip ${model.sub === "fixed" ? "selected" : ""}" data-action="expenseSub" data-id="fixed">Fijos y suscripciones</button></div>` +
+    (model.sub === "fixed"
+      ? fixedList()
+      : `<div class="movement-toolbar"><div class="search-field">${svg("search")}<input id="search" aria-label="Buscar movimientos" placeholder="Buscar movimiento" value="${esc(model.filter.q)}"></div><button class="icon" data-action="filters" aria-label="Mostrar filtros" title="Mostrar filtros">${svg("tune")}</button></div><div class="expenses-layout"><details class="card expense-chart"><summary>Consumo por categoría</summary><div class="expense-chart-body">${donut(tx.filter((t) => ["expense", "fixed"].includes(t.kind)))}</div></details><div class="movement-summary"><span>${tx.length} movimientos</span><strong>Salidas ${money(out)}</strong></div><section class="expense-list">${tx.length ? groupedMovements(tx) : `<section class="card">${empty("Sin coincidencias", "Cambia los filtros o registra un movimiento.")}</section>`}</section></div>`)
+  );
 }
 
 export function fixedList() {
-  return `${btn("Agregar gasto fijo", "editFixed", "", "primary full")}<section class="card">${model.state.fixedExpenses.length ? model.state.fixedExpenses.map((f) => `<div class="item"><div class="row"><div><div class="item-title">${esc(f.name)}</div><p class="muted">${f.kind === "subscription" ? "Suscripción" : "Gasto fijo"} · ${esc(C.recurrenceLabel(f))}</p></div><strong>${money(f.amount)}</strong></div><div class="row" style="margin-top:9px"><span class="pill ${f.active !== false ? "good" : ""}">${f.active !== false ? "Activo" : "Archivado"}</span><div class="actions">${icon("eye", "Ver gasto fijo", "fixedDetails", f.id)}${icon("edit", "Editar gasto fijo", "editFixed", f.id)}${C.obligations(model.state).some((i) => i.ref === f.id && !i.paid) ? icon("pay", "Pagar gasto fijo", "pay", C.obligations(model.state).find((i) => i.ref === f.id && !i.paid)?.key || "", `data-period="${C.month()}"`) : ""}${icon("trash", "Archivar gasto fijo", "deleteFixed", f.id)}</div></div></div>`).join("") : empty("Haz visibles tus compromisos", "Renta, internet y suscripciones viven aquí.")}</section>`;
+  return `<section class="card">${
+    model.state.fixedExpenses.length
+      ? model.state.fixedExpenses
+          .map(
+            (f) =>
+              `<div class="item fixed-item"><div class="row"><div class="wallet-title"><span class="row-icon ${f.active !== false ? "blue" : "gray"}">${svg("receipt")}</span><div><strong class="item-title">${esc(f.name)}</strong><small class="section-note">${f.kind === "subscription" ? "Suscripción" : "Gasto fijo"} · ${esc(C.recurrenceLabel(f))}</small></div></div><strong class="amount">${money(f.amount)}</strong></div><div class="row" style="margin-top:9px"><span class="pill ${f.active !== false ? "good" : ""}">${f.active !== false ? "Activo" : "Archivado"}</span><div class="actions">${icon("eye", "Ver gasto fijo", "fixedDetails", f.id)}${icon("edit", "Editar gasto fijo", "editFixed", f.id)}${C.obligations(model.state).some((i) => i.ref === f.id && !i.paid) ? icon("pay", "Pagar gasto fijo", "pay", C.obligations(model.state).find((i) => i.ref === f.id && !i.paid)?.key || "", `data-period="${C.month()}"`) : ""}${icon("trash", "Archivar gasto fijo", "deleteFixed", f.id)}</div></div></div>`,
+          )
+          .join("")
+      : empty(
+          "Haz visibles tus compromisos",
+          "Renta, internet y suscripciones viven aquí.",
+        )
+  }</section>`;
 }

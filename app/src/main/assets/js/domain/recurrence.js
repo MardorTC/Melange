@@ -131,7 +131,21 @@ export function setRecurrence(s, f, rule) {
 }
 export function recurrenceLabel(f) {
   const r = rulesFor(f).at(-1);
-  return r.unit === "twiceMonthly"
-    ? `Días ${r.days.join(" y ")} de cada mes`
-    : `Cada ${r.interval} ${{ days: "día(s)", weeks: "semana(s)", months: "mes(es)", years: "año(s)" }[r.unit]}`;
+  if (r.unit === "twiceMonthly")
+    return `Días ${r.days.join(" y ")} de cada mes`;
+  const plural = {
+    days: "días",
+    weeks: "semanas",
+    months: "meses",
+    years: "años",
+  };
+  const singular = {
+    days: "día",
+    weeks: "semana",
+    months: "mes",
+    years: "año",
+  };
+  return r.interval === 1
+    ? `Cada ${singular[r.unit]}`
+    : `Cada ${r.interval} ${plural[r.unit]}`;
 }

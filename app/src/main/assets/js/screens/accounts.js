@@ -12,16 +12,27 @@ import {
   select,
   moneyValue,
   accountOptions,
-  accountName,
   confirmAction,
-  icon,
   metric,
   svg,
+  screenHead,
+  sectionHead,
+  modal,
+  empty,
+  dlabel,
 } from "../ui/components.js";
+
+const accountType = (a) =>
+  a.type === "restricted"
+    ? "Uso restringido"
+    : a.type === "bank"
+      ? "Cuenta bancaria"
+      : "Cuenta de efectivo";
+
 export function accountsPage() {
   const m = C.metrics(model.state);
   const selected = model.accountSub || "wallet";
-  const tabs = `<div class="debt-segments" role="tablist" aria-label="Tipo de cuenta"><button class="debt-segment ${selected === "wallet" ? "active" : ""}" role="tab" aria-selected="${selected === "wallet"}" data-action="accountSub" data-id="wallet">Efectivo y débito</button><button class="debt-segment ${selected === "credit" ? "active" : ""}" role="tab" aria-selected="${selected === "credit"}" data-action="accountSub" data-id="credit">Crédito</button></div>`;
+  const tabs = `<div class="segmented" role="tablist" aria-label="Tipo de cuenta"><button class="${selected === "wallet" ? "active" : ""}" role="tab" aria-selected="${selected === "wallet"}" data-action="accountSub" data-id="wallet">Efectivo y débito</button><button class="${selected === "credit" ? "active" : ""}" role="tab" aria-selected="${selected === "credit"}" data-action="accountSub" data-id="credit">Crédito</button></div>`;
   if (selected === "credit") {
     const cards = model.state.creditCards.filter((c) => c.active !== false),
       used = cards.reduce(
@@ -29,47 +40,96 @@ export function accountsPage() {
         0,
       ),
       limit = cards.reduce((n, c) => n + c.limit, 0);
-    return `<div class="debt-page-heading"><div><div class="eyebrow">Tus líneas de crédito</div><h1>Cuentas</h1><p>Consulta el crédito disponible y lo que deberás pagar.</p></div></div>${tabs}<section class="card hero credit-hero"><small>Crédito disponible</small>${metric(limit - used, "creditAvailable")}<div class="hero-bottom"><div><small>Crédito usado</small><strong>${money(used)}</strong></div><div><small>Límite total</small><strong>${money(limit)}</strong></div></div></section>${creditCardsSection()}`;
+    return (
+      screenHead("Cuentas", "Tu crédito, separado de tu dinero.", {
+        action: "creditEdit",
+        actionLabel: "Agregar tarjeta",
+      }) +
+      tabs +
+      `<section class="card credit-hero-compact"><div><small>Disponible</small><strong class="${limit - used < 0 ? "bad" : ""}" data-metric="creditAvailable" data-value="${limit - used}">${money(limit - used)}</strong></div><div><small>Usado</small><strong>${money(used)}</strong></div><div><small>Límite</small><strong>${money(limit)}</strong></div></section>` +
+      creditCardsSection()
+    );
   }
-  return `<div class="debt-page-heading"><div><div class="eyebrow">Cada saldo en su lugar</div><h1>Cuentas</h1><p>Separa lo que puedes usar de lo que has apartado.</p></div>${icon("plus", "Agregar cuenta", "walletEdit")}</div>${tabs}<section class="card hero"><small>Disponible libre</small>${metric(m.available, "walletFree")}<div class="hero-bottom"><div><small>Vales / despensa</small><strong>${money(m.restricted)}</strong></div><div><small>Congelado</small><strong>${money(m.frozen)}</strong></div></div></section>${
-    m.unassigned
-      ? `<section class="card"><h2>Reservas pendientes de asignar</h2><p>${money(m.unassigned)} ya se descuentan del disponible global.</p>${model.state.goals
+  const accounts = C.accountSummary(model.state),
+    active = accounts.filter((a) => a.active !== false),
+    archived = accounts.filter((a) => a.active === false);
+  return (
+    screenHead("Cuentas", "Cada saldo en su lugar.", {
+      action: "walletEdit",
+      actionLabel: "Agregar cuenta",
+    }) +
+    tabs +
+    `<section class="card hero"><small>Disponible libre</small>${metric(m.available, "walletFree")}<div class="hero-bottom"><div><small>Vales / despensa</small><strong>${money(m.restricted)}</strong></div><div><small>Congelado</small><strong>${money(m.frozen)}</strong></div></div></section>` +
+    (m.unassigned
+      ? `<section class="card"><h2>Reservas por asignar</h2><p class="note">${money(m.unassigned)} ya se descuentan del disponible global.</p>${model.state.goals
           .filter((g) => g.allocations.some((r) => !r.accountId))
           .map((g) => btn(g.name, "contribute", g.id))
           .join("")}</section>`
-      : ""
-  }${C.accountSummary(model.state)
-    .map(
-      (a) =>
-        `<section class="card wallet-card"><div class="row"><div class="wallet-title"><span class="visual-icon ${a.type === "restricted" ? "warning" : a.type === "cash" ? "success" : "neutral"}">${svg(a.type === "restricted" ? "ticket" : a.type === "cash" ? "cash" : "bank")}</span><h2>${esc(a.name)}</h2></div><span class="pill">${a.active === false ? "Archivada" : a.type === "restricted" ? "Uso restringido" : a.type === "bank" ? "Bancaria" : "Efectivo"}</span></div><div class="wallet-balance"><small>Saldo total</small><div class="metric">${money(a.total)}</div></div><div class="details">${[
-          ["Reservas", a.reserved],
-          ["Cajitas", a.frozen],
-          ["Disponible", a.available],
-        ]
-          .map(
-            ([k, v]) =>
-              `<div><small>${k}</small><strong>${money(v)}</strong></div>`,
-          )
-          .join(
-            "",
-          )}</div><div class="toolbar wrap">${icon("edit", "Editar cuenta", "walletEdit", a.id)}${a.active !== false ? btn("Ajustar saldo", "walletAdjust", a.id) + (a.type !== "restricted" ? btn("Crear cajita", "boxCreate", a.id) : "") + icon("trash", "Archivar cuenta", "walletArchive", a.id) : ""}</div>${model.state.goals
-          .filter((g) => g.allocations.some((r) => r.accountId === a.id))
-          .map((g) => btn("Reserva: " + g.name, "contribute", g.id))
-          .join("")}${model.state.boxes
-          .filter((b) => b.accountId === a.id)
-          .map(
-            (b) =>
-              `<div class="item"><strong>${esc(b.name)}</strong><p>${money(b.amount)} congelados · Disponibilidad prevista: ${b.availableDate}</p>${b.goalId ? `<p class="note">Meta: ${esc(model.state.goals.find((g) => g.id === b.goalId)?.name)}. La reserva permanece al descongelar.</p>` : ""}${b.amount ? btn("Confirmar liberación", "boxRelease", b.id) : '<span class="pill good">Liberada</span>'}${!b.goalId && b.amount ? btn("Vincular a meta", "boxLink", b.id) : ""}${a.active !== false ? btn("Registrar rendimiento recibido", "boxReturn", b.id) : ""}</div>`,
-          )
-          .join("")}</section>`,
-    )
-    .join("")}`;
+      : "") +
+    sectionHead(
+      "Tus cuentas",
+      "",
+      "Toca una cuenta para ver reservas y cajitas.",
+    ) +
+    `<section class="card account-list">${active.map(accountRow).join("") || empty("Sin cuentas", "Agrega una cuenta para separar tu dinero.")}</section>` +
+    (archived.length
+      ? `<details class="card settled-list"><summary>Cuentas archivadas (${archived.length})</summary>${archived.map(accountRow).join("")}</details>`
+      : "")
+  );
+}
+
+function accountRow(a) {
+  const iconName =
+    a.type === "cash" ? "cash" : a.type === "restricted" ? "ticket" : "bank";
+  return `<button class="account-row" data-action="walletDetails" data-id="${esc(a.id)}"><span class="row-icon ${a.type === "cash" ? "green" : a.type === "restricted" ? "gray" : "gray"}">${svg(iconName)}</span><span class="account-copy"><strong>${esc(a.name)}</strong><small>${accountType(a)}${a.reserved ? ` · ${money(a.reserved)} reservado` : ""}${a.frozen ? ` · ${money(a.frozen)} congelado` : ""}</small></span><span class="account-amount">${money(a.total)}</span><span class="account-chevron">${svg("chevron")}</span></button>`;
+}
+
+function walletDetails(id) {
+  const a = C.accountSummary(model.state).find((x) => x.id === id);
+  if (!a) return;
+  const goals = model.state.goals.filter((g) =>
+      g.allocations.some((r) => r.accountId === id),
+    ),
+    boxes = model.state.boxes.filter((b) => b.accountId === id);
+  modal(
+    a.name,
+    `<div class="details"><div><small>Saldo total</small><strong>${money(a.total)}</strong></div><div><small>Disponible</small><strong>${money(a.available)}</strong></div><div><small>Reservas</small><strong>${money(a.reserved)}</strong></div><div><small>Cajitas</small><strong>${money(a.frozen)}</strong></div></div>${
+      a.active === false
+        ? `<p class="note">Esta cuenta está archivada y conserva sus movimientos.</p><div class="toolbar wrap">${btn("Reactivar cuenta", "walletReactivate", a.id, "primary")}</div>`
+        : `<div class="toolbar wrap">${btn("Ajustar saldo", "walletAdjust", a.id, "primary")}${a.type !== "restricted" ? btn("Crear cajita", "boxCreate", a.id) : ""}${btn("Editar", "walletEdit", a.id)}${btn("Archivar", "walletArchive", a.id, "danger")}</div>`
+    }${
+      goals.length
+        ? `<h3>Reservas</h3><section class="list">${goals.map((g) => `<button class="list-row" data-action="contribute" data-id="${g.id}"><span class="row-icon green">${svg("goal")}</span><span class="row-copy"><strong>${esc(g.name)}</strong><small>${money(g.balance)} de ${money(g.target)}</small></span><span class="row-chevron">${svg("chevron")}</span></button>`).join("")}</section>`
+        : ""
+    }${
+      boxes.length
+        ? `<h3>Cajitas</h3><section class="list">${boxes
+            .map(
+              (b) =>
+                `<div class="item"><div class="row"><strong>${esc(b.name)}</strong><span class="amount">${money(b.amount)}</span></div><p class="muted">Congelado hasta ${dlabel(b.availableDate)}${b.goalId ? ` · Meta: ${esc(model.state.goals.find((g) => g.id === b.goalId)?.name || "")}` : ""}</p><div class="actions">${b.amount ? btn("Confirmar liberación", "boxRelease", b.id) : '<span class="pill good">Liberada</span>'}${!b.goalId && b.amount ? btn("Vincular a meta", "boxLink", b.id) : ""}${a.active !== false ? btn("Rendimiento recibido", "boxReturn", b.id) : ""}</div></div>`,
+            )
+            .join("")}</section>`
+        : ""
+    }<p class="note">Las reservas y cajitas forman parte de tu efectivo y débito, pero no están disponibles para gastar.</p>`,
+  );
 }
 export function accountAction(action, id) {
   if (!action.startsWith("wallet") && !action.startsWith("box")) return false;
   const a = model.state.walletAccounts.find((a) => a.id === id),
     b = model.state.boxes.find((b) => b.id === id);
-  if (action === "walletEdit")
+  if (action === "walletDetails") walletDetails(id);
+  else if (action === "walletReactivate")
+    confirmAction(
+      "Reactivar cuenta",
+      "Volverá a aparecer para registrar movimientos y recibir reservas.",
+      "Cuenta reactivada",
+      (s) => {
+        const account = s.walletAccounts.find((x) => x.id === id);
+        if (!account) throw Error("Cuenta no encontrada.");
+        account.active = true;
+      },
+    );
+  else if (action === "walletEdit")
     form(
       a ? "Editar cuenta" : "Nueva cuenta",
       input(

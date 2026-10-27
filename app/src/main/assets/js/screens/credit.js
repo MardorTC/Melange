@@ -11,21 +11,46 @@ import {
   money,
   esc,
   btn,
-  icon,
+  svg,
+  empty,
   accountOptions,
   confirmAction,
+  dlabel,
 } from "../ui/components.js";
 
 export function creditCardsSection() {
-  return `<div class="row"><h2>Tarjetas de crédito</h2>${btn("Agregar tarjeta", "creditEdit")}</div><p class="note">El crédito es una deuda, no dinero disponible. No necesitas una cuenta de débito del mismo banco.</p>${model.state.creditCards
+  if (!model.state.creditCards.length)
+    return `<section class="card">${empty("Sin tarjetas de crédito", "Agrega una tarjeta para separar tu crédito de tu dinero disponible.")}</section>`;
+  return `<div class="section-head"><h2>Tus tarjetas</h2><button class="text-action" data-action="creditEdit">Agregar</button></div><div class="credit-stack">${model.state.creditCards
     .map((c) => {
       const v = C.creditSummary(model.state, c.id),
         next = C.creditPeriods(model.state, c.id)
           .map((m) => C.creditStatement(model.state, c.id, m))
-          .find((i) => !i.paid);
-      return `<section class="card credit-card"><div class="row"><h2>${esc(c.name)}</h2><span class="pill">${c.active === false ? "Archivada" : "Crédito"}</span></div><small>Crédito disponible</small><div class="metric ${v.available < 0 ? "bad" : ""}">${money(v.available)}</div><div class="details"><div><small>Límite</small><strong>${money(c.limit)}</strong></div><div><small>Saldo total por pagar</small><strong>${money(v.used)}</strong></div><div><small>Compras / saldo anterior</small><strong>${money(v.purchases)}</strong></div><div><small>MSI pendientes, todas las cuotas</small><strong>${money(v.installments)}</strong></div></div>${v.unassigned ? `<p class="note">Abonos pendientes de asignar: ${money(v.unassigned)}. Ya reducen el saldo, pero ninguna cuota se marca pagada hasta aplicarlos.</p>` : ""}<p class="note">Corte: día ${c.closingDay} · Pago: día ${c.paymentDay}</p>${next ? `<p>Próximo pendiente: <strong>${money(next.remaining)}</strong> · ${next.date}</p>${v.used > 0 ? btn("Pagar tarjeta", "creditPay", c.id, "primary") : ""}` : '<p class="note">Sin pagos pendientes.</p>'}<div class="toolbar wrap">${v.used > 0 ? btn("Abonar sin asignar", "creditUnassigned", c.id) : ""}${v.unassigned ? btn("Aplicar abonos", "creditApply", c.id) : ""}${btn("Ver desglose", "creditDetails", c.id)}${icon("edit", "Editar tarjeta", "creditEdit", c.id)}${c.active !== false ? icon("trash", "Archivar tarjeta", "creditArchive", c.id) : ""}</div></section>`;
+          .find((i) => !i.paid),
+        pct = c.limit ? Math.min(100, (v.used / c.limit) * 100) : 0,
+        overdue = next && next.date < C.today(),
+        msi = model.state.debts.filter(
+          (d) => d.creditCardId === c.id && d.balance > 0 && !d.archived,
+        );
+      return `<section class="credit-ticket ${c.active === false ? "archived" : ""}">
+        <div class="credit-ticket-top">
+          <div class="credit-topline"><span class="credit-brand">${svg("card")}Tarjeta de crédito</span><span class="credit-status">${c.active === false ? "Archivada" : "Activa"}</span></div>
+          <div class="credit-name">${esc(c.name)}</div>
+          <div class="credit-used"><small>Saldo usado</small><strong class="${v.used > c.limit ? "bad" : ""}">${money(v.used)}</strong></div>
+          <div class="credit-meter"><span style="width:${pct}%"></span></div>
+          <div class="credit-meta"><span>Corte ${c.closingDay}</span><span>Pago ${c.paymentDay}</span><span>Límite ${money(c.limit)}</span></div>
+        </div>
+        <div class="credit-ticket-bottom">
+          ${next ? `<div class="next-payment"><div><small class="${overdue ? "bad" : ""}">${overdue ? "Pago vencido" : "Próximo pago"}</small><strong>${money(next.remaining)}</strong><span class="${overdue ? "bad" : "muted"}">${dlabel(next.date)}${overdue ? " · Vencido" : ""}</span></div>${v.used > 0 ? `<button class="btn primary" data-action="creditPay" data-id="${esc(c.id)}" aria-label="Pagar tarjeta">Pagar</button>` : ""}</div>` : '<p class="note">Sin pagos pendientes.</p>'}
+          ${v.used > c.limit ? '<p class="note warning">El saldo usado supera el límite. Revisa si registraste la misma compra como gasto y como MSI.</p>' : ""}
+          ${v.unassigned ? `<p class="note">${money(v.unassigned)} abonados sin asignar: reducen el saldo, pero no marcan cuotas hasta aplicarlos.</p>` : ""}
+          ${msi.length ? `<p class="note">${msi.length} MSI con saldo · ${money(v.installments)} pendiente en cuotas.</p>` : ""}
+          <div class="toolbar wrap"><button class="btn" data-action="creditDetails" data-id="${esc(c.id)}">Ver desglose</button></div>
+          <details class="more-actions"><summary>Opciones de la tarjeta</summary><div class="toolbar wrap">${v.used > 0 ? btn("Abonar sin asignar", "creditUnassigned", c.id) : ""}${v.unassigned ? btn("Aplicar abonos", "creditApply", c.id) : ""}${btn("Editar", "creditEdit", c.id)}${c.active !== false ? btn("Archivar", "creditArchive", c.id, "danger") : btn("Reactivar", "creditActivate", c.id)}</div></details>
+        </div>
+      </section>`;
     })
-    .join("")}`;
+    .join("")}</div>`;
 }
 export function creditPayForm(id, period) {
   const next =
@@ -37,7 +62,7 @@ export function creditPayForm(id, period) {
   const item = C.creditStatement(model.state, id, next);
   form(
     "Pagar tarjeta: " + item.name,
-    `<p>Vencimiento: ${item.date} · Cargos pendientes de asignar: <strong>${money(item.remaining)}</strong></p>${statementLines(item)}<p class="note">Este pago se asigna en el orden mostrado. Una cuota MSI solo se marca pagada cuando recibe su importe completo. Si no conoces la asignación del banco, usa «Abonar sin asignar» desde la tarjeta; ese abono reduce la deuda total sin marcar cuotas.</p>` +
+    `<p>Vencimiento: ${dlabel(item.date)} · Cargos pendientes de asignar: <strong>${money(item.remaining)}</strong></p>${statementLines(item)}<p class="note warning">Esta app no calcula el pago mínimo ni los intereses. Un pago parcial puede generar intereses; verifica en tu estado de cuenta el importe para no generar intereses.</p><p class="note">Este pago se asigna en el orden mostrado. Una cuota MSI solo se marca pagada cuando recibe su importe completo. Si no conoces la asignación del banco, usa «Abonar sin asignar» desde la tarjeta; ese abono reduce la deuda total sin marcar cuotas.</p>` +
       amount(
         "amount",
         "Importe pagado",
@@ -71,7 +96,7 @@ function creditUnassignedForm(id) {
   const card = C.creditSummary(model.state, id);
   form(
     "Abonar sin asignar: " + card.name,
-    `<p class="note">El dinero saldrá de tu cuenta y reducirá el saldo usado de la tarjeta. Ninguna compra o mensualidad MSI se marcará pagada hasta que apliques el abono según tu estado de cuenta.</p>` +
+    `<p class="note warning">Esta app no calcula el pago mínimo ni los intereses. Un abono parcial puede generar intereses; verifica el importe para no generar intereses en tu estado de cuenta.</p><p class="note">El dinero saldrá de tu cuenta y reducirá el saldo usado de la tarjeta. Ninguna compra o mensualidad MSI se marcará pagada hasta que apliques el abono según tu estado de cuenta.</p>` +
       amount("amount", "Importe del abono", card.used) +
       select(
         "accountId",
@@ -154,7 +179,7 @@ function creditDetails(id) {
         .filter(({ statement }) => statement.amount)
         .map(
           ({ period, statement: i }) =>
-            `<section class="item"><h3>${i.date} · ${money(i.remaining)} en cargos</h3>${statementLines(i)}${!i.paid && C.creditSummary(model.state, id).used > 0 ? `<button class="btn primary" data-action="creditPay" data-id="${esc(id)}" data-period="${period}">Pagar este periodo</button>` : i.paid ? '<span class="pill good">Pagado</span>' : '<span class="pill">Cubierto por abonos sin asignar</span>'}</section>`,
+            `<section class="item"><h3>${dlabel(i.date)} · ${money(i.remaining)} en cargos</h3>${statementLines(i)}${!i.paid && C.creditSummary(model.state, id).used > 0 ? `<button class="btn primary" data-action="creditPay" data-id="${esc(id)}" data-period="${period}">Pagar este periodo</button>` : i.paid ? '<span class="pill good">Pagado</span>' : '<span class="pill">Cubierto por abonos sin asignar</span>'}</section>`,
         )
         .join("") || "<p>Sin cargos registrados.</p>"
     }`,
@@ -167,6 +192,17 @@ export function creditAction(action, id, el) {
   else if (action === "creditPay") creditPayForm(id, el?.dataset.period);
   else if (action === "creditUnassigned") creditUnassignedForm(id);
   else if (action === "creditApply") creditApplyForm(id);
+  else if (action === "creditActivate")
+    confirmAction(
+      "Reactivar tarjeta",
+      "Volverá a aparecer para nuevas compras y pagos agrupados.",
+      "Tarjeta reactivada",
+      (s) => {
+        const card = s.creditCards.find((c) => c.id === id);
+        if (!card) throw Error("Tarjeta no encontrada.");
+        card.active = true;
+      },
+    );
   else if (action === "creditArchive")
     confirmAction(
       "Archivar tarjeta",
@@ -225,7 +261,7 @@ export function creditAction(action, id, el) {
             limit: moneyValue(f.limit),
             closingDay: Number(f.closingDay),
             paymentDay: Number(f.paymentDay),
-            active: true,
+            active: c ? c.active !== false : true,
           };
           if (c)
             Object.assign(

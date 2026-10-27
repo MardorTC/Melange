@@ -2,36 +2,33 @@
 
 Aplicación instalable para Android 8.0 o posterior, con Android System WebView actualizado. Funciona sin internet, sin cuenta y sin servidor. El APK no contiene datos financieros del propietario ni datos de ejemplo.
 
-## Actualizar ProjectOSP 7.0 a Melange 7.1
+## Actualizar ProjectOSP 7.0 a Melange 8.4
 
 1. Exporta un respaldo por precaución; no tendrás que importarlo para actualizar.
-2. Abre `Melange-7.1.0.apk` desde Descargas, o selecciónalo desde Ajustes → Instalar actualización.
+2. Abre `Melange-8.4.0.apk` desde Descargas, o selecciónalo desde Ajustes → Instalar actualización.
 3. Android debe ofrecer actualizar la app existente. No la desinstales ni borres sus datos.
 4. Abre Melange y comprueba tus saldos, movimientos, metas y deudas.
 
-Se conservan el paquete `app.projectosp`, la clave de firma original, SQLite y el formato de respaldo v7. Solo cambian la versión, la identidad visual y las funciones de esta entrega. Si Android no permite actualizar, detente y revisa el mensaje; no desinstales como solución.
+Se conservan el paquete `app.projectosp`, la clave de firma original, SQLite y el formato de respaldo v10. Solo cambian la versión, la identidad visual y las funciones de esta entrega. Si Android no permite actualizar, detente y revisa el mensaje; no desinstales como solución.
 
-Novedades: logo aprobado, paleta arena/café/ocre, gráfico antes de la lista de Gastos (dos columnas desde 900 px en horizontal), accesos al inicio de Calendario y timeline/proyección como pantallas completas con Volver. El botón Atrás de Android también regresa a Calendario.
+Novedades: interfaz móvil rediseñada con cabecera compacta al desplazar, tipografía editorial, iconos de línea, tarjetas de crédito con presencia propia, filtros en hoja inferior, Movimientos agrupados por fecha, Calendario con rejilla de días y Ruta de deudas/Proyección como pantallas de detalle con Volver. El botón Atrás de Android también regresa a la pantalla anterior.
 
-## Reconstrucción histórica opcional
+## Inicio desde cero o importación
 
-No necesitas reconstruir nada para conservar los datos al actualizar. Esta función sirve para comenzar un libro nuevo desde una fecha pasada, no para completar automáticamente ni fusionar el libro actual.
+En una instalación nueva solo hay dos caminos:
 
-1. Abre Ajustes → Reconstrucción histórica, o elige Reconstruir meses anteriores en el primer inicio.
-2. Indica fecha de inicio y saldos de efectivo/débito al comenzar ese día. Se admiten hasta diez años hacia atrás.
-3. Agrega deudas con su saldo pendiente de entonces y gastos fijos. Las cuotas consecutivas anteriores al inicio se consideran antecedentes y no descuentan de nuevo. Los pagos dentro del periodo se registran individualmente.
-4. Captura ingresos, gastos, transferencias y pagos con sus fechas reales. Puedes corregir el orden: el cálculo ordena cronológicamente; en el mismo día conserva el orden de captura. El ingreso previsto es presupuesto, no dinero recibido.
-5. Sal y vuelve cuando quieras: el borrador se guarda separado. Sus movimientos y saldos aún no son los de tu libro activo.
-6. Pulsa Comparar con hoy e introduce tus saldos reales. Si difieren, revisa movimientos o elige expresamente crear ajustes visibles por la diferencia.
-7. Solo al confirmar se reemplaza el libro activo completo (incluidas deudas y metas) por el reconstruido. El estado anterior queda en Deshacer, hasta que salga del historial de 15 cambios.
+1. **Importar respaldo**: elige un archivo de Melange / ProjectOSP y revisa la vista previa antes de reemplazar los datos.
+2. **Empezar desde cero**: indica tu efectivo y débito actuales y, si quieres, tu ingreso mensual previsto. Son los saldos de hoy, no un historial. Puedes omitir este paso y corregir los saldos después desde Ajustes.
 
-El borrador copia categorías y acreedores, no las deudas, metas ni movimientos activos. Si cambias el libro activo después de iniciar, la confirmación del borrador se bloquea para no sobrescribir cambios nuevos. Puedes exportar su resultado, descartarlo o empezar otro; el archivo exportado contiene el libro calculado, no el asistente reanudable. Descartar un borrador requiere confirmación y no tiene deshacer.
+La app no reconstruye meses anteriores ni crea movimientos históricos automáticamente. Si necesitas conservar lo que ya ocurrió, importa un respaldo. Los datos permanecen en el dispositivo; no se crea una cuenta ni se envía información a un servidor.
 
-La gráfica reconstruida muestra saldos calculados en las fechas de movimientos y el saldo de hoy, no observaciones bancarias. Corregir un movimiento vuelve a calcular los puntos posteriores. Los gastos importados de v6 mantienen su semántica original y no se convierten solos en movimientos que descuentan dinero.
+Los borradores de reconstrucción de versiones anteriores no forman parte del libro activo y se descartan al abrir esta versión. Exporta un respaldo antes de actualizar si ese borrador todavía te importa.
+
+La gráfica de liquidez muestra las observaciones y los saldos calculados que ya existen en tu libro. No inventa historia para los días sin registros.
 
 ## Instalar y migrar desde v6
 
-1. Descarga `Melange-7.1.0.apk` en tu teléfono.
+1. Descarga `Melange-8.4.0.apk` en tu teléfono.
 2. Ábrelo desde Archivos / Descargas. Si Android lo solicita, permite instalar aplicaciones desde esa aplicación de archivos o navegador.
 3. Abre Melange y elige **Importar respaldo de Melange / ProjectOSP**.
 4. Selecciona tu `projectosp-backup.json`. Revisa los saldos y cantidades de registros que muestra la vista previa y pulsa **Importar estos datos**.
@@ -50,7 +47,7 @@ En Ajustes → Buscar actualizaciones puedes consultar GitHub Releases y descarg
 
 ## Cambios incluidos
 
-- Interfaz móvil cálida, navegación inferior, tarjetas diferenciadas, acciones con iconos y etiquetas accesibles.
+- Interfaz móvil cálida, navegación inferior, tarjetas diferenciadas, acciones con iconos y etiquetas accesibles. **Ajustes** se abre con el engrane de Inicio; al desplazar aparece una barra compacta con el nombre de la pantalla.
 - Dona de consumo por categoría y línea de observaciones reales de liquidez; sin generar historia inexistente.
 - Pagos completos y parciales de deudas y gastos fijos vinculados a movimientos y al origen del dinero.
 - Protección frente al doble registro de una cuota liquidada y guardados simultáneos.
@@ -62,7 +59,7 @@ En Ajustes → Buscar actualizaciones puedes consultar GitHub Releases y descarg
 - Deshacer de los últimos 15 cambios, conservado al cerrar la aplicación.
 - Mensajes breves y modales propios, en lugar de `alert()` y `confirm()`.
 - Animaciones breves de métricas y navegación, con respeto por la preferencia de movimiento reducido.
-- Calendario mensual, timeline anual y proyección de 12 meses.
+- Calendario mensual con rejilla de días, ruta de deudas y proyección de 12 meses.
 - Recordatorios locales de Android, incluso sin una pestaña abierta.
 - Base local SQLite y guardado en segundo plano con transacción atómica. No se utiliza localStorage.
 
@@ -76,7 +73,7 @@ En Ajustes → Buscar actualizaciones puedes consultar GitHub Releases y descarg
 
 **Deuda / ingreso previsto** usa los compromisos del mes, no solo lo pendiente. Si no existe un ingreso previsto, se muestra sin dato, no como 0 %.
 
-Los **pagos de deuda** aparecen en los movimientos y en las salidas de dinero. Se excluyen de la dona de consumo para no contar dos veces una compra y la posterior liquidación de su deuda. Las compras de crédito no tienen todavía un registro separado por tarjeta; el registro directo de gasto utiliza efectivo o débito.
+Los **pagos de deuda** y de tarjeta aparecen en los movimientos y en las salidas de dinero. Se excluyen de la dona de consumo para no contar dos veces una compra y su liquidación. Las compras normales con tarjeta se registran con su tarjeta y cuentan como consumo una vez. Los MSI creados como deuda no se suman a la dona de consumo para evitar duplicados; esa es una limitación conocida de esta versión.
 
 La **variación de liquidez** compara observaciones existentes. No se presenta como ahorro mensual. Los días sin observaciones no se reconstruyen.
 
@@ -90,7 +87,7 @@ Los datos de v6 conservan sus saldos y su comportamiento de total pendiente. Rev
 
 Un abono adicional puede reducir saldo sin marcar una cuota concreta ni recalcular el contrato. Los cambios futuros del calendario se realizan explícitamente. El inicio y el número de cuotas se protegen al existir pagos asociados.
 
-Eliminar una deuda con antecedentes la archiva para conservar sus movimientos. Los gastos fijos también se archivan. Deshacer revierte el cambio completo; revertir un movimiento vinculado devuelve el dinero y reabre el compromiso correspondiente.
+Para eliminar o archivar una deuda primero debe quedar en saldo cero; así una obligación pendiente no desaparece de los totales. Si tiene antecedentes, se archiva para conservar sus movimientos. Los gastos fijos también se archivan. Deshacer revierte el cambio completo; revertir un movimiento vinculado devuelve el dinero y reabre el compromiso correspondiente.
 
 ## Conservación del respaldo v6
 
@@ -108,7 +105,7 @@ Se prepara una lista de los siguientes 12 meses y se actualiza al abrir o modifi
 
 - No hay sincronización automática con Google Drive ni Proton Drive. El selector de documentos de Android puede permitir guardar respaldos en proveedores instalados; eso es un respaldo manual.
 - La descarga requiere una acción del usuario; no hay instalación silenciosa.
-- No hay múltiples saldos bancarios independientes: se conserva la separación de v6 entre efectivo, débito y catálogo de acreedores.
+- Puedes tener varias cuentas de efectivo y débito, pero las tarjetas de crédito no son cuentas de dinero: su crédito disponible no forma parte de la liquidez.
 - No hay recálculo automático de intereses ni forecast de variables no registradas.
 - La base utiliza SQLite para guardar versiones del estado JSON; las consultas y filtros se calculan en memoria. No es todavía un libro mayor con tablas SQL indexadas por movimiento. Se mantienen hasta 15 estados para deshacer; no es almacenamiento ilimitado.
 - Las comprobaciones de desarrollo y sus límites se describen en [Verificación](verificacion.md).
@@ -135,6 +132,22 @@ Los gastos fijos tienen importe por vencimiento, fecha de inicio, final opcional
 
 En Ajustes, elige la hora común y anticipación para pagos, cobros pendientes y cajitas por liberar. Android puede retrasar el aviso. Los respaldos v8 no pueden importarse en versiones antiguas.
 
+## Ruta de deudas
+
+La **Ruta de deudas** responde una sola pregunta: ¿cuándo termino de pagar? Muestra únicamente MSI, diferimientos y préstamos con saldo. No incluye gastos fijos ni compras revolventes de tarjeta.
+
+- Cada deuda tiene su propia barra de 12 meses, no una fila agregada de “tarjeta de crédito”.
+- Las cuotas pagadas se ven en verde, la cuota del mes en cobre y las pendientes en arena. Las barras rayadas son estimaciones.
+- Arriba se muestra la **fecha de libertad de cuotas**, la deuda en cuotas, la cuota normal, lo que resta de este mes y cuántas deudas quedan. La fecha no promete cubrir compras revolventes ni saldo anterior.
+- Un MSI vinculado a una tarjeta aparece con su nombre y el de la tarjeta, pero sigue siendo una deuda distinta dentro de la ruta.
+- Las deudas sin plazo se estiman dividiendo el saldo entre la cuota actual. Si no hay cuota, la app muestra “Sin fecha planificada” y pide revisar la deuda; no inventa una fecha.
+- Si hay cuotas de meses anteriores sin pagar, la app las marca como atrasadas y muestra su importe. La fecha de libertad supone ponerse al día.
+- Si una deuda con plazo ya pasó su última cuota y sigue con saldo, se marca para revisión y se estima un final nuevo.
+
+La **deuda total** de Inicio y Deudas incluye la deuda en cuotas más las compras revolventes y el saldo anterior, menos los abonos sin asignar. La **fecha de libertad de cuotas** solo cubre MSI, diferimientos y préstamos. Si hay compras revolventes sin plan, la app no promete una fecha para ellas.
+
+En **Deudas**, las tarjetas se muestran una sola vez con su saldo usado, su límite y su próximo pago. Los MSI vinculados se listan dentro de esa tarjeta y no se suman otra vez al total. Los préstamos y otras deudas no ligadas a tarjeta se muestran en una lista aparte; las deudas liquidadas quedan en un bloque plegable. Una deuda con saldo no se puede archivar. Si un dato antiguo quedó archivado con saldo, se muestra con **Reactivar** y no se incluye en la fecha de libertad.
+
 ## Tarjetas de crédito y pagos agrupados
 
 En **Cuentas → Agregar tarjeta** registra un nombre, límite, día de corte y día límite de pago. La cuenta **BBVA débito** y la tarjeta **BBVA crédito** son independientes: puedes tener cualquiera de las dos o ambas, y pagar la tarjeta desde otra cuenta libre.
@@ -143,23 +156,23 @@ El **saldo anterior sin MSI** sirve para incorporar compras que ya debías antes
 
 En **Nuevo gasto → Pagar desde**, elige la opción terminada en **Crédito**. La compra aparece en consumo y reduce el crédito disponible, pero no el disponible libre. El vencimiento se estima con corte y pago; las compras del día de corte se incluyen en ese corte. Puedes indicar otra fecha de vencimiento al registrar o editar una compra si tu estado de cuenta difiere. Los días inexistentes se ajustan al último día del mes. Cambiar el calendario de la tarjeta afecta nuevas compras; las ya registradas conservan su vencimiento.
 
-En **Editar deuda**, vincula los MSI a su tarjeta. Deben tener plazo y saldo total pendiente. Conserva las cuotas ya pagadas y verifica la fecha de primera cuota y día de vencimiento. El capital pendiente completo ocupa crédito; solo la mensualidad de cada periodo se agrega al pago de la tarjeta. No registres además el importe de esa misma compra como gasto ordinario a crédito, porque duplicarías la deuda. Las vinculaciones son manuales: no se deduce una tarjeta a partir del nombre de un acreedor.
+En **Editar deuda**, vincula los MSI a su tarjeta. Deben tener plazo, saldo total pendiente, fecha de primera cuota y cuota mayor a cero. Conserva las cuotas ya pagadas y verifica la fecha de primera cuota. El capital pendiente completo ocupa crédito; solo la mensualidad de cada periodo se agrega al pago de la tarjeta. No registres además el importe de esa misma compra como gasto ordinario a crédito, porque duplicarías la deuda y el crédito usado. Las vinculaciones son manuales: no se deduce una tarjeta a partir del nombre de un acreedor. En **Deudas**, el detalle de cada tarjeta lista sus MSI con cuota, saldo y fecha final.
 
 **Pagar tarjeta** registra una sola salida desde una cuenta con fondos disponibles. Su desglose cubre los cargos del periodo y las mensualidades MSI vinculadas. Puedes ver otros periodos desde **Ver desglose**. Los abonos parciales se distribuyen en el orden mostrado: por vencimiento, MSI primero en caso de empate y después compras. Es una distribución de tu registro local, no una consulta al banco; compárala con la aplicación real del pago. No se calculan intereses, comisiones, pago mínimo ni un importe certificado para evitar intereses.
 
-El consumo reconoce la compra una vez. El pago de la tarjeta aparece como salida de dinero y reduce el crédito utilizado, pero no vuelve a incrementar consumo. En **Movimientos** puedes filtrar por tarjeta o por **Pago de tarjeta**, y abrir el desglose del pago. **Deshacer** revierte el pago completo; también puedes revertirlo desde Movimientos. Para editar o eliminar una compra cubierta por un pago, primero revierte ese pago.
+El consumo reconoce una compra normal una vez. Los MSI creados como deuda no se suman a la dona de consumo para evitar duplicados; es una limitación conocida. El pago de la tarjeta aparece como salida de dinero y reduce el crédito utilizado, pero no vuelve a incrementar consumo. En **Movimientos** puedes filtrar por tarjeta o por **Pago de tarjeta**, y abrir el desglose del pago. **Deshacer** revierte el pago completo; también puedes revertirlo desde Movimientos. Para editar o eliminar una compra cubierta por un pago, primero revierte ese pago.
 
 Los gastos fijos también se pueden cargar a crédito desde su formulario de pago. Su obligación de efectivo pasa al vencimiento de la tarjeta y no se suma dos veces en calendario y proyección. Las tarjetas con saldo pendiente no se pueden archivar.
 
 ### Compatibilidad del libro de crédito
 
-El esquema del libro pasa a **v9** (independiente del número de versión de la app). Los libros v8 se convierten automáticamente con un catálogo de tarjetas vacío, conservando saldos, movimientos, presupuestos, deshacer y borradores. No se atribuyen tarjetas ni créditos a datos antiguos. Antes de reemplazar el libro se conserva el estado original en una copia de migración fuera del historial de deshacer, tanto en SQLite como en la previsualización.
+El esquema del libro pasó a **v9** y después a **v10** (independiente del número de versión de la app). Los libros v8 se convierten automáticamente con un catálogo de tarjetas vacío, conservando saldos, movimientos, presupuestos y deshacer. No se atribuyen tarjetas ni créditos a datos antiguos. Antes de reemplazar el libro se conserva el estado original en una copia de migración fuera del historial de deshacer, tanto en SQLite como en la previsualización.
 
-Los respaldos v9 necesitan esta versión del código; las versiones anteriores no los pueden importar. Sigue siendo posible importar respaldos v6, v7 y v8. La reconstrucción copia las tarjetas y permite indicar sus saldos anteriores, capturar compras a crédito y pagos agrupados; revisa también los saldos de crédito antes de confirmar el resultado.
+Los respaldos v9 necesitan esta versión del código; las versiones anteriores no los pueden importar. Sigue siendo posible importar respaldos v6, v7 y v8. Revisa los saldos de crédito y los MSI después de importar; la importación no inventa tarjetas ni vínculos que el respaldo no contenga.
 
 ### Cuentas y abonos desde 8.4
 
-**Cuentas** separa efectivo/débito de tarjetas. El crédito disponible se muestra junto a las cifras de Inicio para consultarlo, pero no forma parte del dinero libre. En **Deudas**, las tarjetas con saldo aparecen en formato compacto; **Ver desglose** abre sus cargos y vencimientos.
+**Cuentas** separa efectivo/débito de tarjetas. El crédito disponible se muestra junto a las cifras de Inicio para consultarlo, pero no forma parte del dinero libre. En **Deudas**, cada tarjeta aparece una vez con su saldo usado, su límite y su próximo pago; **Ver desglose** abre sus cargos, MSI y vencimientos.
 
 Si depositaste a la tarjeta sin saber cómo aplicó el banco el pago, usa **Abonar sin asignar**. El importe sale una sola vez de la cuenta elegida y reduce de inmediato el saldo usado de la tarjeta. Las compras y cuotas MSI continúan pendientes en el desglose. Cuando tengas el estado de cuenta, usa **Aplicar abonos** y elige el cargo concreto y el importe: esta acción no hace otra salida de dinero. Las cuotas MSI solo se marcan pagadas al completar su importe. Los cargos futuros que aún no existían en la fecha del depósito no se pueden conciliar con él; comprueba la fecha y el desglose del banco. Si ya sabes la aplicación, usa **Pagar tarjeta** para asignar el pago en el orden mostrado.
 

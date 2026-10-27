@@ -1,9 +1,7 @@
 import { selectHistoryPoint } from "./ui/charts.js";
-import H from "./domain/reconstruction.js";
 import { initializeUpdates } from "./platform/updates.js";
 import C from "./domain/finance.js";
 import { model } from "./state/model.js";
-import { chooseRebuildPayment } from "./screens/reconstruction.js";
 import {
   showError,
   $,
@@ -42,16 +40,6 @@ document.addEventListener("change", (e) => {
   )
     document.querySelector("#wallet-restrictions").hidden =
       e.target.value !== "restricted";
-  if (e.target.name === "rebuildMonth") {
-    const m = e.target.value;
-    if (m < C.month(model.rebuildDraft.config.startDate) || m > C.month())
-      return;
-    try {
-      chooseRebuildPayment(m);
-    } catch (error) {
-      showError(error.message);
-    }
-  }
 });
 
 ("use strict");
@@ -112,13 +100,6 @@ document.addEventListener("input", (e) => {
   }
 });
 
-document.addEventListener("change", (e) => {
-  if (e.target.closest("#filters")) {
-    model.filter[e.target.name] = e.target.value;
-    render();
-  }
-});
-
 $("#importFile").addEventListener("change", async (e) => {
   const f = e.target.files[0];
   if (f) {
@@ -154,10 +135,8 @@ window.handleBack = () => {
   try {
     await openStore();
     const saved = C.migrateEnvelope(await readStore());
-    if (saved?.draft) H.build(saved.draft);
     model.state = saved ? C.validate(saved.state) : C.empty();
     model.history = saved?.history || [];
-    model.rebuildDraft = saved?.draft || null;
     model.revision = saved?.revision || 0;
     C.ensureBudget(model.state);
     if (saved) {
@@ -165,7 +144,6 @@ window.handleBack = () => {
       await writeStore({
         state: model.state,
         history: model.history,
-        draft: model.rebuildDraft,
         revision: model.revision,
       });
     }

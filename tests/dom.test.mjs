@@ -61,6 +61,7 @@ const submit = async (values) => {
   await wait();
 };
 await click("start");
+await submit({ cash: "0", debit: "0", income: "20000" });
 await click("settings");
 await click("balances");
 await submit({ debit: "10000", cash: "1000" });
@@ -78,6 +79,9 @@ await submit({
   financingCost: "0",
 });
 assert.equal(stored.state.debts.length, 1);
+await click("deleteDebt", stored.state.debts[0].id);
+assert.match(doc.querySelector("#modal").textContent, /Esta deuda tiene saldo/);
+await click("close");
 const before = C.metrics(stored.state);
 await click("pay");
 await submit({ amount: "1000", accountId: "debit", date: C.today() });
@@ -109,14 +113,13 @@ assert.equal(C.metrics(stored.state).reserved, 100000);
 await click("tab", "expense");
 await click("expenseSub", "all");
 await click("filters");
-const kind = doc.querySelector("#filters [name=kind]");
-kind.value = "fixed";
-kind.dispatchEvent(new w.Event("change", { bubbles: true }));
+await submit({ kind: "fixed" });
 assert.equal(doc.querySelectorAll(".item-title").length, 1);
 const search = doc.querySelector("#search");
 search.value = "no existe";
 search.dispatchEvent(new w.Event("input", { bubbles: true }));
 assert.equal(doc.querySelectorAll(".item-title").length, 0);
+await click("tab", "home");
 await click("settings");
 failWrite = true;
 await click("editCategory");
@@ -132,13 +135,15 @@ for (const tab of ["home", "expense", "debt", "calendar", "goal"])
   await click("tab", tab);
 await click("tab", "calendar");
 await click("projection");
-assert.equal(doc.querySelectorAll("#view tbody tr").length, 12);
+assert.equal(doc.querySelectorAll("#view .projection-row").length, 12);
 assert.ok(doc.body.classList.contains("full-screen"));
 await click("screenBack");
 await click("timeline");
-assert.ok(doc.querySelector("table.timeline"));
+assert.ok(doc.querySelector(".timeline-summary"));
+assert.ok(doc.querySelector(".debt-plan"));
 await click("screenBack");
 assert.ok(!doc.body.classList.contains("full-screen"));
+await click("tab", "home");
 await click("settings");
 await click("history");
 assert.ok(doc.querySelector("#modal").textContent.includes("Deshacer"));
@@ -149,97 +154,8 @@ await w.receiveImport(
 );
 await click("confirmImport");
 assert.deepEqual(C.balances(stored.state), b);
-// A draft survives navigation and native reload without replacing the live ledger.
-console.log("DOM: original flows passed; checking reconstruction.");
-await click("settings");
-const live = JSON.stringify(stored.state),
-  start = C.addMonth(C.month(), -1) + "-01";
-await click("rebuildStart");
-await submit({ startDate: start, debit: "1000", cash: "100", income: "2000" });
-assert.ok(stored.draft);
-assert.equal(JSON.stringify(stored.state), live);
-await click("rebuildEntry", "expense");
-await submit({
-  name: "Compra histórica",
-  amount: "100",
-  date: start,
-  accountId: "debit",
-});
-assert.equal(stored.draft.entries.length, 1);
-assert.equal(JSON.stringify(stored.state), live);
-await click("rebuildEntry", "income");
-failWrite = true;
-await submit({
-  name: "Falla simulada",
-  amount: "200",
-  date: start,
-  accountId: "debit",
-});
-assert.equal(stored.draft.entries.length, 1);
-assert.match(doc.querySelector(".form-error").textContent, /Simulated/);
-failWrite = false;
-await click("close");
-await click("screenBack");
-await click("rebuildStart");
-assert.match(doc.querySelector("#view").textContent, /Compra histórica/);
-console.log("DOM: draft creation, navigation and failed save passed.");
-const reload = new Window({
-  url: "https://appassets.androidplatform.net/index.html",
-  settings: {
-    enableFileSystemHttpRequests: false,
-    disableCSSFileLoading: true,
-  },
-});
-reload.NativeOSP = { ...w.NativeOSP };
-reload.NativeOSP.writeAsync = (raw, id) =>
-  setTimeout(() => reload.nativeSaved(id, reload.NativeOSP.write(raw)), 0);
-reload.document.write(
-  fs
-    .readFileSync("app/src/main/assets/index.html", "utf8")
-    .replace(/<script[^>]*>.*?<\/script>/g, ""),
-);
-reload.eval(bundle);
-await wait();
-reload.document.querySelector("[data-action=settings]").click();
-await wait();
-assert.match(
-  reload.document.querySelector("#view").textContent,
-  /Continuar borrador/,
-);
-assert.equal(stored.draft.entries.length, 1);
-await reload.happyDOM.abort();
-console.log("DOM: draft persisted after reload.");
-await click("rebuildReview");
-await submit({ debit: "900", cash: "100" });
-assert.match(doc.querySelector("#modal").textContent, /Los saldos coinciden/);
-await submit({});
-assert.equal(stored.draft, null);
-assert.equal(stored.state.reconstruction.basis, "ledger");
-assert.equal(stored.state.transactions.length, 1);
-assert.equal(
-  stored.state.walletAccounts.find((a) => a.id === "debit").opening,
-  100000,
-);
-assert.equal(C.balances(stored.state).debit, 90000);
-await click("undo");
-assert.equal(JSON.stringify(stored.state), live);
-console.log("DOM: confirmation and undo passed.");
-// A live change makes the draft stale; it must never overwrite newer work.
-await click("settings");
-await click("rebuildStart");
-await submit({ startDate: start, debit: "0", cash: "0", income: "0" });
-await click("screenBack");
-await click("expectedIncome");
-await submit({ income: "25000" });
-await click("rebuildStart");
-assert.match(doc.querySelector("#view").textContent, /no puede confirmarse/);
-await click("rebuildReview");
-assert.equal(doc.querySelector("#dialog").open, false);
-assert.ok(stored.draft);
-await click("rebuildDiscard");
-await submit({});
-assert.equal(stored.draft, null);
-console.log("DOM: stale-draft protection passed.");
+assert.equal(stored.draft, undefined);
+console.log("DOM: old drafts are ignored and no reconstruction route exists.");
 if (process.env.OSP_BACKUP) {
   const raw = JSON.parse(fs.readFileSync(process.env.OSP_BACKUP, "utf8"));
   await w.receiveImport(JSON.stringify(raw));
@@ -248,6 +164,7 @@ if (process.env.OSP_BACKUP) {
   assert.equal(C.balances(stored.state).cash, C.cents(raw.balances.cash));
   for (const name of ["home", "expense", "debt", "calendar", "goal"])
     await click("tab", name);
+  await click("tab", "home");
   await click("settings");
 }
 // Melange 8 forms: named accounts, availability, antecedents, loans and reminders.
@@ -256,8 +173,10 @@ await click("tab", "accounts");
 await click("walletEdit");
 await submit({ name: "BBVA", type: "bank" });
 const bbva = stored.state.walletAccounts.find((a) => a.name === "BBVA").id;
+await click("walletDetails", bbva);
 await click("walletAdjust", bbva);
 await submit({ amount: "5000" });
+await click("walletDetails", bbva);
 await click("boxCreate", bbva);
 await submit({
   name: "Plazo",
@@ -277,11 +196,29 @@ assert.match(doc.querySelector(".form-error").textContent, /Faltan/);
 await click("close");
 await click("tab", "accounts");
 const box = stored.state.boxes.find((b) => b.name === "Plazo").id;
+await click("walletDetails", bbva);
 await click("boxRelease", box);
 await submit({ amount: "1000" });
 assert.equal(
   C.accountSummary(stored.state).find((a) => a.id === bbva).available,
   200000,
+);
+await click("walletEdit");
+await submit({ name: "Temporal", type: "bank" });
+const temporal = stored.state.walletAccounts.find((a) => a.name === "Temporal");
+await click("walletDetails", temporal.id);
+await click("walletArchive", temporal.id);
+await submit({});
+assert.equal(
+  stored.state.walletAccounts.find((a) => a.id === temporal.id).active,
+  false,
+);
+await click("walletDetails", temporal.id);
+await click("walletReactivate", temporal.id);
+await submit({});
+assert.equal(
+  stored.state.walletAccounts.find((a) => a.id === temporal.id).active,
+  true,
 );
 await click("tab", "debt");
 await click("editDebt");
@@ -310,6 +247,7 @@ assert.equal(C.loanBalance(stored.state, loan), 50000);
 await click("loanCollect", loan);
 await submit({ amount: "200", accountId: "cash" });
 assert.equal(C.loanBalance(stored.state, loan), 30000);
+await click("tab", "home");
 await click("settings");
 await click("reminders");
 await submit({ time: "18:35", enabled: "yes", days: "3" });
@@ -332,12 +270,12 @@ await click("tab", "home");
 const firstPoint = doc.querySelector('[data-chart-point="0"]');
 assert.ok(firstPoint);
 firstPoint.click();
-assert.equal(doc.querySelector("[data-chart-value]").textContent, "$100.00");
+assert.equal(doc.querySelector("[data-chart-value]").textContent, "$100");
 assert.equal(firstPoint.getAttribute("aria-pressed"), "true");
 const slider = doc.querySelector("[data-chart-slider]");
 slider.value = "1";
 slider.dispatchEvent(new w.Event("input", { bubbles: true }));
-assert.equal(doc.querySelector("[data-chart-value]").textContent, "$200.00");
+assert.equal(doc.querySelector("[data-chart-value]").textContent, "$200");
 await click("tab", "accounts");
 await click("walletEdit");
 assert.equal(doc.querySelector("#wallet-restrictions").hidden, true);

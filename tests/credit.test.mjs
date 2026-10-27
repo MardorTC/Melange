@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import C from "../app/src/main/assets/js/domain/finance.js";
-import H from "../app/src/main/assets/js/domain/reconstruction.js";
 const date = "2026-01-10",
   period = "2026-02";
 function fixture() {
@@ -77,6 +76,40 @@ test("credit purchases consume a separate limit, recognized once as consumption 
   assert.throws(() => C.editTransaction(s, p.id, { ...p, amount: 10 }));
   C.validate(s);
 });
+test("statement date follows the card payment day even when the MSI dueDay differs", () => {
+  const s = fixture();
+  msi(s);
+  s.debts[0].dueDay = 20;
+  const statement = C.creditStatement(s, "bbva-credit", period);
+  assert.equal(statement.date, "2026-02-05");
+  assert.equal(
+    statement.lines.find((line) => line.kind === "debt").date,
+    "2026-02-05",
+  );
+  const explicit = fixture();
+  C.record(explicit, {
+    name: "Compra con fecha real",
+    kind: "expense",
+    amount: 50000,
+    date: "2026-01-10",
+    accountId: null,
+    creditCardId: "bbva-credit",
+    cardDueDate: "2026-02-20",
+    categoryId: explicit.categories[0].id,
+  });
+  assert.equal(
+    C.creditStatement(explicit, "bbva-credit", period).date,
+    "2026-02-20",
+  );
+  const opening = fixture();
+  opening.creditCards[0].openingBalance = 10000;
+  opening.creditCards[0].openingDueDate = "2026-02-20";
+  assert.equal(
+    C.creditStatement(opening, "bbva-credit", period).date,
+    "2026-02-20",
+  );
+});
+
 test("MSI principal occupies limit, one combined payment covers sixth installment and purchases; undo restores both", () => {
   const s = fixture();
   msi(s);
@@ -307,52 +340,4 @@ test("malformed payment allocations and missing cards are rejected", () => {
   p.allocations[0].amount--;
   s.creditCards = [];
   assert.throws(() => C.validate(s));
-});
-
-test("reconstruction replays credit purchases and a grouped installment payment without changing source", () => {
-  const s = fixture();
-  msi(s);
-  const before = JSON.stringify(s);
-  const draft = H.create(
-    s,
-    {
-      startDate: "2026-01-01",
-      openings: { cash: 0, debit: 500000 },
-      income: 0,
-    },
-    0,
-  );
-  draft.debts = C.clone(s.debts);
-  draft.entries = [
-    {
-      id: "purchase",
-      name: "Super",
-      kind: "expense",
-      amount: 50000,
-      date,
-      accountId: null,
-      creditCardId: "bbva-credit",
-    },
-    {
-      id: "payment",
-      name: "Tarjeta",
-      kind: "card_payment",
-      creditCardId: "bbva-credit",
-      period,
-      amount: 150000,
-      date: "2026-02-04",
-      accountId: "debit",
-    },
-  ];
-  const built = H.build(draft);
-  assert.equal(JSON.stringify(s), before);
-  assert.equal(C.balances(built).debit, 350000);
-  assert.equal(C.creditSummary(built, "bbva-credit").used, 600000);
-  assert.equal(built.transactions[1].id, "payment");
-  assert.deepEqual(built.debts[0].paidPayments, [1, 2, 3, 4, 5, 6]);
-  assert.equal(
-    C.migrateEnvelope({ state: built, history: [], draft, revision: 0 }).draft
-      .creditCards.length,
-    1,
-  );
 });

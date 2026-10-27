@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import C from "../app/src/main/assets/js/domain/finance.js";
 import L from "../app/src/main/assets/js/domain/legacy-v7.js";
-import H from "../app/src/main/assets/js/domain/reconstruction.js";
 const date = C.today();
 function fixture() {
   const s = C.empty();
@@ -229,7 +228,7 @@ test("effective dated recurrence preserves earlier dues and partial payments wit
   assert.equal(C.metrics(s, "2025-02").fixed, 0);
   C.validate(s);
 });
-test("v7 envelope migration is pure, preserves ids, undo, budgets and draft and rejects all before saving", () => {
+test("v7 envelope migration is pure, preserves ids, undo and budgets, ignores old drafts and rejects all before saving", () => {
   const old = L.empty();
   old.opening = { cash: -500, debit: 500000 };
   L.record(old, {
@@ -265,7 +264,7 @@ test("v7 envelope migration is pure, preserves ids, undo, budgets and draft and 
   assert.deepEqual(C.balances(v.state), L.balances(old));
   assert.equal(v.history[0].state.transactions[0].id, old.transactions[0].id);
   assert.deepEqual(v.state.budgets, old.budgets);
-  assert.equal(H.build(v.draft).schemaVersion, 10);
+  assert.equal(v.draft, undefined);
   assert.throws(() =>
     C.migrateEnvelope({ ...envelope, history: [{ state: { bad: true } }] }),
   );

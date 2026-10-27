@@ -1,143 +1,291 @@
-:root {
-  --bg: #f5f1e7;
-  --paper: #fffdf8;
-  --ink: #30291f;
-  --muted: #82796a;
-  --line: #e8e1d5;
-  --green: #456b4d;
-  --mint: #dce9d7;
-  --orange: #ecaa72;
-  --red: #ab4f3f;
-  --shadow: 0 5px 18px #53432908;
-  color-scheme: light;
-  font-family:
-    system-ui,
-    -apple-system,
-    sans-serif;
-  font-size: 14px;
-  color: var(--ink);
-  background: var(--bg);
-}
 * {
   box-sizing: border-box;
 }
-body {
-  margin: 0;
+
+html {
+  -webkit-text-size-adjust: 100%;
+  background: var(--bg);
 }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--bg);
+}
+
+::selection {
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+}
+
 button,
 input,
 select,
 textarea {
   font: inherit;
 }
+
 button {
   cursor: pointer;
   color: inherit;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
+
 button:disabled {
   opacity: 0.5;
   cursor: default;
 }
+
 button:focus-visible,
-a:focus-visible {
-  outline: 3px solid var(--green);
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--brand);
   outline-offset: 3px;
 }
-header {
-  padding: 22px 22px 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 760px;
-  margin: auto;
-}
-.brand {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  font-size: 19px;
-  font-weight: 750;
-  letter-spacing: -0.6px;
-}
-.brand small {
-  display: block;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.3px;
-  color: var(--muted);
-  margin-top: 2px;
-}
-.brand-icon {
-  font: italic bold 32px Georgia;
-  background: var(--ink);
-  color: var(--bg);
-  border-radius: 12px;
-  width: 42px;
-  height: 42px;
-  text-align: center;
-  line-height: 38px;
-}
-.brand-icon span {
-  color: var(--orange);
-  font-size: 19px;
-}
+
 main {
-  max-width: 760px;
+  max-width: var(--app-max);
   margin: auto;
-  padding: 10px 18px 110px;
+  padding: 0 16px calc(104px + env(safe-area-inset-bottom));
 }
+
+/* Compact title bar that appears only after the large screen title scrolls away. */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 18;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: calc(6px + env(safe-area-inset-top))
+    max(16px, calc((100% - var(--app-max)) / 2 + 16px)) 6px;
+  background: #f7f2e9f8;
+  border-bottom: 1px solid #e7dccd;
+  backdrop-filter: blur(20px) saturate(1.15);
+  -webkit-backdrop-filter: blur(20px) saturate(1.15);
+  transform: translateY(-105%);
+  transition: transform var(--dur) var(--ease-out);
+  pointer-events: none;
+}
+
+.topbar.visible {
+  transform: none;
+  pointer-events: auto;
+}
+
+.topbar .topbar-title {
+  min-width: 0;
+  flex: 1;
+  font-size: 15px;
+  font-weight: 730;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar .icon.back-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+}
+
+.topbar .icon.back-btn svg {
+  width: 19px;
+  height: 19px;
+}
+
+body.onboarding .topbar {
+  display: none;
+}
+
+body.full-screen main {
+  padding-bottom: calc(34px + env(safe-area-inset-bottom));
+}
+
+body.onboarding main {
+  padding: 0;
+  max-width: none;
+}
+
+body.full-screen > nav,
+body.onboarding > nav {
+  display: none;
+}
+
 .page {
-  animation: enter 0.2s ease-out;
+  animation: page-in var(--dur) var(--ease-out) both;
 }
-@keyframes enter {
+
+.page.no-anim,
+.page.no-anim > * {
+  animation: none;
+}
+
+@keyframes page-in {
   from {
-    opacity: 0.4;
-    transform: translateY(5px);
+    opacity: 0;
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-h1 {
-  font-size: 27px;
-  letter-spacing: -1px;
-  font-weight: 650;
-  margin: 2px 0 8px;
+
+/* Small, intentionally quiet entrance. Native apps do not stagger every card. */
+.page > * {
+  animation: content-in var(--dur) var(--ease-out) both;
 }
-h2 {
-  font-size: 17px;
-  letter-spacing: -0.4px;
-  margin: 0 0 14px;
+
+@keyframes content-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
-h3 {
-  font-size: 14px;
-  margin: 0 0 5px;
-}
-p {
-  line-height: 1.55;
-}
-small,
-.muted {
-  color: var(--muted);
-}
-.eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  font-size: 10px;
-  font-weight: 750;
-  color: var(--muted);
-  margin: 12px 0 7px;
-}
+
 .row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
+
 .start {
   align-items: flex-start;
 }
+
 .wrap {
   flex-wrap: wrap;
+}
+
+.renderless {
+  animation: none;
+}
+
+/* Native-style screen header. Replaces the old brand navbar. */
+.screen-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: calc(14px + env(safe-area-inset-top)) 0 14px;
+  min-height: 62px;
+}
+
+.screen-head-copy {
+  min-width: 0;
+}
+
+.screen-head h1 {
+  margin: 0;
+  font-size: 29px;
+  font-weight: 780;
+  letter-spacing: -0.04em;
+  line-height: 1.04;
+}
+
+.screen-head p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.screen-head > .icon {
+  justify-self: end;
+}
+
+.screen-head .back-btn {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.screen-head .back-btn svg {
+  width: 19px;
+  height: 19px;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 26px 2px 10px;
+}
+
+.section-head h2 {
+  font-size: 16.5px;
+  font-weight: 730;
+  letter-spacing: -0.025em;
+}
+
+.section-head small {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.section-head .text-action {
+  border: 0;
+  background: transparent;
+  color: var(--brand-dark);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 2px;
+  min-height: 34px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page,
+  .page > * {
+    animation: none;
+  }
+}
+
+.btn,
+.list-row,
+.payment-row,
+.settings-row,
+.account-row,
+.movement-row,
+.debt-plan-row,
+.credit-title-btn {
+  scroll-margin-top: 70px;
+}
+
+.topbar .topbar-action {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  padding: 9px;
+  background: transparent;
+  color: var(--muted-strong);
+}
+
+.topbar .topbar-action svg {
+  width: 18px;
+  height: 18px;
 }

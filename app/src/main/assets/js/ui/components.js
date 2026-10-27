@@ -1,9 +1,28 @@
 import C from "../domain/finance.js";
 import { model } from "../state/model.js";
 import { commit } from "../state/ledger.js";
+import { iconPath, iconViewBox } from "./icons.js";
 
-export function pageHeading(title, subtitle = "") {
-  return `<div class="full-heading"><button class="btn back-btn" data-action="screenBack">${svg("back")} Volver</button><div><div class="eyebrow">${subtitle}</div><h1>${title}</h1></div></div>`;
+export function screenHead(title, subtitle = "", opts = {}) {
+  const {
+    action = "",
+    actionLabel = "",
+    actionIcon = "plus",
+    back = false,
+  } = opts;
+  return `<header class="screen-head">${
+    back
+      ? `<button class="icon back-btn" data-action="screenBack" aria-label="Volver">${svg("back")}</button>`
+      : "<span></span>"
+  }<div class="screen-head-copy"><h1>${title}</h1>${subtitle ? `<p>${subtitle}</p>` : ""}</div>${
+    action
+      ? `<button class="icon soft" data-action="${action}" aria-label="${esc(actionLabel)}" title="${esc(actionLabel)}">${svg(actionIcon)}</button>`
+      : "<span></span>"
+  }</header>`;
+}
+
+export function sectionHead(title, trailing = "", note = "") {
+  return `<div class="section-head"><div><h2>${title}</h2>${note ? `<small>${note}</small>` : ""}</div>${trailing}</div>`;
 }
 
 export function signedMoney(value) {
@@ -38,10 +57,24 @@ export const esc = (s) =>
       })[c],
   );
 
-export const money = (n) =>
-  new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(
-    (n || 0) / 100,
-  );
+const moneyWhole = new Intl.NumberFormat("es-MX", {
+  style: "currency",
+  currency: "MXN",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+const moneyCents = new Intl.NumberFormat("es-MX", {
+  style: "currency",
+  currency: "MXN",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+export const money = (n) => {
+  const value = (n || 0) / 100;
+  return (Number.isInteger(value) ? moneyWhole : moneyCents).format(value);
+};
 
 export const mlabel = (m) =>
   new Date(m + "-15T12:00:00").toLocaleDateString("es-MX", {
@@ -49,36 +82,19 @@ export const mlabel = (m) =>
     year: "numeric",
   });
 
-export const icons = {
-  home: "M3 10 12 3l9 7v11h-6v-7H9v7H3Z",
-  expense: "M5 3h14v18l-3-2-4 2-4-2-3 2ZM8 8h8M8 12h5",
-  debt: "M3 6h18v14H3ZM3 10h18M6 16h4",
-  calendar: "M4 5h16v16H4ZM8 3v4M16 3v4M4 10h16M8 14h2M14 14h2",
-  goal: "M21 12a9 9 0 1 1-9-9M17 12a5 5 0 1 1-5-5M12 12l8-8M16 4h4v4",
-  plus: "M12 5v14M5 12h14",
-  minus: "M5 12h14",
-  transfer: "M3 7h17l-4-4M21 17H4l4 4",
-  edit: "m4 16 12-12 4 4L8 20H4ZM13 7l4 4",
-  trash: "M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6",
-  eye: "M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12ZM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6",
-  pay: "M4 6h16v14H4ZM8 13l3 3 5-6",
-  close: "m6 6 12 12M6 18 18 6",
-  settings: "M4 7h16M4 17h16M8 4v6M16 14v6",
-  download: "M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5",
-  back: "m15 5-7 7 7 7",
-  bank: "M3 10h18M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18M12 3 3 8h18Z",
-  cash: "M3 6h18v12H3ZM7 9a3 3 0 0 1-3 3m16-3a3 3 0 0 0 3 3M9 12h6",
-  card: "M3 6h18v12H3ZM3 10h18M7 15h4",
-  receipt: "M5 3h14v18l-3-2-4 2-4-2-3 2ZM8 8h8M8 12h8M8 16h5",
-  calendarCheck: "M4 5h16v16H4ZM8 3v4M16 3v4M4 10h16m-11 5 2 2 4-5",
-  checkCircle: "M21 11a9 9 0 1 1-5-7M8 12l3 3 8-9",
-  wallet: "M3 6h15a3 3 0 0 1 3 3v9H3ZM3 9h18M15 13h4v3h-4Z",
-  ticket: "M4 8a2 2 0 0 0 0 4v4h16v-4a2 2 0 0 0 0-4V4H4ZM9 7v6",
-  chevron: "m9 5 7 7-7 7",
+export const dlabel = (date, year = true) => {
+  if (!date) return "";
+  return new Date(date + "T12:00:00")
+    .toLocaleDateString("es-MX", {
+      day: "numeric",
+      month: "short",
+      ...(year ? { year: "numeric" } : {}),
+    })
+    .replace(".", "");
 };
 
 export const svg = (k) =>
-  `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${icons[k] || icons.plus}"/></svg>`;
+  `<svg viewBox="${iconViewBox}" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${iconPath(k)}</svg>`;
 
 export const icon = (k, title, action, id = "", extra = "") =>
   `<button class="icon ${k === "trash" ? "danger" : ""}" aria-label="${esc(title)}" title="${esc(title)}" data-action="${action}" data-id="${esc(id)}" ${extra}>${svg(k)}</button>`;
@@ -119,10 +135,18 @@ export function closeModal() {
   model.formSubmit = null;
 }
 
-export function form(title, fields, onSubmit, submitText = "Guardar") {
+export function form(
+  title,
+  fields,
+  onSubmit,
+  submitText = "Guardar",
+  options = {},
+) {
+  const cancelLabel = options.cancelLabel || "Cancelar",
+    cancelAction = options.cancelAction || "close";
   modal(
     title,
-    `<form id="form">${fields}<div class="form-error" role="alert"></div><div class="form-actions"><button type="button" class="btn" data-action="close">Cancelar</button><button class="btn primary" type="submit">${submitText}</button></div></form>`,
+    `<form id="form">${fields}<div class="form-error" role="alert"></div><div class="form-actions"><button type="button" class="btn" data-action="${cancelAction}">${cancelLabel}</button><button class="btn primary" type="submit">${submitText}</button></div></form>`,
     onSubmit,
   );
 }

@@ -92,53 +92,13 @@ function migrate(raw) {
   s.migration8 = { from: old.schemaVersion, date: today() };
   return validate(s);
 }
-function migrateDraft(d) {
-  if (!d) return null;
-  if (d.version === 2)
-    return { ...clone(d), creditCards: clone(d.creditCards || []) };
-  if (d.version !== 1) throw Error("Borrador incompatible.");
-  const base = empty(),
-    v = clone(d);
-  v.version = 2;
-  v.walletAccounts = base.walletAccounts.map((a) => ({
-    ...a,
-    opening: d.config[a.id],
-  }));
-  v.creditors = d.accounts;
-  delete v.accounts;
-  v.entries = d.entries.map(convertTransaction);
-  v.debts = d.debts.map((x) => {
-    const r = {
-      ...x,
-      creditorId: x.accountId || "",
-      dueDay: Number(x.dueDay || 1),
-      historicalPaidPayments: [...x.paidPayments],
-    };
-    delete r.accountId;
-    return r;
-  });
-  v.fixedExpenses = d.fixedExpenses.map((f) => ({
-    ...f,
-    categoryId: "",
-    rules: R.rulesFor(f),
-  }));
-  v.settings.reminderTime = v.settings.reminderTime || "09:00";
-  v.config.openings = Object.fromEntries(
-    v.walletAccounts.map((a) => [a.id, a.opening]),
-  );
-  delete v.config.cash;
-  delete v.config.debit;
-  return v;
-}
 function migrateEnvelope(saved) {
   if (!saved) return null;
   if (!Array.isArray(saved.history) || !Number.isInteger(saved.revision || 0))
     throw Error("Historial de guardado inválido.");
   return {
-    ...clone(saved),
     state: migrate(saved.state),
     history: saved.history.map((h) => ({ ...h, state: migrate(h.state) })),
-    draft: migrateDraft(saved.draft),
     revision: saved.revision || 0,
   };
 }
@@ -920,7 +880,6 @@ export default {
   empty,
   validate,
   migrate,
-  migrateDraft,
   migrateEnvelope,
   balances,
   schedule,
