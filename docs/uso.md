@@ -2,10 +2,10 @@
 
 Aplicación instalable para Android 8.0 o posterior, con Android System WebView actualizado. Funciona sin internet, sin cuenta y sin servidor. El APK no contiene datos financieros del propietario ni datos de ejemplo.
 
-## Actualizar ProjectOSP 7.0 a Melange 8.4
+## Actualizar ProjectOSP 7.0 a Melange 8.5
 
 1. Exporta un respaldo por precaución; no tendrás que importarlo para actualizar.
-2. Abre `Melange-8.4.0.apk` desde Descargas, o selecciónalo desde Ajustes → Instalar actualización.
+2. Abre `Melange-8.5.0.apk` desde Descargas, o selecciónalo desde Ajustes → Instalar actualización.
 3. Android debe ofrecer actualizar la app existente. No la desinstales ni borres sus datos.
 4. Abre Melange y comprueba tus saldos, movimientos, metas y deudas.
 
@@ -28,7 +28,7 @@ La gráfica de liquidez muestra las observaciones y los saldos calculados que ya
 
 ## Instalar y migrar desde v6
 
-1. Descarga `Melange-8.4.0.apk` en tu teléfono.
+1. Descarga `Melange-8.5.0.apk` en tu teléfono.
 2. Ábrelo desde Archivos / Descargas. Si Android lo solicita, permite instalar aplicaciones desde esa aplicación de archivos o navegador.
 3. Abre Melange y elige **Importar respaldo de Melange / ProjectOSP**.
 4. Selecciona tu `projectosp-backup.json`. Revisa los saldos y cantidades de registros que muestra la vista previa y pulsa **Importar estos datos**.

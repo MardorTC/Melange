@@ -1,11 +1,11 @@
-# Verificación de Melange 8.4
+# Verificación de Melange 8.5
 
 - Dominio: cuentas y vales, disponible global y por cuenta, cajitas y reservas sin doble descuento, liberaciones parciales, 5/12 antecedentes y reversión de la sexta cuota, préstamos y cobros, recurrencias, pagos anticipados, migración completa y plan de deudas (MSI, préstamos, vencidos y estimados).
 - DOM: guardado fallido, pagos y deshacer, cuentas, bloqueo de salidas, cajitas, antecedentes, préstamos, hora común, respaldos, arranque desde cero e ignorar borradores antiguos.
 - Chromium: formularios y navegación, tres anchos móviles y horizontal; Cuentas y Me deben sin desbordamiento. Migración real de IndexedDB, copia v7 conservada tras 17 cambios y rechazo de un historial inválido sin sobrescribir el original.
 - Revisión móvil: Inicio, Movimientos, Deudas, Calendario, Metas, Cuentas, Ruta de deudas, Proyección, Ajustes y la hoja de movimiento a 360 y 390 px; sin scroll horizontal. Se comprobaron la barra compacta al desplazar, los carruseles con snap y la preferencia de movimiento reducido.
 - Capturas de referencia: `build/previews/` se regenera con datos ficticios en cada ejecución de `npm run test:ui`.
-- Android: compilaciones debug y release, pruebas unitarias de actualización y horario (incluidos cambios de zona y horario de verano), lint. La prueba instrumentada de WebView moderno carga un libro v7 y comprueba cuentas, reservas, historial y borrador migrados a v8.
+- Android: compilaciones debug y release, pruebas unitarias de actualización y horario (incluidos cambios de zona y horario de verano), lint. La prueba instrumentada de WebView moderno carga un libro v7, comprueba cuentas, reservas e historial migrados a v10, confirma que el shell nuevo carga y que los borradores antiguos de reconstrucción se ignoran. CI ejecutó la instrumentación en API 26 y API 35.
 
 ## Actualización firmada 7.2 → 8.0
 
