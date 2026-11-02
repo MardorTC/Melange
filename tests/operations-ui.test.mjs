@@ -28,7 +28,16 @@ try {
           s.income = 12300;
         });
       });
-      await page.locator("#toast [data-action=undo]").click();
+      await page.waitForFunction(
+        () => !!document.querySelector("#toast [data-action=undo]"),
+      );
+      // Click the current node synchronously: Playwright's auto-wait locator can
+      // retain a toast button that a quick re-render has already replaced.
+      await page.evaluate(() => {
+        const button = document.querySelector("#toast [data-action=undo]");
+        if (!button) throw Error("Undo button is not visible yet");
+        button.click();
+      });
       await page.waitForFunction(async () => {
         const { model } = await import("/js/state/model.js");
         return !model.busy && model.state.income === 0;
