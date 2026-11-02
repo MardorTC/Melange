@@ -95,6 +95,7 @@ export function render() {
     ? ""
     : [
         ["home", "Inicio"],
+        ["accounts", "Cuentas"],
         ["expense", "Movimientos"],
         ["debt", "Deudas"],
         ["calendar", "Calendario"],
@@ -102,11 +103,11 @@ export function render() {
       ]
         .map(
           ([k, t]) =>
-            `<button data-action="tab" data-id="${k}" class="${model.tab === k ? "active" : ""}" ${model.tab === k ? 'aria-current="page"' : ""}><span class="nav-icon">${svg(k)}</span><span>${t}</span></button>`,
+            `<button data-action="tab" data-id="${k}" class="${model.tab === k ? "active" : ""}" ${model.tab === k ? 'aria-current="page"' : ""}><span class="nav-icon">${svg(k === "accounts" ? "bank" : k)}</span><span>${t}</span></button>`,
         )
         .join("");
   if (onboarding) {
-    view.innerHTML = `<div class="page onboard"><div class="onboard-brand"><img src="logo.png" alt=""><span>Melange</span></div><div class="onboard-main"><div class="onboard-art"><img src="logo.png" alt=""></div><div class="onboard-copy"><div class="eyebrow">Finanzas personales</div><h1>Haz espacio para lo que quieres.</h1><p>Tus cuentas, tus metas y un poco más de claridad. Sin cuentas en línea ni ruido.</p></div></div><div class="onboard-actions"><button class="btn primary full" data-action="start">Empezar desde cero</button><button class="btn full" data-action="import">${svg("download")} Importar respaldo</button><p class="note">Tu información permanece en este dispositivo.</p></div></div>`;
+    view.innerHTML = `<div class="page onboard"><div class="onboard-brand"><img src="logo.png" alt=""><span>Melange</span></div><div class="onboard-main"><div class="onboard-art"><img src="logo.png" alt=""></div><div class="onboard-copy"><div class="eyebrow">Finanzas personales</div><h1>Haz espacio para lo que quieres.</h1><p>Tus cuentas y metas, sin registro ni conexión con tu banco.</p></div></div><div class="onboard-actions"><button class="btn primary full" data-action="start">Empezar desde cero</button><button class="btn full" data-action="import">${svg("download")} Importar respaldo</button><p class="note">Los datos se guardan solo aquí. Si pierdes el teléfono o desinstalas, necesitarás un respaldo para recuperarlos.</p></div></div>`;
     syncTopbar();
     return;
   }

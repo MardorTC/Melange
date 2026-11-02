@@ -58,7 +58,7 @@
 }
 
 .home-intro {
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 .home-intro .eyebrow {
@@ -69,7 +69,7 @@
 .home-intro h1 {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(34px, 9.4vw, 42px);
+  font-size: 25px;
   line-height: 0.98;
   letter-spacing: -0.025em;
   margin: 0;
@@ -77,12 +77,12 @@
 }
 
 .balance {
-  margin-top: 18px;
+  margin-top: 12px;
 }
 
 .balance-label {
   display: block;
-  font-size: 10.5px;
+  font-size: 13px;
   font-weight: 750;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -92,7 +92,7 @@
 .balance-value {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(44px, 12vw, 54px);
+  font-size: clamp(38px, 10vw, 46px);
   line-height: 0.95;
   letter-spacing: -0.035em;
   margin: 5px 0 6px;
@@ -102,13 +102,13 @@
 
 .balance-hint {
   margin: 0;
-  font-size: 11.5px;
+  font-size: 13px;
   color: #7a6250;
 }
 
 .hero-accounts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-top: 17px;
   padding-top: 14px;
@@ -151,13 +151,13 @@
 }
 
 .hero-account small {
-  font-size: 9.5px;
+  font-size: 13px;
   color: #7e6552;
   white-space: nowrap;
 }
 
 .hero-account strong {
-  font-size: clamp(11px, 3.2vw, 13.5px);
+  font-size: 15px;
   font-weight: 720;
   letter-spacing: -0.02em;
   white-space: nowrap;
@@ -167,6 +167,89 @@
 
 .home-body {
   padding-top: 2px;
+}
+
+.home-outlook {
+  margin-top: 14px;
+  border-top: 1px solid #d5b596;
+  padding-top: 12px;
+}
+.home-outlook > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  font-size: 14px;
+}
+.home-outlook strong {
+  font-size: 18px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.home-outlook .outlook-margin {
+  margin-top: 6px;
+  font-weight: 700;
+}
+.home-outlook .outlook-margin strong {
+  font-size: 24px;
+}
+.home-outlook p {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 8px 0 0;
+}
+.home-summaries {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+  gap: 12px;
+}
+.home-summaries .rail-card {
+  max-width: none;
+  min-height: 135px;
+  padding: 16px;
+}
+.home-summaries .rail-label {
+  font-size: 13px;
+  opacity: 1;
+}
+.home-summaries .metric {
+  font-size: 28px;
+}
+.home-summaries .rail-footer small {
+  font-size: 13px;
+  opacity: 1;
+}
+.home-summaries .rail-link {
+  min-height: 44px;
+}
+.credit-access.hero-account {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 20px;
+  width: 100%;
+  gap: 12px;
+  align-items: center;
+  padding: 16px;
+  background: var(--info-soft);
+}
+.credit-access svg {
+  width: 22px;
+  height: 22px;
+}
+.credit-access.hero-account strong,
+.credit-access.hero-account small {
+  white-space: normal;
+  display: block;
+  color: var(--ink);
+}
+.credit-access.hero-account small {
+  margin-top: 4px;
+}
+.first-steps .btn {
+  margin-top: 12px;
+}
+.home-spending > summary {
+  min-height: 44px;
+  font-weight: 700;
 }
 
 .quick.card {
@@ -1396,7 +1479,7 @@
   font-weight: 650;
   color: var(--ink-soft);
   white-space: nowrap;
-  min-height: 38px;
+  min-height: 44px;
 }
 
 .calendar-tools svg {
@@ -1430,9 +1513,9 @@
 }
 
 .calendar-head .icon {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   background: var(--surface-soft);
 }
 
@@ -1460,7 +1543,7 @@
   border: 0;
   background: transparent;
   border-radius: 11px;
-  min-height: 41px;
+  min-height: 44px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2030,7 +2113,7 @@
 }
 
 .receivable-movement .btn {
-  min-height: 32px;
+  min-height: 44px;
   padding: 4px 8px;
 }
 
@@ -2076,7 +2159,7 @@
 .settings-copy small {
   display: block;
   margin-top: 2px;
-  font-size: 10.5px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -2116,9 +2199,9 @@
 }
 
 .catalog-row .actions .icon {
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   background: transparent;
   color: var(--muted);
 }
@@ -2126,7 +2209,7 @@
 /* ---------------- Small helpers ---------------- */
 .section-note {
   margin: 6px 0 0;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
 }
 

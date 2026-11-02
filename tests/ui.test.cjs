@@ -63,6 +63,7 @@ const fs = require("fs");
       .getByRole("button", { name: "Agregar deuda", exact: true })
       .click();
     await page.locator("[name=name]").fill("Equipo de trabajo");
+    await page.locator("details[data-debt-advanced] > summary").click();
     await page.locator("[name=originalAmount]").fill("3000");
     await page.locator("[name=balance]").fill("3000");
     await page.locator("[name=payment]").fill("1000");

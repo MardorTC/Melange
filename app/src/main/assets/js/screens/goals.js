@@ -35,7 +35,7 @@ export function goalsPage() {
             return `<section class="card goal-card-new"><div class="goal-top"><div class="goal-ring" style="--p:${pct}"><span>${Math.round(pct)}%</span></div><div class="goal-copy"><h2>${esc(g.name)}</h2><small>${g.date ? "Objetivo " + dlabel(g.date) : "A tu ritmo"}</small></div>${icon("edit", "Editar meta", "editGoal", g.id)}</div><div class="goal-figures"><strong>${money(g.balance)}</strong><span>de ${money(g.target)}</span></div><p class="goal-remaining">${pct >= 100 ? "Objetivo alcanzado" : "Faltan " + money(g.target - g.balance)}</p><div class="bar"><span style="--p:${pct}%"></span></div><div class="goal-actions">${btn("Reservar / liberar", "contribute", g.id, "primary")}${icon("trash", "Eliminar meta y liberar reserva", "deleteGoal", g.id)}</div></section>`;
           })
           .join("")
-      : `<section class="card">${empty("¿Qué quieres hacer posible?", "Crea una meta para tu fondo de emergencia, un viaje o una compra.")}</section>`) +
+      : `<section class="card">${empty("¿Qué quieres hacer posible?", "Crea una meta para tu fondo de emergencia, un viaje o una compra.")}<div class="actions">${btn("Crear mi primera meta", "editGoal", "", "primary")}</div></section>`) +
     `<details class="fine-print"><summary>Cómo funciona</summary><p>Las reservas forman parte de tu efectivo y débito, pero no están disponibles para gastar. Puedes liberarlas cuando quieras.</p></details>`
   );
 }

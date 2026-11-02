@@ -16,8 +16,16 @@ const w = new Window({
   }),
   doc = w.document;
 let stored = null,
-  failWrite = false;
+  failWrite = false,
+  pendingWrites = 0;
+const formDrafts = new Map();
 w.NativeOSP = {
+  readFormDraft: (key) => formDrafts.get(key) || "",
+  writeFormDraft: (key, raw) => {
+    if (raw) formDrafts.set(key, raw);
+    else formDrafts.delete(key);
+    return "OK";
+  },
   read: () => (stored ? JSON.stringify(stored) : ""),
   write: (raw) => {
     if (failWrite) return "ERROR:Simulated storage failure";
@@ -29,8 +37,13 @@ w.NativeOSP = {
   exportBackup: () => {},
   requestNotifications: () => {},
 };
-w.NativeOSP.writeAsync = (raw, id) =>
-  setTimeout(() => w.nativeSaved(id, w.NativeOSP.write(raw)), 0);
+w.NativeOSP.writeAsync = (raw, id) => {
+  pendingWrites++;
+  setTimeout(() => {
+    w.nativeSaved(id, w.NativeOSP.write(raw));
+    pendingWrites--;
+  }, 0);
+};
 doc.write(
   fs
     .readFileSync("app/src/main/assets/index.html", "utf8")
@@ -38,14 +51,26 @@ doc.write(
 );
 w.eval(bundle);
 const wait = () => new Promise((r) => setTimeout(r, 5));
-await wait();
+const until = async (predicate) => {
+  for (let n = 0; n < 200 && !predicate(); n++) await wait();
+  assert.ok(predicate(), "Timed out waiting for DOM/native completion");
+};
+const settle = async () => {
+  await wait();
+  await until(
+    () =>
+      pendingWrites === 0 &&
+      !doc.querySelector('#form [type="submit"]')?.disabled,
+  );
+};
+await until(() => doc.querySelector('[data-action="start"]'));
 const click = async (action, id) => {
   let selector = `[data-action="${action}"]`;
   if (id !== undefined) selector += `[data-id="${id}"]`;
   const el = doc.querySelector(selector);
   assert.ok(el, selector);
   el.click();
-  await wait();
+  await settle();
 };
 const submit = async (values) => {
   const form = doc.querySelector("#form");
@@ -58,7 +83,7 @@ const submit = async (values) => {
   form.dispatchEvent(
     new w.Event("submit", { bubbles: true, cancelable: true }),
   );
-  await wait();
+  await settle();
 };
 await click("start");
 await submit({ cash: "0", debit: "0", income: "20000" });

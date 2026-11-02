@@ -7,6 +7,8 @@ import { model } from "../state/model.js";
 import C from "../domain/finance.js";
 import {
   closeModal,
+  requestCloseModal,
+  toast,
   modal,
   money,
   form,
@@ -19,6 +21,9 @@ import {
   esc,
   empty,
   confirmAction,
+  dlabel,
+  signedField,
+  signedMoney,
 } from "./components.js";
 import { commit, undo } from "../state/ledger.js";
 import {
@@ -39,8 +44,47 @@ import {
 } from "./forms.js";
 import { showProjection, timeline } from "../screens/calendar.js";
 import { doExport } from "../platform/backups.js";
+import { startSetup, bankFields } from "./setup.js";
+import { draftAction } from "./form-drafts.js";
+import { traceOperation } from "../state/operation-trace.js";
 
 export async function action(a, id, el) {
+  if (model.busy) {
+    if (a === "undo")
+      traceOperation("undo", "action-ignored-busy", model.revision);
+    toast("Guardando. Espera un momento.");
+    return;
+  }
+  if (a.startsWith("draft")) {
+    const handled = await draftAction(a);
+    if (handled && a === "draftDiscardExit") closeModal();
+    return;
+  }
+  if (
+    ["tab", "settings", "screenBack"].includes(a) &&
+    document.querySelector("#dialog")?.open &&
+    !(await requestCloseModal())
+  )
+    return;
+  if (a === "setupAddBank") {
+    if (document.querySelectorAll("[data-setup-bank]").length >= 30)
+      throw Error(
+        "Puedes configurar hasta 31 cuentas aquí. Agrega las demás desde Cuentas.",
+      );
+    document
+      .querySelector("#setup-banks")
+      .insertAdjacentHTML("beforeend", bankFields());
+    document.dispatchEvent(new Event("formstructurechange"));
+    document
+      .querySelector("#setup-banks [data-setup-bank]:last-child input")
+      .focus();
+    return;
+  }
+  if (a === "setupRemoveBank") {
+    el.closest("[data-setup-bank]").remove();
+    document.dispatchEvent(new Event("formstructurechange"));
+    return;
+  }
   if (
     creditAction(a, id, el) ||
     updateAction(a) ||
@@ -68,19 +112,19 @@ export async function action(a, id, el) {
     return;
   }
   if (a === "tab") {
+    if (el?.dataset.accountSub) model.accountSub = el.dataset.accountSub;
     model.tab = id;
     model.period = C.month();
     model.calendarDay = "";
     closeModal();
     render();
     window.scrollTo(0, 0);
-  } else if (a === "close") closeModal();
+  } else if (a === "close") await requestCloseModal();
   else if (a === "settings") openPage("settings");
   else if (a === "start") startSetup();
   else if (a === "startEmpty")
     await commit("Libro iniciado", (s) => {
-      s.started = true;
-      C.ensureBudget(s);
+      C.startLedger(s, { banks: [{ name: "", balance: 0 }] });
     });
   else if (a === "calendarDay") {
     model.calendarDay = id && id !== model.calendarDay ? String(id) : "";
@@ -120,15 +164,28 @@ export async function action(a, id, el) {
   else if (a === "transactionDetails") transactionDetails(id);
   else if (a === "editTransaction") {
     const t = model.state.transactions.find((t) => t.id === id);
-    transactionForm(t.kind, t);
+    if (t.kind === "card_payment" && !t.historical)
+      creditAction("creditPaymentEdit", id);
+    else if (["loan_in", "loan_out"].includes(t.kind) && !t.historical)
+      loanAction("loanMovementEdit", id);
+    else transactionForm(t.kind, t);
   } else if (a === "deleteTransaction") deleteTransaction(id);
   else if (a === "debtDetails") debtDetails(id);
   else if (a === "extraPayment") extraPayment(id);
   else if (a === "fixedDetails") {
     const f = model.state.fixedExpenses.find((f) => f.id === id);
+    const upcoming = Array.from({ length: 12 }, (_, n) =>
+      C.obligations(model.state, C.addMonth(C.month(), n)),
+    )
+      .flat()
+      .filter((i) => i.ref === id && !i.paid)
+      .slice(0, 6);
+    const payments = model.state.transactions
+      .filter((t) => t.ref === id)
+      .sort((a, b) => b.date.localeCompare(a.date));
     modal(
       f.name,
-      `<p>${money(f.amount)} por vencimiento · ${esc(C.recurrenceLabel(f))}</p><p>${f.kind === "subscription" ? "Suscripción" : "Gasto fijo"}</p><p class="note">Cada pago se vincula a su vencimiento individual.</p>`,
+      `<p>${money(f.amount)} por vencimiento · ${esc(C.recurrenceLabel(f))}</p><p>${f.kind === "subscription" ? "Suscripción" : "Gasto fijo"}</p><p class="note">Configuración vigente desde ${dlabel(C.rulesFor(f).at(-1).effectiveFrom)}. Cambiar o archivar no borra pagos.</p><div class="toolbar wrap">${btn("Editar", "editFixed", id)}${f.active !== false ? btn("Dejar de generar cobros", "deleteFixed", id, "danger") : ""}</div><h3>Próximos vencimientos</h3>${upcoming.map((i) => `<button class="list-row" data-action="pay" data-id="${esc(i.key)}" data-period="${i.date.slice(0, 7)}">${dlabel(i.date)} · ${money(i.remaining)} · Pagar</button>`).join("") || '<p class="note">Sin nuevos pagos pendientes en los próximos 12 meses.</p>'}<h3>Pagos registrados</h3>${payments.map((t) => `<button class="list-row" data-action="transactionDetails" data-id="${esc(t.id)}">${dlabel(t.date)} · ${money(t.amount)} · Ver o corregir</button>`).join("") || '<p class="note">Sin pagos registrados.</p>'}`,
     );
   } else if (a === "expenseSub") {
     model.sub = id;
@@ -147,8 +204,11 @@ export async function action(a, id, el) {
     };
     closeModal();
     render();
-  } else if (a === "prev" || a === "next") {
-    model.period = C.addMonth(model.period, a === "prev" ? -1 : 1);
+  } else if (a === "prev" || a === "next" || a === "thisMonth") {
+    model.period =
+      a === "thisMonth"
+        ? C.month()
+        : C.addMonth(model.period, a === "prev" ? -1 : 1);
     model.calendarDay = "";
     render();
   } else if (a === "projection") showProjection();
@@ -159,7 +219,7 @@ export async function action(a, id, el) {
       "Ajustar saldos",
       model.state.walletAccounts
         .filter((a) => a.active !== false)
-        .map((a) => amount(a.id, a.name + " real", b[a.id]))
+        .map((a) => signedField(a.id, a.name + " real", String(b[a.id] / 100)))
         .join("") +
         '<p class="note">La diferencia queda registrada como ajuste, no como ingreso ni gasto.</p>',
       async (f) =>
@@ -168,7 +228,7 @@ export async function action(a, id, el) {
           for (const accountId of s.walletAccounts
             .filter((a) => a.active !== false)
             .map((a) => a.id)) {
-            const diff = moneyValue(f[accountId]) - current[accountId];
+            const diff = signedMoney(f[accountId]) - current[accountId];
             if (diff)
               C.record(s, {
                 kind: "adjustment",
@@ -288,24 +348,5 @@ function kindLabel(k) {
       loan_out: "Dinero prestado",
       loan_in: "Cobro de préstamo",
     }[k] || k
-  );
-}
-
-function startSetup() {
-  form(
-    "Tu punto de partida",
-    `<p class="note">Saldos de hoy, no un historial. Puedes corregirlos después.</p><div class="start-fields">${amount("cash", "Efectivo actual", 0)}${amount("debit", "Débito actual", 0)}${amount("income", "Ingreso mensual previsto", 0)}</div>`,
-    async (f) =>
-      commit("Libro iniciado", (s) => {
-        s.started = true;
-        const cash = s.walletAccounts.find((a) => a.id === "cash"),
-          debit = s.walletAccounts.find((a) => a.id === "debit");
-        if (cash) cash.opening = moneyValue(f.cash || "0");
-        if (debit) debit.opening = moneyValue(f.debit || "0");
-        s.income = moneyValue(f.income || "0");
-        C.ensureBudget(s);
-      }),
-    "Empezar",
-    { cancelLabel: "Omitir", cancelAction: "startEmpty" },
   );
 }

@@ -20,7 +20,7 @@ export function debtsPage() {
   const tabs = `<div class="segmented" role="tablist" aria-label="Tipo de deuda"><button class="${selected === "owe" ? "active" : ""}" role="tab" aria-selected="${selected === "owe"}" data-action="debtSub" data-id="owe">Debo</button><button class="${selected === "owed" ? "active" : ""}" role="tab" aria-selected="${selected === "owed"}" data-action="debtSub" data-id="owed">Me deben</button></div>`;
   const heading = screenHead(
     "Deudas",
-    "MSI, préstamos y tarjetas.",
+    "Compras a meses, préstamos y tarjetas.",
     selected === "owe"
       ? { action: "editDebt", actionLabel: "Agregar deuda" }
       : { action: "loanCreate", actionLabel: "Registrar préstamo" },
@@ -31,11 +31,18 @@ export function debtsPage() {
     plan = debtPlan(model.state),
     loans = breakdown.loans,
     settled = model.state.debts.filter((d) => d.balance === 0 && !d.archived),
-    otherDebt =
-      breakdown.cards.reduce((n, c) => n + c.summary.purchases, 0) +
-      model.state.debts
-        .filter((d) => !d.archived && d.balance > 0 && d.type === "revolving")
-        .reduce((n, d) => n + d.balance, 0),
+    cardPurchases = breakdown.cards.reduce(
+      (n, card) => n + card.summary.purchases,
+      0,
+    ),
+    cardInstallments = breakdown.cards.reduce(
+      (n, card) => n + card.summary.installments,
+      0,
+    ),
+    cardUnassigned = breakdown.cards.reduce(
+      (n, card) => n + card.summary.unassigned,
+      0,
+    ),
     noDateCount = plan.rows.filter((row) => !row.end).length,
     parts = [
       loans.length
@@ -44,8 +51,9 @@ export function debtsPage() {
       breakdown.cards.length
         ? `${breakdown.cards.length} ${breakdown.cards.length === 1 ? "tarjeta" : "tarjetas"}`
         : "",
-      otherDebt ? `${money(otherDebt)} en compras` : "",
-      noDateCount ? `${noDateCount} sin cuota` : "",
+      noDateCount
+        ? `${noDateCount} ${noDateCount === 1 ? "deuda" : "deudas"} sin fecha final estimada`
+        : "",
       breakdown.archivedCount
         ? `${breakdown.archivedCount} archivada${breakdown.archivedCount === 1 ? "" : "s"}`
         : "",
@@ -54,10 +62,12 @@ export function debtsPage() {
   return (
     heading +
     tabs +
+    `<div class="toolbar wrap">${btn("Agregar tarjeta", "creditEdit")}</div>` +
     `<section class="card debt-summary">
       <small>Deuda total</small>
       <div class="metric">${money(breakdown.total)}</div>
-      <p class="note">${parts.length ? parts.join(" · ") : "Sin deudas activas"}</p>
+       <p class="note">${parts.length ? parts.join(" · ") : "Sin deudas activas"}</p>
+       ${breakdown.cards.length ? `<p class="note">Tarjetas ya incluidas en el total: ${money(cardPurchases)} de compras y saldo anterior + ${money(cardInstallments)} de compras a meses${cardUnassigned ? ` − ${money(cardUnassigned)} en pagos todavía sin desglose` : ""}. No vuelvas a sumar estos importes.</p>` : ""}
       <div class="hero-split">
         <div><small>Libre de cuotas</small><strong class="free-date">${plan.debtFreeMonth ? mlabel(plan.debtFreeMonth) : "Sin fecha"}</strong></div>
         <div><small>Cuota normal</small><strong>${money(plan.monthlyPayment)}</strong></div>
@@ -77,9 +87,9 @@ export function debtsPage() {
       ? `<details class="card settled-list"><summary>Deudas liquidadas (${settled.length})</summary>${settled.map((d) => debtCard(d, plan)).join("")}</details>`
       : "") +
     (!breakdown.total
-      ? `<section class="card">${empty("Tus deudas, en orden", "Agrega un préstamo o un MSI para ver su saldo y su fecha final.")}</section>`
+      ? `<section class="card">${empty("Tus deudas, en orden", "Agrega un préstamo o una tarjeta para ver su saldo y su fecha final.")}<div class="actions">${btn("Registrar deuda", "editDebt", "", "primary")}</div></section>`
       : "") +
-    `<details class="fine-print"><summary>Cómo se calcula</summary><p>Los MSI de tarjeta se muestran dentro de su tarjeta para no contarlos dos veces. La ruta de cuotas calcula la fecha final con las cuotas registradas; las compras revolventes se ven en el saldo de la tarjeta.</p></details>`
+    `<details class="fine-print"><summary>Cómo se calcula</summary><p>Las compras a meses sin intereses se muestran dentro de su tarjeta para no contarlas dos veces. La ruta de cuotas calcula la fecha final con las cuotas registradas; las compras a crédito sin plazo fijo se ven en el saldo de la tarjeta.</p></details>`
   );
 }
 
@@ -92,9 +102,9 @@ function cardRow({ card, summary, installments }, plan) {
   const pct = card.limit ? Math.min(100, (summary.used / card.limit) * 100) : 0,
     msi = plan.rows.filter((row) => row.cardId === card.id),
     overdue = next && next.date < C.today();
-  return `<div class="credit-debt-row"><span class="visual-icon debt">${svg("card")}</span><div class="credit-debt-copy"><button class="credit-title-btn" data-action="creditDetails" data-id="${esc(card.id)}">${esc(card.name)}</button><small>${installments.length ? `${installments.length} MSI ${installments.length === 1 ? "vinculado" : "vinculados"}` : "Compras y saldo revolvente"}${next ? ` · ${overdue ? "vencido" : "próximo"} ${shortDate(next.date)}` : ""}</small><div class="bar mini"><span style="--p:${pct}%"></span></div></div><div class="credit-debt-side"><strong>${money(summary.used)}</strong>${next && summary.used > 0 ? `<button class="text-action" data-action="creditPay" data-id="${esc(card.id)}">Pagar</button>` : ""}</div></div>${
+  return `<div class="credit-debt-row"><span class="visual-icon debt">${svg("card")}</span><div class="credit-debt-copy"><button class="credit-title-btn" data-action="creditDetails" data-id="${esc(card.id)}">${esc(card.name)}</button><small>${installments.length ? `${installments.length} ${installments.length === 1 ? "compra a meses" : "compras a meses"}` : "Compras y saldo de la tarjeta"}${next ? ` · ${overdue ? "vencido" : "próximo"} ${shortDate(next.date)}` : ""}</small><div class="bar mini"><span style="--p:${pct}%"></span></div></div><div class="credit-debt-side"><strong>${money(summary.used)}</strong>${next && summary.used > 0 ? `<button class="text-action" data-action="creditPay" data-id="${esc(card.id)}">Pagar</button>` : ""}</div></div>${
     msi.length
-      ? `<details class="more-actions msi-details"><summary>${msi.length} MSI: cuotas y fechas</summary>${msi.map((row) => `<div class="msi-row"><span>${esc(row.name)}<small>${money(row.payment)}/mes · termina ${row.end ? mlabel(row.end) : "sin fecha"}${row.partial ? ` · faltan ${money(row.currentRemaining)} de esta cuota` : ""}</small></span><strong>${money(row.balance)}</strong></div>`).join("")}</details>`
+      ? `<details class="more-actions msi-details"><summary>${msi.length} compras a meses: cuotas y fechas</summary>${msi.map((row) => `<div class="msi-row"><span>${esc(row.name)}<small>${money(row.payment)}/mes · termina ${row.end ? mlabel(row.end) : "sin fecha"}${row.partial ? ` · faltan ${money(row.currentRemaining)} de esta cuota` : ""}</small></span><strong>${money(row.balance)}</strong></div>`).join("")}</details>`
       : ""
   }`;
 }

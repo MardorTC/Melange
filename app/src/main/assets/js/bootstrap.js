@@ -8,16 +8,27 @@ import {
   toast,
   dialog,
   closeModal,
+  requestCloseModal,
   view,
   esc,
 } from "./ui/components.js";
 import { action } from "./ui/actions.js";
 import { render, fullScreens, backPage } from "./ui/navigation.js";
-import { importRaw } from "./platform/backups.js";
+import {
+  importRaw,
+  decodeBackupBytes,
+  chooseImport,
+  applyRecoveryImport,
+  setRecoveryAppliedHandler,
+  MAX_BACKUP_BYTES,
+} from "./platform/backups.js";
 import { openStore, readStore, writeStore } from "./platform/storage.js";
 import { syncReminders } from "./state/ledger.js";
+import { updateCardPreview } from "./screens/credit.js";
+import { syncReserveFields } from "./ui/forms.js";
 
 document.addEventListener("change", (e) => {
+  if (e.target.matches("[data-reserve-kind]")) syncReserveFields();
   if (e.target.name === "unit") {
     const twice = e.target.value === "twiceMonthly";
     const interval = document.querySelector("[data-recurrence-interval]");
@@ -74,6 +85,12 @@ document.addEventListener("submit", async (e) => {
 });
 
 document.addEventListener("input", (e) => {
+  if (
+    e.target.closest("#card-installments") ||
+    e.target.name === "openingBalance" ||
+    e.target.name === "paymentDay"
+  )
+    updateCardPreview();
   if (e.target.matches("[data-chart-slider]")) {
     selectHistoryPoint(
       e.target.closest(".history-chart").querySelectorAll("[data-chart-point]")[
@@ -88,35 +105,38 @@ document.addEventListener("input", (e) => {
     render();
     $("#search").focus();
     $("#search").setSelectionRange(pos, pos);
-  } else if (e.target.dataset.money) {
-    const el = e.target,
-      raw = el.value.replace(/[^\d.]/g, ""),
-      parts = raw.split(".");
-    if (parts.length > 2) parts.splice(2);
-    const whole = parts[0]
-      .replace(/^0+(?=\d)/, "")
-      .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    el.value = whole + (parts.length > 1 ? "." + parts[1].slice(0, 2) : "");
   }
 });
 
 $("#importFile").addEventListener("change", async (e) => {
   const f = e.target.files[0];
   if (f) {
-    if (f.size > 20 * 1024 * 1024) toast("El respaldo supera 20 MB.");
-    else await importRaw(await f.text());
+    if (f.size > MAX_BACKUP_BYTES)
+      toast(`El respaldo supera ${MAX_BACKUP_BYTES / 1024 / 1024} MB.`);
+    else {
+      try {
+        await importRaw(decodeBackupBytes(await f.arrayBuffer()));
+      } catch (error) {
+        toast("No se pudo leer el archivo: " + error.message);
+      }
+    }
   }
   e.target.value = "";
 });
 
 dialog.addEventListener("click", (e) => {
   if (e.target === dialog && e.clientY < dialog.getBoundingClientRect().top)
-    closeModal();
+    void requestCloseModal();
+});
+
+dialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  void requestCloseModal();
 });
 
 window.handleBack = () => {
   if (dialog.open) {
-    closeModal();
+    void requestCloseModal();
     return true;
   }
   if (fullScreens.includes(model.tab)) {
@@ -131,7 +151,52 @@ window.handleBack = () => {
   return false;
 };
 
-(async () => {
+let starting = false;
+let updatesReady = false;
+
+function startUpdates() {
+  if (updatesReady) return;
+  updatesReady = true;
+  initializeUpdates();
+}
+
+setRecoveryAppliedHandler(async (envelope) => {
+  model.state = envelope.state;
+  model.history = envelope.history;
+  model.revision = envelope.revision;
+  model.tab = "home";
+  model.period = C.month();
+  C.ensureBudget(model.state);
+  render();
+  syncReminders();
+  startUpdates();
+  toast("Respaldo importado");
+});
+
+function showStartupError(error, stage) {
+  $("#nav").innerHTML = "";
+  $("#topbar").innerHTML = "";
+  $("#topbar").setAttribute("aria-hidden", "true");
+  const title =
+    stage === "write"
+      ? "No se pudo confirmar el guardado"
+      : stage === "render"
+        ? "Los datos se abrieron, pero la pantalla falló"
+        : "No se pudieron abrir los datos";
+  const detail =
+    stage === "render"
+      ? "El libro guardado no se ha borrado. Reintenta abrir la app."
+      : "El libro guardado no se ha reemplazado ni borrado, y la app no ha creado un libro vacío.";
+  view.innerHTML = `<div class="card danger-zone" role="alert"><h1>${esc(title)}</h1><p>${esc(error?.message || "Error desconocido")}</p><p>${detail} Reintenta o importa un respaldo revisado.</p><div class="toolbar wrap"><button class="btn primary" data-recovery-action="retry">Reintentar</button><button class="btn" data-recovery-action="import">Importar respaldo</button></div><p class="note">Importar reemplaza el libro guardado solo después de una confirmación. Si el problema continúa, no desinstales la app: podrías perder los datos locales.</p></div>`;
+}
+
+async function start() {
+  if (starting) return;
+  starting = true;
+  model.state = undefined;
+  model.history = [];
+  model.revision = 0;
+  let stage = "read";
   try {
     await openStore();
     const saved = C.migrateEnvelope(await readStore());
@@ -139,18 +204,42 @@ window.handleBack = () => {
     model.history = saved?.history || [];
     model.revision = saved?.revision || 0;
     C.ensureBudget(model.state);
-    if (saved) {
-      C.snapshot(model.state);
-      await writeStore({
-        state: model.state,
-        history: model.history,
-        revision: model.revision,
-      });
-    }
+    if (saved && model.state.started) C.snapshot(model.state);
+    // Persist the identity of an empty book too: onboarding drafts must still
+    // belong to the same book after a process restart, before its first commit.
+    stage = "write";
+    await writeStore({
+      state: model.state,
+      history: model.history,
+      revision: model.revision,
+    });
+    stage = "render";
     render();
     syncReminders();
-    initializeUpdates();
+    startUpdates();
   } catch (e) {
-    view.innerHTML = `<div class="card danger-zone"><h1>No se pudieron abrir los datos</h1><p>${esc(e.message)}</p><p>No se han reemplazado ni borrado. Cierra la app y vuelve a intentarlo.</p></div>`;
+    // Recovery never keeps a partial in-memory book: importing from here uses
+    // the explicit replace path, and retry rereads the untouched vault.
+    model.state = undefined;
+    model.history = [];
+    model.revision = 0;
+    showStartupError(e, stage);
+  } finally {
+    starting = false;
   }
-})();
+}
+
+document.addEventListener("click", async (event) => {
+  const control = event.target.closest("[data-recovery-action]");
+  if (!control) return;
+  try {
+    if (control.dataset.recoveryAction === "retry") await start();
+    else if (control.dataset.recoveryAction === "import") chooseImport();
+    else if (control.dataset.recoveryAction === "confirm-import")
+      await applyRecoveryImport();
+  } catch (error) {
+    toast("No se pudo continuar: " + error.message);
+  }
+});
+
+void start();

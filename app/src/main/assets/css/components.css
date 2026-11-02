@@ -147,7 +147,7 @@
 
 .btn.link-btn,
 .btn.round-link {
-  min-height: 36px;
+  min-height: 44px;
   padding: 6px 8px;
   border: 0;
   background: transparent;
@@ -190,9 +190,9 @@
   background: var(--surface-soft);
   color: var(--ink);
   border-radius: 50%;
-  min-width: 42px;
-  width: 42px;
-  height: 42px;
+  min-width: 44px;
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -561,7 +561,7 @@
 }
 
 .badge {
-  font-size: 9px;
+  font-size: 12px;
   padding: 2px 6px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -577,8 +577,8 @@
   color: var(--brand-dark);
   border-radius: var(--radius-pill);
   padding: 6px 10px;
-  min-height: 34px;
-  font-size: 11px;
+  min-height: 44px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -614,7 +614,7 @@
 
 .segmented button {
   border: 0;
-  min-height: 36px;
+  min-height: 44px;
   border-radius: 10px;
   background: transparent;
   color: var(--muted-strong);

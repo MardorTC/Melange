@@ -94,7 +94,7 @@ export function requireFunds(
     a.type === "restricted" ? a.available : Math.min(a.available, available(s));
   if (amount > usable)
     throw Error(
-      `Faltan ${((amount - Math.max(0, usable)) / 100).toFixed(2)} MXN disponibles. Abre Cuentas para liberar reservas o cajitas, o corregir el saldo.`,
+      `Faltan ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2 }).format((amount - Math.max(0, usable)) / 100)} MXN disponibles. Abre Cuentas para revisar dinero reservado o congelado, o corregir el saldo.`,
     );
 }
 export function requireDestination(s, id, kind) {
@@ -244,6 +244,7 @@ export function validateFunds(s) {
     if (
       !["cash", "bank", "restricted"].includes(a.type) ||
       !integer(a.opening) ||
+      (a.openingDate !== undefined && !L.validDate(a.openingDate)) ||
       !Array.isArray(a.allowedCategories) ||
       a.allowedCategories.some((id) => !s.categories.some((c) => c.id === id))
     )

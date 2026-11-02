@@ -65,9 +65,9 @@ dialog h2 {
 
 dialog .row > .icon {
   flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
-  min-width: 38px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   background: var(--surface-soft);
 }
 
@@ -92,7 +92,7 @@ form {
 
 label {
   display: block;
-  font-size: 11.5px;
+  font-size: 13px;
   font-weight: 680;
   color: var(--ink-soft);
   letter-spacing: -0.005em;
@@ -162,9 +162,65 @@ textarea {
 
 .form-error {
   color: var(--danger);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.5;
   min-height: 1em;
+  scroll-margin: 80px;
+}
+
+.draft-status {
+  padding: 12px;
+  background: var(--info-soft);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.draft-status p {
+  margin: 0 0 8px;
+}
+.draft-status details {
+  margin-top: 10px;
+}
+.draft-status dt {
+  font-size: 13px;
+  font-weight: 700;
+}
+.draft-status dd {
+  margin: 2px 0 10px;
+  white-space: pre-wrap;
+}
+.discard-guard {
+  border: 2px solid var(--brand);
+}
+.setup-bank {
+  margin: 0;
+}
+.setup-bank label {
+  margin-top: 12px;
+}
+
+.msi-editor {
+  padding: 14px;
+}
+.msi-editor label {
+  margin-top: 12px;
+}
+.msi-editor input[readonly] {
+  background: var(--surface-muted);
+}
+.paid-periods {
+  margin-top: 18px;
+}
+.paid-periods > summary {
+  padding: 14px 0;
+  font-weight: 700;
+}
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0;
 }
 
 .form-actions {

@@ -5,10 +5,11 @@ import {
   money,
   empty,
   svg,
+  btn,
   screenHead,
   sectionHead,
 } from "../ui/components.js";
-import { openPage } from "../ui/navigation.js";
+import { openPage, render } from "../ui/navigation.js";
 import { paymentRow } from "./home.js";
 
 const monthLong = (month) =>
@@ -27,21 +28,39 @@ export function projectionPage() {
       return { month, v, total, pct };
     });
   return (
-    screenHead("Proyección", "Próximos 12 meses", { back: true }) +
-    `<div class="section-head"><div><h2>Libre antes de variables</h2><small>Ingreso previsto menos fijos y deudas.</small></div></div>` +
+    screenHead("Proyección", "Cómo se ven los próximos 12 meses", {
+      back: true,
+    }) +
+    `<div class="section-head"><div><h2>Lo que quedaría cada mes</h2><small>Tu ingreso previsto menos los pagos fijos y las cuotas de deuda.</small></div></div>` +
     `<section class="card projection-list">${rows
       .map(
         ({ month, v, total, pct }) =>
-          `<div class="projection-row"><div class="projection-month"><strong>${monthLong(month)}</strong><small>${month.slice(0, 4)}</small></div><div class="projection-main"><div class="projection-free"><strong class="${v.budgetFree < 0 ? "bad" : "good"}">${money(v.budgetFree)}</strong><small>${total ? `${money(total)} de compromisos` : "Sin compromisos"}</small></div><div class="bar mini"><span class="${v.budgetFree < 0 ? "bad" : ""}" style="--p:${Math.max(0, pct)}%"></span></div><div class="projection-detail"><span>Ingreso ${money(v.income)}</span><span>Fijos ${money(v.fixed)}</span><span>Deudas ${money(v.debt)}</span></div></div></div>`,
+          `<div class="projection-row"><div class="projection-month"><strong>${monthLong(month)}</strong><small>${month.slice(0, 4)}</small></div><div class="projection-main"><div class="projection-free"><strong class="${v.budgetFree < 0 ? "bad" : "good"}">${money(v.budgetFree)}</strong><small>${total ? `${money(total)} en pagos fijos y deudas` : "Sin pagos fijos ni deudas"}</small></div><div class="bar mini"><span class="${v.budgetFree < 0 ? "bad" : ""}" style="--p:${Math.max(0, pct)}%"></span></div><div class="projection-detail"><span>Ingreso previsto ${money(v.income)}</span><span>Pagos fijos ${money(v.fixed)}</span><span>Cuotas de deuda ${money(v.debt)}</span></div></div></div>`,
       )
       .join("")}</section>` +
-    `<details class="fine-print"><summary>Cómo leer esta proyección</summary><p>Es un presupuesto antes de variables: incluye los cargos a tarjeta ya registrados y sus MSI, sin anticipar compras futuras. No es un pronóstico de saldo bancario. Los pagos realizados siguen formando parte del compromiso mensual.</p></details>`
+    `<section class="card projection-limits"><strong>Cómo leer esta proyección</strong><p class="note">Supone que tu ingreso previsto se repite cada mes. Incluye los pagos fijos, las cuotas de deuda y los cargos a tarjeta ya registrados, con sus MSI. No incluye compras del día a día, intereses nuevos ni emergencias. No es el saldo que tendrás en el banco.</p></section>`
   );
 }
 
 export function timeline() {
   openPage("timeline");
 }
+
+export function setCalendarPeriod(value) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(value || ""))) return false;
+  model.period = value;
+  model.calendarDay = "";
+  return true;
+}
+
+if (typeof document !== "undefined")
+  document.addEventListener("change", (event) => {
+    if (
+      event.target.matches?.("[data-calendar-period]") &&
+      setCalendarPeriod(event.target.value)
+    )
+      render();
+  });
 
 function monthGrid(items) {
   const [year, month] = model.period.split("-").map(Number),
@@ -84,13 +103,14 @@ export function calendarPage() {
       : items,
     selectedLabel = selected
       ? new Date(
-          model.period + "-" + selected + "T12:00:00",
+          model.period + "-" + String(selected).padStart(2, "0") + "T12:00:00",
         ).toLocaleDateString("es-MX", { day: "numeric", month: "long" })
       : "Compromisos";
   return (
     screenHead("Calendario", "Tus vencimientos del mes.") +
     `<div class="calendar-tools"><button data-action="timeline">${svg("route")}Ruta de deudas</button><button data-action="projection">${svg("insights")}Proyección</button></div>` +
     `<section class="card calendar-card"><div class="calendar-head"><button class="icon" data-action="prev" aria-label="Mes anterior">${svg("back")}</button><strong>${monthLong(model.period)}<small>${model.period.slice(0, 4)}</small></strong><button class="icon rotate-180" data-action="next" aria-label="Mes siguiente">${svg("back")}</button></div>${monthGrid(items)}<div class="calendar-foot"><div><small>Pendiente</small><strong>${money(m.pending)}</strong></div><div><small>Pagado</small><strong>${money(m.paid)}</strong></div></div></section>` +
+    `<div class="toolbar"><input type="month" data-calendar-period value="${model.period}" aria-label="Elegir mes y año del calendario" title="Elegir mes y año"><button class="btn" data-action="thisMonth">Volver a este mes</button></div>` +
     sectionHead(
       selected ? selectedLabel : "Compromisos",
       selected
@@ -102,8 +122,11 @@ export function calendarPage() {
         ? visible.map(paymentRow).join("")
         : empty(
             selected ? "Día despejado" : "Un mes despejado",
-            "No hay compromisos para esta fecha.",
-          )
+            selected
+              ? "No hay compromisos para esta fecha."
+              : "No hay vencimientos registrados para este mes.",
+          ) +
+          `<div class="actions">${btn("Crear gasto fijo", "editFixed")}${btn("Registrar deuda", "editDebt")}</div>`
     }</section>`
   );
 }

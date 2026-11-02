@@ -58,3 +58,23 @@ El esquema v10 admite aplicaciones `unassigned` en `card_payment`. El pago sigue
 `navigation.js` separa la cabecera grande de cada pantalla de la barra compacta que aparece al desplazar. La barra se reconstruye solo cuando cambia la pantalla o su visibilidad y no duplica acciones del contenido. Las pantallas de detalle (`timeline`, `projection`, `settings`) ocultan la navegación inferior y ofrecen Volver; Inicio y las cuatro pestañas principales conservan la barra flotante.
 
 `components.js` centraliza `screenHead`, `sectionHead`, `money` y `dlabel`. `money` omite los centavos cuando el importe es entero; `dlabel` presenta fechas legibles. Los iconos proceden de Lucide y se guardan como SVG local en `ui/icons.js`; no se descargan en tiempo de ejecución. Las hojas de formulario usan el mismo `dialog` con asa, cuerpo desplazable y acciones fijas.
+
+## Recuperación y confirmación de respaldos
+
+Importar y exportar comparten un límite de 20 MiB medido en bytes UTF-8; un archivo con UTF-8 inválido se rechaza sin sustituir caracteres. Una exportación tiene un token de solicitud que viaja por el puente nativo hasta la confirmación de cierre del archivo. Se serializan exportaciones y se ignoran respuestas de solicitudes anteriores.
+
+El indicador de último respaldo confirma una escritura, no la existencia permanente del archivo. La revisión permite detectar cambios en la misma sesión; tras reabrir o recuperar otro libro se muestra **vigencia por verificar**, no «al día» basándose solo en una revisión que podría coincidir.
+
+El error de arranque no genera un libro vacío. Recuperar por importación exige confirmación, conserva el original dañado y reemplaza el actual en una transacción: tabla SQLite `recovery_backups` o claves IndexedDB `recovery-backup:*`. Esas copias no participan en Deshacer ni se borran automáticamente; no hay una acción de restauración automática del contenido corrupto. `RecoveryStoreTest` verifica preservación y rollback en una base SQLite aislada.
+
+## Traza de operaciones
+
+`state/operation-trace.js` mantiene en memoria hasta 100 fases de guardado/Deshacer, su revisión, identificador correlativo y hora. No registra conceptos, importes, identificadores del libro ni contenido financiero; tampoco se persiste o transmite. Puede consultarse desde la consola con `import('/js/state/operation-trace.js').then(m => m.operationTrace())`. Las pruebas de operaciones lo imprimen si fallan. Esto permite investigar el fallo intermitente de Deshacer sin atribuirle una causa no demostrada. Un fallo de recordatorios o render posterior a un guardado confirmado no revierte el libro en memoria ni invita a registrar de nuevo la operación.
+
+## Borradores de formulario
+
+`ui/form-drafts.js` conserva campos y estructura explícita, nunca HTML ejecutable. Cada entrada se identifica por libro y operación y lleva la revisión del libro. Recuperar exige una acción expresa y la misma revisión; un borrador anterior a otros cambios solo puede consultarse o descartarse. No participa en cálculos, respaldos ni Deshacer. Los antiguos borradores de reconstrucción no se reutilizan.
+
+En Android se usa `form_drafts`, una tabla privada creada de forma aditiva en la misma base, con hasta 20 entradas y 256 KiB por entrada. `NativeBridge.readFormDraft/writeFormDraft` no escriben `vault`. En la previsualización se usan claves `form-draft:*` separadas de `current` en IndexedDB. No se usa localStorage ni red. El arranque persiste la identidad del libro vacío para permitir recuperar el inicio antes del primer cambio financiero, sin crear observaciones de liquidez de un libro no iniciado.
+
+Las escrituras de cada borrador se serializan. Descartar invalida cierres pendientes mediante un contador de sesión y suspende nuevos auto-guardados hasta terminar. El guardado financiero invalida la sesión antes de limpiar su borrador: un error de limpieza no revierte una transacción ya confirmada y la revisión impide reproducir el borrador antiguo. X, Escape, toque fuera y Atrás comparten la protección de cierre; las operaciones financieras bloquean navegación mientras se guardan.

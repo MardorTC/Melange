@@ -3,6 +3,15 @@ const sum = (xs, fn) => xs.reduce((n, x) => n + fn(x), 0);
 const money = (n) => Number.isSafeInteger(n) && n >= 0 && n <= 1e14;
 export const isCreditPurchase = (t) =>
   !!t.creditCardId && ["expense", "fixed"].includes(t.kind);
+export function validateInstallmentPlan(d, priorPaid = 0, actualPaid = 0) {
+  const remaining = d.totalPayments - priorPaid - actualPaid;
+  if (!Number.isInteger(priorPaid) || priorPaid < 0 || remaining < 0)
+    throw Error("Revisa el plazo y las mensualidades ya pagadas.");
+  if (d.balance > d.payment * remaining)
+    throw Error(
+      `Las ${remaining} mensualidades restantes no alcanzan para cubrir el saldo de «${d.name}». Revisa el saldo, la mensualidad y el plazo.`,
+    );
+}
 export function allocations(s) {
   return s.transactions
     .filter((t) => t.kind === "card_payment")

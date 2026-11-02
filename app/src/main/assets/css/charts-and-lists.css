@@ -194,9 +194,9 @@ nav {
   position: fixed;
   left: 50%;
   bottom: calc(9px + env(safe-area-inset-bottom));
-  width: min(calc(100% - 22px), 560px);
+  width: min(calc(100% - 12px), 560px);
   transform: translateX(-50%);
-  padding: 6px 7px;
+  padding: 6px 3px;
   background: #fffdf9ef;
   border: 1px solid #e9dfd1c9;
   border-radius: 22px;
@@ -220,11 +220,12 @@ nav button {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 620;
   letter-spacing: -0.005em;
   min-height: 52px;
-  min-width: 52px;
+  min-width: 44px;
+  flex: 1 1 auto;
   padding: 0;
   border-radius: 14px;
   transition: color var(--dur-fast) var(--ease);
@@ -356,8 +357,8 @@ nav button:active .nav-icon {
   padding: 0;
   border: 0;
   margin: 0;
-  height: 32px;
-  min-height: 32px;
+  height: 44px;
+  min-height: 44px;
   accent-color: var(--brand);
 }
 

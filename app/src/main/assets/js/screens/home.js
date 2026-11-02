@@ -1,7 +1,6 @@
 import C from "../domain/finance.js";
 import { model } from "../state/model.js";
 import {
-  metric,
   money,
   svg,
   btn,
@@ -28,20 +27,19 @@ export function homePage() {
       .sort((a, b) => a.date.localeCompare(b.date)),
     accounts = C.accountSummary(model.state).filter((a) => a.active !== false),
     breakdown = debtBreakdown(model.state),
+    fundedGoals = model.state.goals.filter((goal) => goal.balance > 0).length,
     plan = debtPlan(model.state),
-    noDateCount = plan.rows.filter((row) => !row.end).length,
-    firstGoal = model.state.goals[0],
-    goalPct = firstGoal?.target
-      ? Math.min(100, (firstGoal.balance / firstGoal.target) * 100)
-      : 0,
     hist = model.state.liquidityHistory,
     delta = hist.length > 1 ? hist.at(-1).value - hist[0].value : null,
     creditAvailable = model.state.creditCards
       .filter((c) => c.active !== false)
       .reduce((n, c) => n + C.creditSummary(model.state, c.id).available, 0),
-    monthTotal = m.paid + m.pending,
-    monthPct = monthTotal ? Math.min(100, (m.paid / monthTotal) * 100) : 0,
-    saved = m.reserved + m.frozen;
+    saved = m.reserved + m.frozen,
+    margin = m.available - m.pending,
+    justStarted =
+      !model.state.transactions.length &&
+      !model.state.debts.length &&
+      !model.state.fixedExpenses.length;
 
   return `<section class="home-hero">
   <img class="hero-art" src="art/dunes.svg" alt="" aria-hidden="true">
@@ -50,18 +48,17 @@ export function homePage() {
     <button class="icon glass" data-action="settings" aria-label="Ajustes" title="Ajustes">${svg("settings")}</button>
   </div>
   <div class="home-intro">
-    <div class="eyebrow">${new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}</div>
     <h1>Cada grano cuenta.</h1>
   </div>
   <div class="balance">
-    <span class="balance-label">Disponible libre</span>
+    <span class="balance-label">Tu dinero disponible</span>
     <div class="balance-value" data-metric="available" data-value="${m.available}">${money(m.available)}</div>
-    <p class="balance-hint">${saved ? "Sin contar lo reservado ni lo congelado." : "Todo tu dinero, sin reservas."}</p>
+    <p class="balance-hint">${saved ? "Ya excluye reservas y dinero congelado." : "Dinero propio, no crédito."}</p>
   </div>
-  <div class="hero-accounts">
-    <button class="hero-account" data-action="tab" data-id="accounts"><span class="hero-mini-icon">${svg("bank")}</span><small>Débito</small><strong>${money(m.debit)}</strong></button>
-    <button class="hero-account" data-action="tab" data-id="accounts"><span class="hero-mini-icon">${svg("cash")}</span><small>Efectivo</small><strong>${money(m.cash)}</strong></button>
-    <button class="hero-account" data-action="tab" data-id="accounts"><span class="hero-mini-icon">${svg("card")}</span><small>${creditAvailable < 0 ? "Crédito excedido" : "Crédito"}</small><strong class="${creditAvailable < 0 ? "bad" : ""}">${money(creditAvailable)}</strong></button>
+  <div class="home-outlook">
+    <div><span>Pagos pendientes de ${monthLong(C.month())}</span><strong data-testid="home-pending">${money(m.pending)}</strong></div>
+    <div class="outlook-margin"><span>Tras cubrir esos pagos</span><strong class="${margin < 0 && !plan.unassigned ? "bad" : ""}" data-testid="home-margin">${plan.unassigned ? "Revisar pagos de tarjeta" : money(margin)}</strong></div>
+    <p>${plan.unassigned ? `Hay ${money(plan.unassigned)} en pagos de tarjeta sin desglose. Indica qué cargos cubrió el banco para calcular el margen.` : "Estimación con lo que tienes hoy. Aún faltan tus compras futuras y pagos de otros meses; no incluye ingresos previstos."}</p>
   </div>
 </section>
 <div class="home-body">
@@ -71,34 +68,37 @@ export function homePage() {
     <button data-action="transfer" aria-label="Transferir"><span class="icon">${svg("transfer")}</span>Transferir</button>
     <button data-action="choosePayment" aria-label="Pagar un compromiso"><span class="icon">${svg("pay")}</span>Pagar</button>
   </div>
-  <div class="section-head"><h2>Este mes</h2><button class="text-action" data-action="tab" data-id="calendar">Calendario</button></div>
-  <section class="card month-card">
-    <div class="month-top"><div><div class="eyebrow">Compromisos</div><h2>${monthLong(C.month())}</h2></div><span class="month-badge">${Math.round(monthPct)}% pagado</span></div>
-    <div class="month-figures"><div><small>Pendiente</small><strong>${money(m.pending)}</strong></div><div><small>Pagado</small><strong>${money(m.paid)}</strong></div></div>
-    <div class="month-progress"><div class="bar"><span style="--p:${monthPct}%"></span></div><small>${monthTotal ? `${money(m.paid)} pagado de ${money(monthTotal)}` : "Sin compromisos registrados"}</small>${plan.unassigned ? `<small class="note">${money(plan.unassigned)} abonados sin asignar; no cuentan como pagado hasta aplicarlos.</small>` : ""}</div>
-  </section>
+   ${justStarted ? `<section class="card first-steps"><h2>Empieza con algo de hoy</h2><p class="note">Registra una compra para ver cómo cambia tu dinero. Después puedes añadir renta, servicios o deudas.</p>${btn("Registrar primer gasto", "expense", "", "primary full")}</section>` : ""}
   ${plan.latePayment ? `<section class="card danger-zone"><div class="row"><div><strong>Tienes cuotas atrasadas</strong><p class="note">${plan.lateCount} ${plan.lateCount === 1 ? "cuota" : "cuotas"} por ${money(plan.latePayment)} de meses anteriores.</p></div><span class="pill bad">Revisar</span></div>${btn("Ver deudas", "tab", "debt", "full")}</section>` : ""}
-  <div class="section-head"><h2>Próximos a vencer</h2><button class="text-action" data-action="tab" data-id="calendar">Ver todos</button></div>
-  <section class="card list">${items.length ? items.slice(0, 3).map(paymentRow).join("") : empty("Al día", "No hay compromisos pendientes este mes.")}</section>
-  <div class="section-head"><h2>Tu panorama</h2><small>Desliza para ver más</small></div>
-  <div class="snap-rail">
+  <div class="section-head"><h2>Pagos de este mes</h2><button class="text-action" data-action="tab" data-id="calendar">Calendario</button></div>
+  <section class="card list">${items.length ? items.slice(0, 3).map(paymentRow).join("") : empty("Sin pagos pendientes registrados este mes", "Puedes agregar servicios y suscripciones desde Movimientos.")}</section>
+  ${breakdown.total || m.reserved ? '<div class="section-head"><h2>Deudas y metas</h2></div>' : ""}
+  <div class="home-summaries">
+    ${
+      breakdown.total
+        ? `
     <section class="card rail-card debt-snapshot">
       <span class="rail-label">Deuda total</span>
       <div class="metric">${money(breakdown.total)}</div>
-      <p class="note">${breakdown.total ? `${breakdown.activeCount} ${breakdown.activeCount === 1 ? "deuda activa" : "deudas activas"}${breakdown.archivedCount ? ` · ${breakdown.archivedCount} archivada${breakdown.archivedCount === 1 ? "" : "s"}` : ""}${noDateCount ? ` · ${noDateCount} sin cuota` : ""}` : "Sin deudas registradas"}</p>
+      <p class="note">${breakdown.activeCount} ${breakdown.activeCount === 1 ? "deuda activa" : "deudas activas"}</p>
       <div class="rail-footer"><div><small>Libre de cuotas</small><strong>${plan.debtFreeMonth ? mlabel(plan.debtFreeMonth) : "Sin fecha planificada"}</strong></div>${breakdown.total ? `<button class="rail-link" data-action="timeline">Ver ruta →</button>` : ""}</div>
-    </section>
+    </section>`
+        : ""
+    }
+    ${
+      m.reserved
+        ? `
     <section class="card rail-card goal-snapshot">
       <span class="rail-label">Metas de ahorro</span>
-      <div class="metric">${money(firstGoal?.balance || m.reserved)}</div>
-      <p class="note">${firstGoal ? `de ${money(firstGoal.target)} · ${Math.round(goalPct)}%` : `${money(m.reserved)} reservado`}</p>
-      ${firstGoal ? `<div class="bar mini"><span style="--p:${goalPct}%"></span></div>` : ""}
-      <div class="rail-footer"><div><small>${firstGoal ? esc(firstGoal.name) : "Sin metas"}</small><strong>${firstGoal?.date ? "Objetivo " + dlabel(firstGoal.date) : "A tu ritmo"}</strong></div><button class="rail-link" data-action="tab" data-id="goal">Ver metas →</button></div>
-    </section>
+      <div class="metric">${money(m.reserved)}</div>
+      <p class="note">${fundedGoals === 1 ? "Reservado en tu meta." : `Repartido entre ${fundedGoals} metas.`}</p>
+      <div class="rail-footer"><button class="rail-link" data-action="tab" data-id="goal">Ver metas →</button></div>
+    </section>`
+        : ""
+    }
   </div>
-  <div class="section-head"><h2>En qué se fue tu dinero</h2><small>${mlabel(C.month())}</small></div>
-  <section class="card home-spending">${donut(model.state.transactions.filter((t) => C.month(t.date) === C.month() && ["expense", "fixed"].includes(t.kind)))}${btn("Ver más detalles", "tab", "expense", "link-btn")}</section>
-  <div class="section-head"><h2>Cuentas</h2><button class="text-action" data-action="tab" data-id="accounts">Ver todas</button></div>
+  <details class="card home-spending"><summary>En qué se fue tu dinero · ${mlabel(C.month())}</summary>${donut(model.state.transactions.filter((t) => C.month(t.date) === C.month() && ["expense", "fixed"].includes(t.kind)))}${btn("Ver movimientos", "tab", "expense", "link-btn")}</details>
+  <div class="section-head"><h2>Cuentas</h2><button class="text-action" data-action="tab" data-id="accounts" data-account-sub="wallet">Ver todas</button></div>
   <section class="card account-list">${
     accounts.length
       ? accounts
@@ -107,7 +107,8 @@ export function homePage() {
           .join("")
       : empty("Sin cuentas", "Agrega una cuenta para separar tu dinero.")
   }</section>
-  <details class="card analysis"><summary>Ver análisis del mes</summary><div class="home-analysis-body"><div class="row"><h2>Las huellas de tu dinero</h2><span class="pill">${hist.length} ${model.state.reconstruction ? "saldos calculados" : "observaciones"}</span></div>${lineChart(hist)}<p class="note">${delta === null ? "Aún no hay suficientes puntos históricos." : `${money(delta)} de variación entre el primer y último saldo registrado.`} No equivale a ahorro mensual.</p><div class="health-grid"><div><small>Ingresos recibidos</small><strong class="good">${money(m.received)}</strong></div><div><small>Salidas registradas</small><strong>${money(m.outflow)}</strong></div><div><small>Diferencia del mes</small><strong class="${m.received - m.outflow < 0 ? "bad" : "good"}">${money(m.received - m.outflow)}</strong></div><div><small>Compromisos pendientes</small><strong>${money(m.pending)}</strong></div></div><div class="health-outlook"><small>Disponible libre después de cubrir pendientes</small><strong class="${m.available - m.pending < 0 ? "bad" : ""}">${money(m.available - m.pending)}</strong><p class="note">${m.available - m.pending < 0 ? "Los pendientes superan tu disponible libre." : "Este margen aún debe cubrir tus gastos variables."} Estimación con saldos actuales; no incluye ingresos futuros.</p></div><p class="note">Las salidas incluyen pagos desde tus cuentas y pagos de tarjetas. Las compras a crédito cuentan en consumo, pero no son salidas hasta pagarlas. Transferencias, ajustes y capital prestado o recuperado no cuentan como ingresos ni gastos.${plan.unassigned ? ` Abonos sin asignar: ${money(plan.unassigned)}; reducen el saldo de la tarjeta, pero no se cuentan como pagado hasta aplicarlos.` : ""}</p>${btn("Revisar pendientes", "tab", "calendar", "full")}</div></details>
+  <button class="card hero-account credit-access" data-action="tab" data-id="accounts" data-account-sub="credit"><span>${svg("card")}</span><span><strong>${creditAvailable < 0 ? "Crédito excedido" : "Crédito disponible"}: ${money(creditAvailable)}</strong><small>Es dinero prestado; no forma parte de tu disponible.</small></span>${svg("chevron")}</button>
+  <details class="card analysis"><summary>Ver análisis del mes</summary><div class="home-analysis-body"><div class="row"><h2>Las huellas de tu dinero</h2><span class="pill">${hist.length} observaciones</span></div>${lineChart(hist)}<p class="note">${delta === null ? "Aún no hay suficientes puntos históricos." : `${money(delta)} de variación entre el primer y último saldo registrado.`} No equivale a ahorro mensual.</p><div class="health-grid"><div><small>Ingresos recibidos</small><strong class="good">${money(m.received)}</strong></div><div><small>Pagos y gastos desde tus cuentas</small><strong>${money(m.outflow)}</strong></div><div><small>Diferencia del mes</small><strong class="${m.received - m.outflow < 0 ? "bad" : "good"}">${money(m.received - m.outflow)}</strong></div><div><small>Compromisos ya pagados</small><strong>${money(m.paid)}</strong></div></div><p class="note">Los pagos de tarjeta salen de tus cuentas. Las compras a crédito cuentan en consumo, pero no son salidas hasta pagarlas. Transferencias, ajustes y capital prestado o recuperado no cuentan como ingresos ni gastos.</p>${btn("Revisar pendientes", "tab", "calendar", "full")}</div></details>
 </div>`;
 }
 
@@ -120,7 +121,7 @@ function accountPreview(a) {
       : a.type === "restricted"
         ? "Uso restringido"
         : "Cuenta bancaria";
-  return `<button class="account-row" data-action="tab" data-id="accounts"><span class="row-icon ${a.type === "cash" ? "green" : a.type === "restricted" ? "gray" : "gray"}">${svg(iconName)}</span><span class="account-copy"><strong>${esc(a.name)}</strong><small>${label}</small></span><strong class="account-amount">${money(a.total)}</strong><span class="account-chevron">${svg("chevron")}</span></button>`;
+  return `<button class="account-row" data-action="tab" data-id="accounts" data-account-sub="wallet"><span class="row-icon ${a.type === "cash" ? "green" : a.type === "restricted" ? "gray" : "gray"}">${svg(iconName)}</span><span class="account-copy"><strong>${esc(a.name)}</strong><small>${label}</small></span><strong class="account-amount">${money(a.total)}</strong><span class="account-chevron">${svg("chevron")}</span></button>`;
 }
 
 export function paymentRow(i) {

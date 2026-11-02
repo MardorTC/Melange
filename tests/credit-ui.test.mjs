@@ -249,6 +249,7 @@ try {
   await page.locator('[data-action="editDebt"]').first().click();
   await page.locator("[name=name]").fill("MSI de prueba");
   await page.locator("[name=creditCardId]").selectOption(cardId);
+  await page.locator("details[data-debt-advanced] > summary").click();
   await page.locator("[name=originalAmount]").fill("1200");
   await page.locator("[name=balance]").fill("1200");
   await page.locator("[name=payment]").fill("100");
@@ -258,7 +259,7 @@ try {
   await page.locator("[name=dueDay]").fill("20");
   await page.locator("[name=financingCost]").fill("0");
   await page.locator("[name=annualRate]").fill("0");
-  await page.locator("[name=type]").selectOption("loan");
+  // The selected type is authoritative; this remains an MSI linked to the card.
   await page.locator("[name=balanceMode]").selectOption("principal");
   await page.locator('#form [type="submit"]').click();
   await page.locator("dialog").waitFor({ state: "hidden" });

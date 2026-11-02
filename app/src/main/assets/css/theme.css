@@ -12,14 +12,14 @@
   --surface-muted: #efe6d8;
   --ink: #241f18;
   --ink-soft: #453c33;
-  --muted: #7d6f61;
+  --muted: #6e5e50;
   --muted-strong: #675a4d;
   --line: #ebe1d3;
   --line-strong: #d8c8b5;
 
-  --green: #3f7d59;
+  --green: #2f6847;
   --mint: #e6f2e9;
-  --brand: #b45f34;
+  --brand: #9e4e27;
   --brand-dark: #8c4624;
   --brand-soft: #f6e2d4;
   --brand-faint: #fcf4ee;
@@ -27,9 +27,9 @@
   --red: #b04b43;
   --danger: #b04b43;
   --danger-soft: #f8e5e1;
-  --warning: #b97924;
+  --warning: #8d5818;
   --warning-soft: #fff0d8;
-  --info: #5d7f95;
+  --info: #41677e;
   --info-soft: #e8f0f4;
   --violet: #83749d;
 
@@ -141,7 +141,7 @@ small,
 }
 
 .note {
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--muted);
   margin: 8px 0 0;
@@ -154,7 +154,7 @@ small,
 
 .fine-print {
   margin: 14px 2px 0;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.55;
   color: var(--muted);
 }

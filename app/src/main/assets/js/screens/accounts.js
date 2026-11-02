@@ -20,6 +20,8 @@ import {
   modal,
   empty,
   dlabel,
+  signedField,
+  signedMoney,
 } from "../ui/components.js";
 
 const accountType = (a) =>
@@ -150,7 +152,12 @@ export function accountAction(action, id) {
           a?.type || "bank",
         ) +
         `<div id="wallet-restrictions" ${a?.type === "restricted" ? "" : "hidden"}><p class="note">Los vales se destinan a despensa. Puedes recibir aquí el saldo que antes tenías agrupado en otra cuenta.</p><details><summary>Personalizar categorías (opcional)</summary>${model.state.categories.map((c) => `<label><input type="checkbox" name="cat_${esc(c.id)}" ${(a ? a.allowedCategories.includes(c.id) : /alimenta|despensa|supermerc/i.test(c.name)) ? "checked" : ""}>${esc(c.name)}</label>`).join("")}</details></div>` +
-        '<p class="note">Las cuentas nuevas empiezan en cero. Distribuye dinero con transferencias o registra el saldo mediante un ajuste. El tipo queda protegido al tener antecedentes.</p>',
+        signedField(
+          "opening",
+          a ? "Saldo real actual" : "Saldo actual",
+          String(a ? C.balances(model.state)[id] / 100 : 0),
+        ) +
+        '<p class="note">El saldo inicial no es un ingreso. Al editar, una diferencia se registra como corrección, sin duplicar dinero. El tipo queda protegido al tener antecedentes.</p>',
       async (f) =>
         commit("Cuenta guardada", (s) => {
           const old = s.walletAccounts.find((x) => x.id === id);
@@ -188,14 +195,27 @@ export function accountAction(action, id) {
                 "La cuenta tiene antecedentes; crea otra para usar un tipo distinto.",
               );
             Object.assign(old, value, { active: true });
+            const diff = signedMoney(f.opening) - C.balances(s)[id];
+            if (diff)
+              C.record(s, {
+                kind: "adjustment",
+                name: "Corrección de saldo",
+                accountId: id,
+                amount: Math.abs(diff),
+                direction: Math.sign(diff),
+                date: C.today(),
+              });
           } else
             s.walletAccounts.push({
               ...value,
               id: C.id(),
-              opening: 0,
+              opening: signedMoney(f.opening),
+              openingDate: C.today(),
               active: true,
             });
         }),
+      "Guardar",
+      { draftKey: `wallet:${id || "new"}` },
     );
   else if (action === "walletArchive")
     confirmAction(
@@ -214,11 +234,15 @@ export function accountAction(action, id) {
   else if (action === "walletAdjust")
     form(
       "Corregir saldo: " + a.name,
-      amount("amount", "Saldo real", C.balances(model.state)[id]) +
+      signedField(
+        "amount",
+        "Saldo real",
+        String(C.balances(model.state)[id] / 100),
+      ) +
         '<p class="note">La diferencia se registrará como ajuste. No es ingreso ni gasto.</p>',
       async (f) =>
         commit("Saldo corregido", (s) => {
-          const diff = moneyValue(f.amount) - C.balances(s)[id];
+          const diff = signedMoney(f.amount) - C.balances(s)[id];
           if (diff)
             C.record(s, {
               kind: "adjustment",
@@ -229,6 +253,8 @@ export function accountAction(action, id) {
               date: C.today(),
             });
         }),
+      "Guardar",
+      { draftKey: `wallet-adjust:${id}` },
     );
   else if (action === "boxCreate")
     form(
@@ -266,16 +292,20 @@ export function accountAction(action, id) {
             goalId: f.goalId || null,
           }),
         ),
+      "Guardar",
+      { draftKey: `box-create:${id}` },
     );
   else if (action === "boxRelease")
     form(
       "Confirmar dinero disponible",
-      `<p>Confirma que ya puedes utilizar el dinero de ${esc(b.name)}. La fecha prevista no lo libera automáticamente.</p>` +
+      `<p>Confirma que el banco ya liberó el dinero de ${esc(b.name)}. La fecha prevista no lo libera automáticamente.</p>${b.goalId ? `<p class="note warning">Seguirá reservado para ${esc(model.state.goals.find((g) => g.id === b.goalId)?.name || "tu meta")}. Para gastarlo, libera también esa reserva desde Metas.</p>` : '<p class="note">El importe liberado volverá al disponible de esta cuenta.</p>'}` +
         amount("amount", "Importe realmente liberado", b.amount),
       async (f) =>
         commit("Cajita liberada", (s) =>
           C.releaseBox(s, id, moneyValue(f.amount)),
         ),
+      "Guardar",
+      { draftKey: `box-release:${id}` },
     );
   else if (action === "boxLink")
     form(

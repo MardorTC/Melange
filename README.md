@@ -20,6 +20,9 @@ npm run build:release  # APK con la firma original
 - [Editar y previsualizar el diseño sin APK](docs/desarrollo-visual.md)
 - [Arquitectura](docs/arquitectura.md)
 - [Guía de uso y datos](docs/uso.md)
+- [Auditoría de usabilidad](docs/auditoria-usabilidad.md)
+- [Plan de integración de usabilidad](docs/integracion-usabilidad.md)
+- [Prueba exploratoria con usuario simulado](docs/prueba-usuario-simulado.md)
 - [Compilación y publicación](docs/publicacion.md)
 
 No se deben versionar claves de firma, contraseñas ni respaldos personales.

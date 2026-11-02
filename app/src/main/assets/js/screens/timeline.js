@@ -49,8 +49,10 @@ function planRow(row, year) {
           : row.estimated
             ? "Estimada"
             : "En curso";
-  const detail = row.cardName ? `MSI · ${row.cardName}` : debtType(row.kind);
-  return `<button class="debt-plan-row" data-action="${row.cardId ? "creditDetails" : "debtDetails"}" data-id="${esc(row.cardId || row.id)}" aria-label="${esc(rowLabel(row))}">
+  const detail = row.cardName
+    ? `Compra a meses · ${row.cardName}`
+    : debtType(row.kind);
+  return `<button class="debt-plan-row" data-action="debtDetails" data-id="${esc(row.id)}" aria-label="${esc(rowLabel(row))}">
     <div class="debt-plan-head">
       <span class="debt-plan-name">${esc(row.name)}<small>${esc(detail)}</small></span>
       <span class="debt-plan-end">${mlabel(row.end)}</span>
@@ -93,7 +95,7 @@ export function timelinePage() {
     : `<section class="card timeline-summary">
         <small>Libre de cuotas</small>
         <div class="timeline-free">Sin fechas pendientes</div>
-        <p class="note">No hay MSI ni préstamos con saldo. Las compras a crédito sin MSI se ven en Deudas.</p>
+        <p class="note">No hay compras a meses ni préstamos con saldo. Las compras a crédito sin plazo fijo se ven en Deudas.</p>
       </section>`;
   return (
     screenHead("Ruta de deudas", "Cuándo vas a terminar de pagar.", {
@@ -119,7 +121,7 @@ export function timelinePage() {
           ${plan.capitalOnly ? '<p class="note">Hay deudas en modo capital: el saldo no incluye intereses futuros.</p>' : ""}
           ${plan.unassigned ? `<p class="note">${money(plan.unassigned)} abonados sin asignar: reducen el saldo, pero no marcan cuotas hasta aplicarlos.</p>` : ""}
         </section>`
-      : `<section class="card">${empty("Sin deudas con vencimiento", "Cuando registres un MSI o un préstamo, aquí verás cuándo termina.")}${btn("Ver todas las deudas", "tab", "debt", "full")}</section>`) +
-    `<details class="fine-print"><summary>Cómo se calcula</summary><p>Solo MSI, diferimientos y préstamos con cuotas. Los gastos fijos y las compras revolventes de tarjeta no forman parte de esta ruta. La fecha final usa las cuotas registradas y no incluye intereses futuros ni cambios de contrato. Las barras rayadas son una estimación basada en el saldo y la cuota actuales.</p></details>`
+      : `<section class="card">${empty("Sin deudas con vencimiento", "Cuando registres una compra a meses sin intereses o un préstamo, aquí verás cuándo termina.")}${btn("Ver todas las deudas", "tab", "debt", "full")}</section>`) +
+    `<details class="fine-print"><summary>Cómo se calcula</summary><p>Solo compras a meses, pagos diferidos y préstamos con cuotas. Los gastos fijos y las compras a crédito sin plazo fijo no forman parte de esta ruta. La fecha final usa las cuotas registradas y no incluye intereses futuros ni cambios de contrato. Las barras rayadas son una estimación basada en el saldo y la cuota actuales.</p></details>`
   );
 }

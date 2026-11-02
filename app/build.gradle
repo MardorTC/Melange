@@ -1,8 +1,8 @@
 plugins { id 'com.android.application' }
 
 // The only source of release version information.
-def releaseName = '8.5.0'
-def releaseCode = 80500
+def releaseName = '8.6.0'
+def releaseCode = 80600
 def minimumSdk = 26
 def signingDirectory = file(System.getenv('OSP_SIGNING_DIR') ?: rootProject.file('firma/signing'))
 

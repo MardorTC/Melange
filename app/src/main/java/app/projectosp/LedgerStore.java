@@ -7,7 +7,11 @@ import android.database.sqlite.*;
 
 final class LedgerStore extends SQLiteOpenHelper {
   LedgerStore(Context c) {
-    super(c, "projectosp.db", null, 1);
+    this(c, "projectosp.db");
+  }
+
+  LedgerStore(Context c, String databaseName) {
+    super(c, databaseName, null, 1);
   }
 
   @Override
@@ -25,6 +29,70 @@ final class LedgerStore extends SQLiteOpenHelper {
   synchronized String read() {
     try (Cursor c = getReadableDatabase().rawQuery("SELECT current FROM vault WHERE id=1", null)) {
       return c.moveToFirst() ? c.getString(0) : "";
+    }
+  }
+
+  private SQLiteDatabase draftDatabase() {
+    SQLiteDatabase db = getWritableDatabase();
+    db.execSQL(
+        "CREATE TABLE IF NOT EXISTS form_drafts (key TEXT PRIMARY KEY, json TEXT NOT NULL, updated"
+            + " INTEGER NOT NULL)");
+    return db;
+  }
+
+  synchronized String readFormDraft(String key) {
+    try (Cursor c =
+        draftDatabase().rawQuery("SELECT json FROM form_drafts WHERE key=?", new String[] {key})) {
+      return c.moveToFirst() ? c.getString(0) : "";
+    }
+  }
+
+  synchronized void writeFormDraft(String key, String json) {
+    SQLiteDatabase db = draftDatabase();
+    db.beginTransaction();
+    try {
+      if (json.isEmpty()) db.delete("form_drafts", "key=?", new String[] {key});
+      else {
+        ContentValues v = new ContentValues();
+        v.put("key", key);
+        v.put("json", json);
+        v.put("updated", System.currentTimeMillis());
+        if (db.insertWithOnConflict("form_drafts", null, v, SQLiteDatabase.CONFLICT_REPLACE) == -1)
+          throw new IllegalStateException("No se pudo guardar el borrador");
+        db.execSQL(
+            "DELETE FROM form_drafts WHERE key IN (SELECT key FROM form_drafts ORDER BY updated"
+                + " DESC, key DESC LIMIT -1 OFFSET 20)");
+      }
+      db.setTransactionSuccessful();
+    } finally {
+      db.endTransaction();
+    }
+  }
+
+  synchronized void writeRecovery(String json) {
+    SQLiteDatabase db = getWritableDatabase();
+    db.beginTransaction();
+    try {
+      String old = read();
+      db.execSQL(
+          "CREATE TABLE IF NOT EXISTS recovery_backups (id INTEGER PRIMARY KEY AUTOINCREMENT,"
+              + " saved INTEGER NOT NULL, envelope TEXT NOT NULL)");
+      if (!old.isEmpty()) {
+        ContentValues backup = new ContentValues();
+        backup.put("saved", System.currentTimeMillis());
+        backup.put("envelope", old);
+        if (db.insert("recovery_backups", null, backup) == -1)
+          throw new IllegalStateException("No se pudo conservar el libro anterior");
+      }
+      ContentValues value = new ContentValues();
+      value.put("id", 1);
+      value.put("current", json);
+      value.put("previous", old);
+      if (db.insertWithOnConflict("vault", null, value, SQLiteDatabase.CONFLICT_REPLACE) == -1)
+        throw new IllegalStateException("No se pudo guardar el libro recuperado");
+      db.setTransactionSuccessful();
+    } finally {
+      db.endTransaction();
     }
   }
 

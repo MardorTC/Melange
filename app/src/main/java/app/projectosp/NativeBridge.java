@@ -50,6 +50,25 @@ public final class NativeBridge {
   }
 
   @JavascriptInterface
+  public String writeRecovery(String json) {
+    try {
+      if (json == null) throw new Exception("Respaldo vacío");
+      if (json.length() > BackupController.MAX_BACKUP_BYTES)
+        throw new Exception("Respaldo fuera del límite");
+      int bytes = json.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+      if (bytes == 0 || bytes > BackupController.MAX_BACKUP_BYTES)
+        throw new Exception("Respaldo fuera del límite");
+      JSONObject obj = new JSONObject(json);
+      if (obj.getJSONObject("state").getInt("schemaVersion") != 10)
+        throw new Exception("Versión incompatible");
+      store.writeRecovery(json);
+      return "OK";
+    } catch (Exception e) {
+      return "ERROR:No se pudo recuperar el libro: " + e.getMessage();
+    }
+  }
+
+  @JavascriptInterface
   public void writeAsync(String json, int requestId) {
     new Thread(
             () -> {
@@ -62,8 +81,35 @@ public final class NativeBridge {
   }
 
   @JavascriptInterface
-  public void exportBackup(String json) {
-    activity.runOnUiThread(() -> backups.exportBackup(json));
+  public String readFormDraft(String key) {
+    try {
+      if (key == null || key.length() > 240)
+        throw new IllegalArgumentException("Identificador inválido");
+      return store.readFormDraft(key);
+    } catch (Exception e) {
+      return "ERROR:No se pudo leer el borrador";
+    }
+  }
+
+  @JavascriptInterface
+  public String writeFormDraft(String key, String json) {
+    try {
+      if (key == null
+          || key.length() > 240
+          || json == null
+          || json.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 256 * 1024)
+        throw new IllegalArgumentException("Borrador demasiado grande");
+      if (!json.isEmpty()) new JSONObject(json);
+      store.writeFormDraft(key, json);
+      return "OK";
+    } catch (Exception e) {
+      return "ERROR:No se pudo guardar el borrador";
+    }
+  }
+
+  @JavascriptInterface
+  public void exportBackup(String json, String requestToken) {
+    activity.runOnUiThread(() -> backups.exportBackup(json, requestToken));
   }
 
   @JavascriptInterface

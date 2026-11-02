@@ -2,6 +2,13 @@ import C from "../domain/finance.js";
 import { model } from "../state/model.js";
 import { commit } from "../state/ledger.js";
 import { iconPath, iconViewBox } from "./icons.js";
+import { parseMoney } from "../domain/money-input.js";
+import {
+  beginFormDraft,
+  checkpointFormDraft,
+  canCloseForm,
+  finishFormDraft,
+} from "./form-drafts.js";
 
 export function screenHead(title, subtitle = "", opts = {}) {
   const {
@@ -26,10 +33,7 @@ export function sectionHead(title, trailing = "", note = "") {
 }
 
 export function signedMoney(value) {
-  const raw = String(value ?? "").replace(/[$,\s]/g, "");
-  if (!/^-?\d+(\.\d{0,2})?$/.test(raw))
-    throw Error("Escribe un saldo con hasta dos decimales.");
-  return C.cents(raw);
+  return parseMoney(value, true);
 }
 
 export function signedField(name, label, value = "") {
@@ -119,20 +123,39 @@ export function toast(text, undoable = false) {
 
 export function showError(message) {
   const el = $(".form-error");
-  if (el) el.textContent = message;
-  else toast(message);
+  if (el) {
+    el.textContent = message;
+    el.tabIndex = -1;
+    el.scrollIntoView?.({ block: "center" });
+    el.focus({ preventScroll: true });
+  } else toast(message);
 }
 
 export function modal(title, html, submit) {
+  void checkpointFormDraft();
+  void finishFormDraft();
   model.formSubmit = submit || null;
   $("#modal").innerHTML =
-    `<div class="row"><h2>${esc(title)}</h2>${icon("close", "Cerrar", "close")}</div>${html}`;
+    `<div class="row"><h2 id="dialog-title">${esc(title)}</h2>${icon("close", "Cerrar", "close")}</div>${html}`;
+  dialog.setAttribute("aria-labelledby", "dialog-title");
   if (!dialog.open) dialog.showModal();
 }
 
 export function closeModal() {
+  void checkpointFormDraft();
+  void finishFormDraft();
   dialog.close();
   model.formSubmit = null;
+}
+
+export async function requestCloseModal() {
+  if (model.busy) {
+    toast("Guardando. Espera un momento antes de cerrar.");
+    return false;
+  }
+  if (!(await canCloseForm())) return false;
+  closeModal();
+  return true;
 }
 
 export function form(
@@ -146,9 +169,10 @@ export function form(
     cancelAction = options.cancelAction || "close";
   modal(
     title,
-    `<form id="form">${fields}<div class="form-error" role="alert"></div><div class="form-actions"><button type="button" class="btn" data-action="${cancelAction}">${cancelLabel}</button><button class="btn primary" type="submit">${submitText}</button></div></form>`,
+    `<form id="form"><section class="draft-status" aria-live="polite" hidden></section>${fields}<div class="form-error" role="alert"></div><div class="form-actions"><button type="button" class="btn" data-action="${cancelAction}">${cancelLabel}</button><button class="btn primary" type="submit">${submitText}</button></div></form>`,
     onSubmit,
   );
+  beginFormDraft($("#form"), options, toast);
 }
 
 export const input = (name, label, value = "", type = "text", extra = "") =>
@@ -158,32 +182,49 @@ export const amount = (name, label, value = 0) =>
   input(
     name,
     label,
-    value ? String(value / 100) : "",
+    value === null || value === undefined ? "" : String(value / 100),
     "text",
     'inputmode="decimal" data-money="1" placeholder="0.00" required',
   );
 
-export const select = (name, label, options, value) =>
-  `<label>${label}<select name="${name}">${options.map(([v, t]) => `<option value="${esc(v)}" ${v === value ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label>`;
+export const select = (name, label, options, value) => {
+  const unavailable =
+    value !== undefined &&
+    value !== null &&
+    value !== "" &&
+    !options.some(([id]) => String(id) === String(value));
+  const previous = ["accountId", "toAccountId"].includes(name)
+    ? model.state?.walletAccounts.find((account) => account.id === value)?.name
+    : "";
+  // Never let the browser silently replace a saved-but-archived selection with
+  // its first active option. Keep the original ID for domain validation.
+  const fallback = unavailable
+    ? `<option value="${esc(value)}" selected>${esc(previous || "Selección anterior")} · no disponible; elige una opción activa</option>`
+    : "";
+  return `<label>${label}<select name="${name}">${fallback}${options.map(([v, t]) => `<option value="${esc(v)}" ${String(v) === String(value) ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label>`;
+};
 
 export const moneyValue = (f) => {
-  const v = String(f || "").replace(/[$,\s]/g, "");
-  if (!/^\d+(\.\d{0,2})?$/.test(v))
-    throw Error("Introduce un importe con hasta dos decimales.");
-  return C.cents(v);
+  return parseMoney(f);
 };
 
 export function accountOptions(source = model.state, freeOnly = false) {
-  return source.walletAccounts
+  return C.accountSummary(source)
     .filter((a) => a.active !== false && (!freeOnly || a.type !== "restricted"))
-    .map((a) => [a.id, a.name]);
+    .map((a) => [
+      a.id,
+      `${a.name} · ${money(a.available)} disponible${a.type === "restricted" ? " · uso restringido" : ""}`,
+    ]);
 }
 export function spendingOptions(source = model.state) {
   return [
     ...accountOptions(source),
     ...(source.creditCards || [])
       .filter((c) => c.active !== false)
-      .map((c) => ["credit:" + c.id, c.name + " · Crédito"]),
+      .map((c) => [
+        "credit:" + c.id,
+        `${c.name} · Crédito · ${money(C.creditSummary(source, c.id).available)} disponible`,
+      ]),
   ];
 }
 export function accountName(id, source = model.state) {
@@ -244,10 +285,10 @@ export const kindName = (k) =>
 
 export const debtType = (t) =>
   ({
-    msi: "Meses sin intereses",
-    deferred: "Diferimiento",
+    msi: "Compra a meses sin intereses",
+    deferred: "Pagos diferidos",
     loan: "Préstamo",
-    revolving: "Crédito revolvente",
+    revolving: "Crédito sin plazo fijo",
     "loan-open": "Préstamo sin plazo",
   })[t] || t;
 

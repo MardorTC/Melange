@@ -1,5 +1,13 @@
 import { creditPayForm } from "../screens/credit.js";
 import { recurrenceFields, recurrenceValue } from "./recurrence-fields.js";
+import { debtForm } from "./debt-wizard.js";
+import {
+  accountCreateControl,
+  afterSelect,
+  applyContextualCreations,
+  categoryCreateControl,
+  contextualDraftOptions,
+} from "./contextual-create.js";
 import {
   modal,
   accountName,
@@ -15,7 +23,6 @@ import {
   empty,
   toast,
   paymentFields,
-  debtType,
   esc,
   money,
   confirmAction,
@@ -52,6 +59,55 @@ export function transactionForm(kind = "expense", existing) {
     accountId: "debit",
     categoryId: "",
   };
+  if (existing?.kind === "fixed") {
+    form(
+      "Editar pago fijo",
+      input("name", "Concepto", t.name, "text", 'required maxlength="120"') +
+        afterSelect(
+          paymentFields(
+            t.amount,
+            true,
+            t.creditCardId ? "credit:" + t.creditCardId : t.accountId,
+          ),
+          "accountId",
+          accountCreateControl("accountId"),
+        ) +
+        select(
+          "categoryId",
+          "Categoría",
+          [
+            ["", "Sin categoría"],
+            ...model.state.categories.map((c) => [c.id, c.name]),
+          ],
+          t.categoryId || "",
+        ) +
+        categoryCreateControl("categoryId") +
+        '<p class="note">La corrección conserva este vencimiento y sus vínculos. No se registra un segundo pago. Si aumentas el importe por encima del vencimiento, solo ese vencimiento se ajusta al nuevo cobro; las próximas cuotas no cambian.</p>',
+      async (f) =>
+        commit("Pago fijo corregido", (s) => {
+          const value = applyContextualCreations(s, f);
+          C.editFixedPayment(s, t.id, {
+            name: value.name.trim(),
+            amount: moneyValue(value.amount),
+            date: value.date,
+            accountId: value.accountId.startsWith("credit:")
+              ? null
+              : value.accountId,
+            creditCardId: value.accountId.startsWith("credit:")
+              ? value.accountId.slice(7)
+              : null,
+            categoryId: value.categoryId || "",
+          });
+        }),
+      "Guardar",
+      {
+        draftKey: `fixed-payment:${t.id}`,
+        ...contextualDraftOptions(),
+      },
+    );
+    document.querySelector('[name="date"]').value = t.date;
+    return;
+  }
   if (
     existing &&
     [
@@ -85,6 +141,7 @@ export function transactionForm(kind = "expense", existing) {
       kind === "expense" ? spendingOptions() : accountOptions(),
       t.creditCardId ? "credit:" + t.creditCardId : t.accountId,
     ) +
+    accountCreateControl("accountId") +
     (kind === "expense"
       ? `<div id="credit-purchase-fields" ${t.creditCardId ? "" : "hidden"}><p class="note">La compra cuenta como gasto y usa crédito. Tu disponible libre solo cambia cuando pagas la tarjeta.</p>${input("cardDueDate", "Vencimiento del estado de cuenta (opcional)", t.cardDueDate || "", "date")}<p class="note">Si lo dejas vacío, se calcula usando corte y día de pago. Las compras del día de corte se incluyen en ese corte.</p><p class="note warning">Si esta compra es a MSI, regístrala como deuda vinculada a la tarjeta y no la dupliques aquí.</p></div>`
       : "") +
@@ -97,7 +154,7 @@ export function transactionForm(kind = "expense", existing) {
             ...model.state.categories.map((c) => [c.id, c.name]),
           ],
           t.categoryId,
-        )
+        ) + categoryCreateControl("categoryId")
       : "") +
     (kind === "transfer"
       ? select(
@@ -105,7 +162,7 @@ export function transactionForm(kind = "expense", existing) {
           "Destino",
           accountOptions(),
           t.toAccountId || "cash",
-        )
+        ) + accountCreateControl("toAccountId")
       : "") +
     (kind === "transfer"
       ? '<p class="note">Puedes distribuir saldo hacia vales sin crear ingresos ni gastos. Una cuenta de vales no puede transferir dinero a cuentas libres.</p>'
@@ -159,11 +216,17 @@ export function transactionForm(kind = "expense", existing) {
       await commit(
         existing ? "Movimiento actualizado" : "Movimiento registrado",
         (s) => {
+          const resolved = applyContextualCreations(s, value);
           if (existing) {
-            C.editTransaction(s, existing.id, value);
-          } else C.record(s, value);
+            C.editTransaction(s, existing.id, resolved);
+          } else C.record(s, resolved);
         },
       );
+    },
+    "Guardar",
+    {
+      draftKey: `transaction:${kind}:${existing?.id || "new"}`,
+      ...contextualDraftOptions(),
     },
   );
 }
@@ -196,12 +259,16 @@ export function payForm(key, m) {
   form(
     "Pagar " + item.name,
     `<p class="note">${item.n ? "Cuota " + item.n + " · " : ""}Vencimiento: ${dlabel(item.date)}. Con dinero propio se descontará del origen; a crédito se agregará al pago de la tarjeta. Puedes abonar una parte; el resto seguirá pendiente.</p>` +
-      paymentFields(
-        d?.balanceMode === "total"
-          ? Math.min(d.balance, item.remaining ?? item.amount)
-          : (item.remaining ?? item.amount),
-        item.kind === "fixed",
-        item.creditCardId ? "credit:" + item.creditCardId : "debit",
+      afterSelect(
+        paymentFields(
+          d?.balanceMode === "total"
+            ? Math.min(d.balance, item.remaining ?? item.amount)
+            : (item.remaining ?? item.amount),
+          item.kind === "fixed",
+          item.creditCardId ? "credit:" + item.creditCardId : "debit",
+        ),
+        "accountId",
+        accountCreateControl("accountId"),
       ) +
       (d?.balanceMode === "principal"
         ? amount(
@@ -219,233 +286,40 @@ export function payForm(key, m) {
               ...model.state.categories.map((c) => [c.id, c.name]),
             ],
             item.categoryId || "",
-          )
+          ) + categoryCreateControl("categoryId")
         : "") +
       '<p class="note">Necesitas saldo disponible o crédito suficiente, según el origen elegido.</p>',
     async (f) => {
       if (f.date > C.today())
         throw Error("La fecha real de pago no puede ser futura.");
       await commit("Pago registrado", (s) => {
+        const value = applyContextualCreations(s, f);
         C.ensureBudget(s, m);
         C.pay(s, key, {
           period: m,
-          amount: moneyValue(f.amount),
-          accountId: f.accountId.startsWith("credit:") ? null : f.accountId,
-          creditCardId: f.accountId.startsWith("credit:")
-            ? f.accountId.slice(7)
+          amount: moneyValue(value.amount),
+          accountId: value.accountId.startsWith("credit:")
+            ? null
+            : value.accountId,
+          creditCardId: value.accountId.startsWith("credit:")
+            ? value.accountId.slice(7)
             : undefined,
-          date: f.date,
-          categoryId: f.categoryId,
-          principal: f.principal ? moneyValue(f.principal) : undefined,
+          date: value.date,
+          categoryId: value.categoryId,
+          principal: value.principal ? moneyValue(value.principal) : undefined,
         });
       });
     },
     "Registrar pago",
+    {
+      draftKey: `pay:${key}`,
+      ...contextualDraftOptions(),
+    },
   );
 }
 
 export function editDebt(id) {
-  const d = model.state.debts.find((x) => x.id === id) || {
-    name: "",
-    creditorId: "",
-    type: "msi",
-    originalAmount: 0,
-    balance: 0,
-    payment: 0,
-    totalPayments: 0,
-    startDate: C.today(),
-    dueDay: 1,
-    annualRate: 0,
-    financingCost: 0,
-    notes: "",
-    balanceMode: "total",
-  };
-  const hasPaid =
-    (d.paidPayments?.length || 0) > 0 ||
-    model.state.transactions.some((t) => t.ref === id) ||
-    C.allocations(model.state).some((a) => a.ref === id);
-  form(
-    id ? "Editar deuda" : "Nueva deuda",
-    input("name", "Nombre", d.name, "text", 'required maxlength="120"') +
-      select(
-        "creditorId",
-        "Acreedor",
-        [
-          ["", "Sin acreedor"],
-          ...model.state.creditors.map((a) => [a.id, a.name]),
-        ],
-        d.creditorId,
-      ) +
-      select(
-        "type",
-        "Tipo",
-        ["msi", "deferred", "loan", "revolving", "loan-open"].map((t) => [
-          t,
-          debtType(t),
-        ]),
-        d.type,
-      ) +
-      select(
-        "creditCardId",
-        "Pagar MSI junto con una tarjeta",
-        [
-          ["", "Sin tarjeta vinculada"],
-          ...model.state.creditCards
-            .filter((c) => c.active !== false || c.id === d.creditCardId)
-            .map((c) => [c.id, c.name]),
-        ],
-        d.creditCardId || "",
-      ) +
-      '<p class="note">Solo para MSI. El saldo pendiente completo ocupa crédito; cada mensualidad se agrega al pago de la tarjeta. No registres también esta compra como gasto normal: duplicaría la deuda y el crédito usado. Al vincular una tarjeta, la deuda se guarda como MSI con saldo total y plazo. Los MSI creados como deuda no se suman a la dona de consumo.</p>' +
-      amount("originalAmount", "Monto original", d.originalAmount) +
-      amount("balance", "Saldo pendiente registrado", d.balance) +
-      select(
-        "balanceMode",
-        "Qué representa el saldo",
-        [
-          ["total", "Total por pagar (incluye financiamiento)"],
-          ["principal", "Solo capital (separar intereses al pagar)"],
-        ],
-        d.balanceMode,
-      ) +
-      amount("payment", "Cuota o pago mensual previsto", d.payment) +
-      input(
-        "totalPayments",
-        "Número de cuotas (0 = sin plazo)",
-        d.totalPayments,
-        "number",
-        `min="0" max="1200" required ${hasPaid ? "readonly" : ""}`,
-      ) +
-      input(
-        "priorPaid",
-        "Cuotas ya liquidadas antes del registro",
-        d.historicalPaidPayments?.length || 0,
-        "number",
-        'required min="0" max="1200"',
-      ) +
-      '<p class="note">Son antecedentes: no generan salidas ni vuelven a reducir el saldo pendiente.</p>' +
-      input(
-        "startDate",
-        "Fecha de primera cuota",
-        d.startDate || C.today(),
-        "date",
-        `required ${hasPaid ? "readonly" : ""}`,
-      ) +
-      input(
-        "dueDay",
-        "Día de vencimiento",
-        d.dueDay || 1,
-        "number",
-        'min="1" max="31" required',
-      ) +
-      amount(
-        "financingCost",
-        "Costo total de financiamiento",
-        d.financingCost,
-      ) +
-      input(
-        "annualRate",
-        "Tasa anual informativa (%)",
-        d.annualRate || 0,
-        "number",
-        'min="0" max="1000" step="0.01"',
-      ) +
-      `<label>Notas<textarea name="notes" maxlength="2000">${esc(d.notes)}</textarea></label>` +
-      (hasPaid
-        ? '<p class="note">El inicio y número de cuotas están protegidos porque ya hay pagos. Los cambios de importe no reescriben movimientos anteriores.</p>'
-        : ""),
-    async (f) => {
-      await commit(id ? "Deuda actualizada" : "Deuda agregada", (s) => {
-        const debtId = id || C.id(),
-          linkedCard = f.creditCardId || "",
-          totalPayments = Number(f.totalPayments);
-        if (linkedCard && (!totalPayments || !f.startDate))
-          throw Error(
-            "Un MSI vinculado a tarjeta necesita un plazo mayor a cero y una fecha de primera cuota.",
-          );
-        const value = {
-          name: f.name.trim(),
-          creditorId: f.creditorId,
-          creditCardId: linkedCard || null,
-          type: linkedCard ? "msi" : f.type,
-          originalAmount: moneyValue(f.originalAmount),
-          balance: moneyValue(f.balance),
-          payment: moneyValue(f.payment),
-          totalPayments,
-          startDate: f.startDate,
-          dueDay: Number(f.dueDay),
-          financingCost: moneyValue(f.financingCost || "0"),
-          annualRate: Number(f.annualRate),
-          notes: f.notes,
-          balanceMode: linkedCard ? "total" : f.balanceMode,
-        };
-        if (
-          id &&
-          C.allocations(s).some((a) => a.ref === id) &&
-          [
-            "creditCardId",
-            "balance",
-            "payment",
-            "dueDay",
-            "startDate",
-            "totalPayments",
-            "balanceMode",
-            "type",
-          ].some((k) => (d[k] ?? null) !== (value[k] ?? null))
-        )
-          throw Error(
-            "La deuda tiene pagos de tarjeta. Revierte esos pagos antes de cambiar su saldo, vínculo o calendario.",
-          );
-        if (!value.name) throw Error("Escribe un nombre.");
-        if (value.payment <= 0) throw Error("La cuota debe ser mayor a cero.");
-        if (
-          linkedCard &&
-          (!id ||
-            d.creditCardId !== linkedCard ||
-            d.originalAmount !== value.originalAmount ||
-            d.startDate !== value.startDate)
-        ) {
-          const duplicate = s.transactions.find(
-            (t) =>
-              C.isCreditPurchase(t) &&
-              t.creditCardId === linkedCard &&
-              t.amount === value.originalAmount &&
-              nameKey(t.name) === nameKey(value.name) &&
-              C.month(t.date) === C.month(value.startDate),
-          );
-          if (duplicate)
-            throw Error(
-              `Ya registraste "${duplicate.name}" por ese importe en esta tarjeta. Si es la misma compra, no la dupliques como MSI: revisa la compra o elimina una de las dos fuentes.`,
-            );
-        }
-        if (id)
-          Object.assign(
-            s.debts.find((x) => x.id === id),
-            value,
-          );
-        else
-          s.debts.push({
-            ...value,
-            id: debtId,
-            historicalPaidPayments: [],
-            active: true,
-            archived: false,
-            paidPayments: [],
-            paidMonths: [],
-          });
-        if (
-          !id ||
-          Number(f.priorPaid) !== (d.historicalPaidPayments?.length || 0)
-        )
-          C.setPriorPayments(
-            s,
-            s.debts.find((x) => x.id === debtId),
-            Number(f.priorPaid),
-          );
-        C.refreshAllBudgets(s);
-      });
-    },
-  );
+  return debtForm(id);
 }
 
 export function editFixed(id) {
@@ -466,7 +340,14 @@ export function editFixed(id) {
         ],
         f.kind,
       ) +
-      recurrenceFields(f, model.state, !!id) +
+      afterSelect(
+        recurrenceFields(f, model.state, !!id),
+        "categoryId",
+        categoryCreateControl("categoryId"),
+      ) +
+      (id
+        ? '<p class="note">Los pagos registrados no cambian. Si ya pagaste vencimientos por adelantado, el nuevo calendario empieza después del último de ellos. Archivar detiene los nuevos cobros sin borrar pagos.</p>'
+        : "") +
       select(
         "active",
         "Estado",
@@ -477,24 +358,24 @@ export function editFixed(id) {
         f.active === false ? "no" : "yes",
       ),
     async (v) =>
-      commit("Gasto fijo actualizado", (s) => {
-        const rule = recurrenceValue(v);
-        let item = s.fixedExpenses.find((x) => x.id === id);
-        if (!item) {
-          item = { id: C.id(), rules: [] };
-          s.fixedExpenses.push(item);
-        }
-        C.setRecurrence(s, item, rule);
-        Object.assign(item, {
-          name: v.name.trim(),
-          kind: v.kind,
-          amount: rule.amount,
-          categoryId: rule.categoryId,
-          creditCardId: rule.creditCardId,
-          active: rule.active,
-        });
-        C.refreshAllBudgets(s);
+      commit(id ? "Gasto fijo actualizado" : "Gasto fijo creado", (s) => {
+        const value = applyContextualCreations(s, v);
+        const rule = recurrenceValue(value);
+        C.updateFixed(
+          s,
+          id,
+          {
+            name: value.name.trim(),
+            kind: value.kind,
+          },
+          rule,
+        );
       }),
+    "Guardar",
+    {
+      draftKey: `fixed:${id || "new"}`,
+      ...contextualDraftOptions(),
+    },
   );
 }
 
@@ -518,6 +399,8 @@ export function editCatalog(kind, id) {
         if (id) s[list].find((a) => a.id === id).name = name;
         else s[list].push({ id: C.id(), name });
       }),
+    "Guardar",
+    { draftKey: `catalog:${list}:${id || "new"}` },
   );
 }
 
@@ -547,7 +430,27 @@ export function editGoal(id) {
           );
         else s.goals.push({ ...v, id: C.id(), balance: 0, allocations: [] });
       }),
+    "Guardar",
+    { draftKey: `goal:${id || "new"}` },
   );
+}
+
+export function syncReserveFields() {
+  const kind = document.querySelector(
+    '[name="kind"][data-reserve-kind]',
+  )?.value;
+  if (!kind) return;
+  for (const [name, visible] of [
+    ["accountId", kind !== "remove"],
+    ["allocation", kind !== "add"],
+    ["amount", kind !== "assign"],
+  ]) {
+    const el = document.querySelector(`#form [name="${name}"]`);
+    if (el) {
+      el.closest("label").hidden = !visible;
+      if (name === "amount") el.required = visible;
+    }
+  }
 }
 
 export function contribute(id) {
@@ -559,8 +462,10 @@ export function contribute(id) {
       "Acción",
       [
         ["add", "Reservar dinero"],
-        ["remove", "Liberar reserva"],
-        ["assign", "Asignar reserva antigua a cuenta"],
+        ...(g.allocations.length ? [["remove", "Liberar reserva"]] : []),
+        ...(g.allocations.some((r) => !r.accountId)
+          ? [["assign", "Asignar reserva antigua a cuenta"]]
+          : []),
       ],
       "add",
     ) +
@@ -570,17 +475,19 @@ export function contribute(id) {
         accountOptions(model.state, true),
         "debit",
       ) +
-      select(
-        "allocation",
-        "Reserva existente",
-        g.allocations.map((r, i) => [
-          String(i),
-          `${r.accountId ? accountName(r.accountId) : "Pendiente de asignar"} · ${money(r.amount)}${r.boxId ? " · Cajita" : ""}`,
-        ]),
-        "0",
-      ) +
+      (g.allocations.length
+        ? select(
+            "allocation",
+            "Reserva existente",
+            g.allocations.map((r, i) => [
+              String(i),
+              `${r.accountId ? accountName(r.accountId) : "Pendiente de asignar"} · ${money(r.amount)}${r.boxId ? " · Cajita" : ""}`,
+            ]),
+            "0",
+          )
+        : "") +
       amount("amount", "Importe (reservar / liberar)") +
-      `<p class="note">Reservado: ${money(g.balance)}. Asignar una reserva antigua no altera saldos ni avance.</p>`,
+      `<p class="note">Reservado en esta meta: ${money(g.balance)}. Reservar resta dinero del disponible sin crear un gasto; liberar una reserva lo devuelve.${g.allocations.some((allocation) => !allocation.accountId) ? " Asignar una reserva anterior a una cuenta no altera saldos ni avance." : ""}</p>`,
     async (f) =>
       commit("Reserva actualizada", (s) => {
         if (f.kind === "add")
@@ -589,7 +496,11 @@ export function contribute(id) {
           C.releaseReserve(s, id, Number(f.allocation), moneyValue(f.amount));
         else C.assignReserve(s, id, Number(f.allocation), f.accountId);
       }),
+    "Guardar",
+    { draftKey: `reserve:${id}`, onDraftRestore: syncReserveFields },
   );
+  document.querySelector('[name="kind"]').setAttribute("data-reserve-kind", "");
+  syncReserveFields();
 }
 
 export function deleteEntity(type, id) {
@@ -627,17 +538,20 @@ export function deleteEntity(type, id) {
   } else if (type === "Fixed")
     confirmAction(
       "Archivar gasto fijo",
-      "Se conservarán sus pagos realizados y dejará de generar compromisos nuevos.",
+      "Se conservarán sus pagos realizados, incluso los adelantados. Dejará de generar nuevos cobros desde hoy. No necesitas revertir ningún pago.",
       "Gasto fijo archivado",
       (s) => {
         const f = s.fixedExpenses.find((x) => x.id === id);
-        C.setRecurrence(s, f, {
-          ...C.rulesFor(f).at(-1),
-          effectiveFrom: C.today(),
-          active: false,
-        });
-        f.active = false;
-        C.refreshAllBudgets(s);
+        C.updateFixed(
+          s,
+          id,
+          { name: f.name, kind: f.kind },
+          {
+            ...C.rulesFor(f).at(-1),
+            effectiveFrom: C.today(),
+            active: false,
+          },
+        );
       },
     );
   else if (type === "Goal")
@@ -679,9 +593,26 @@ export function deleteEntity(type, id) {
 
 export function transactionDetails(id) {
   const t = model.state.transactions.find((x) => x.id === id);
+  const allocations =
+    t.kind === "card_payment"
+      ? `<h3>Desglose del pago</h3>${t.allocations
+          .map((a) => {
+            const name =
+              a.kind === "unassigned"
+                ? "Abono pendiente de asignar"
+                : a.kind === "debt"
+                  ? `${model.state.debts.find((d) => d.id === a.ref)?.name} · Cuota ${a.n}`
+                  : a.kind === "opening"
+                    ? "Saldo anterior"
+                    : model.state.transactions.find((p) => p.id === a.ref)
+                        ?.name;
+            return `<p>${esc(name)}: ${money(a.amount)}</p>`;
+          })
+          .join("")}`
+      : "";
   modal(
     t.name,
-    `<div class="details"><div><small>Importe</small><strong>${money(t.amount)}</strong></div><div><small>Tipo</small>${kindName(t.kind)}</div><div><small>Fecha</small>${dlabel(t.date)}</div><div><small>Origen</small>${esc(accountName(t.accountId || t.creditCardId))}</div></div>${t.historical ? '<p class="note">Importado de v6. Este gasto ya está contemplado en el saldo inicial; no se volvió a descontar.</p>' : ""}${t.kind === "card_payment" ? `<h3>Desglose del pago</h3>${t.allocations.map((a) => `<p>${esc(a.kind === "debt" ? model.state.debts.find((d) => d.id === a.ref)?.name + " · Cuota " + a.n : a.kind === "opening" ? "Saldo anterior" : model.state.transactions.find((p) => p.id === a.ref)?.name)}: ${money(a.amount)}</p>`).join("")}` : t.creditCardId ? `<p class="note">Compra a crédito · Vence ${dlabel(t.cardDueDate)}. No descontó dinero de tus cuentas.</p>` : ""}${t.obligation ? '<p class="note">Vinculado a un compromiso de ' + mlabel(t.period) + ".</p>" : ""}<div class="toolbar wrap"><button class="btn" data-action="editTransaction" data-id="${esc(t.id)}">Editar</button><button class="btn danger" data-action="deleteTransaction" data-id="${esc(t.id)}">Eliminar</button></div>`,
+    `<div class="details"><div><small>Importe</small><strong>${money(t.amount)}</strong></div><div><small>Tipo</small>${kindName(t.kind)}</div><div><small>Fecha</small>${dlabel(t.date)}</div><div><small>Origen</small>${esc(accountName(t.accountId || t.creditCardId))}</div>${t.categoryId ? `<div><small>Categoría</small>${esc(model.state.categories.find((category) => category.id === t.categoryId)?.name || "Sin categoría")}</div>` : ""}${t.toAccountId ? `<div><small>Destino</small>${esc(accountName(t.toAccountId))}</div>` : ""}</div>${t.historical ? '<p class="note">Importado de v6. Este gasto ya está contemplado en el saldo inicial; no se volvió a descontar.</p>' : ""}${allocations || (t.creditCardId ? `<p class="note">Compra a crédito · Vence ${dlabel(t.cardDueDate)}. No descontó dinero de tus cuentas.</p>` : "")}${t.obligation ? '<p class="note">Vinculado a un compromiso de ' + mlabel(t.period) + ".</p>" : ""}<div class="toolbar wrap"><button class="btn" data-action="editTransaction" data-id="${esc(t.id)}">Editar</button><button class="btn danger" data-action="deleteTransaction" data-id="${esc(t.id)}">${t.kind === "fixed" ? "Eliminar pago" : "Eliminar"}</button></div>`,
   );
 }
 
@@ -705,7 +636,7 @@ export function debtDetails(id) {
       )
       .join(
         "",
-      )}</div><p>${esc(d.notes || "Sin notas")}</p><p class="note">${d.historicalPaidPayments?.length || 0} cuotas como antecedentes; ${d.paidPayments.length - (d.historicalPaidPayments?.length || 0)} liquidadas mediante pagos registrados. Los antecedentes no afectan el saldo de tus cuentas.</p>${d.balance > 0 ? btn("Registrar abono adicional", "extraPayment", id, "full") : ""}<h3 style="margin-top:20px">Movimientos vinculados</h3>${
+      )}</div><p>${esc(d.notes || "Sin notas")}</p><p class="note">${d.historicalPaidPayments?.length || 0} cuotas como antecedentes; ${d.paidPayments.length - (d.historicalPaidPayments?.length || 0)} liquidadas mediante pagos registrados. Los antecedentes no afectan el saldo de tus cuentas.</p>${btn("Editar deuda", "editDebt", id, "full")}${d.balance > 0 ? btn("Registrar abono adicional", "extraPayment", id, "full") : ""}<h3 style="margin-top:20px">Movimientos vinculados</h3>${
       model.state.transactions
         .filter((t) => t.ref === id)
         .map(
@@ -722,14 +653,19 @@ export function extraPayment(id) {
   if (d.creditCardId) return creditPayForm(d.creditCardId);
   form(
     "Abono adicional",
-    paymentFields(0) +
+    afterSelect(
+      paymentFields(0),
+      "accountId",
+      accountCreateControl("accountId"),
+    ) +
       amount("principal", "Reducción del saldo", 0) +
       '<p class="note">No marca cuotas como pagadas ni recalcula el contrato. Si cambia el calendario, ajusta la deuda después.</p>',
     async (f) =>
       commit("Abono registrado", (s) => {
-        const debt = s.debts.find((x) => x.id === id),
-          a = moneyValue(f.amount),
-          p = moneyValue(f.principal);
+        const value = applyContextualCreations(s, f),
+          debt = s.debts.find((x) => x.id === id),
+          a = moneyValue(value.amount),
+          p = moneyValue(value.principal);
         if (p > a || p > debt.balance)
           throw Error("Revisa la reducción de saldo.");
         C.record(s, {
@@ -738,13 +674,15 @@ export function extraPayment(id) {
           amount: a,
           principal: p,
           ref: id,
-          date: f.date,
-          accountId: f.accountId,
+          date: value.date,
+          accountId: value.accountId,
           categoryId: "",
         });
         debt.balance -= p;
         if (!debt.balance) debt.active = false;
       }),
+    "Guardar",
+    contextualDraftOptions(),
   );
 }
 
