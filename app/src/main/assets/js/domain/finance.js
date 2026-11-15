@@ -222,7 +222,9 @@ function validate(s) {
       d.paidPayments.some(
         (n) => !Number.isInteger(n) || n < 1 || n > d.totalPayments,
       ) ||
-      (d.startDate && !validDate(d.startDate))
+      (d.startDate && !validDate(d.startDate)) ||
+      (d.purchaseDate !== undefined && !validDate(d.purchaseDate)) ||
+      (d.categoryId !== undefined && typeof d.categoryId !== "string")
     )
       throw Error("Deuda inválida.");
     if (d.historicalPaidPayments?.some((n) => !d.paidPayments.includes(n)))
@@ -1037,10 +1039,15 @@ function metrics(s, m = month()) {
       i.legacyPaid ? i.amount : i.recorded || (i.paid ? i.amount : 0),
     ),
     budgetFree: income - fixed - debt,
-    consumption: sum(
-      tx.filter((t) => ["expense", "fixed"].includes(t.kind)),
-      (t) => t.amount,
-    ),
+    consumption:
+      sum(
+        tx.filter((t) => ["expense", "fixed"].includes(t.kind)),
+        (t) => t.amount,
+      ) +
+      sum(
+        installmentPurchases(s).filter((p) => month(p.date) === m),
+        (p) => p.amount,
+      ),
     outflow: sum(
       tx.filter(
         (t) =>
@@ -1865,6 +1872,60 @@ function linkCardInstallment(s, cardId, input, included, extra = {}) {
   if (included) absorbIntoCardBalance(s, cardId, d.balance);
   return d;
 }
+// A new purchase paid in installments with a card ("¿A meses?"). It is an
+// MSI from day one: no ordinary card purchase is recorded, so nothing is
+// counted twice. Installments are floored to the cent like a bank does and
+// the last one carries the remainder.
+function recordInstallmentPurchase(s, opts) {
+  const card = s.creditCards.find((c) => c.id === opts.cardId);
+  if (!card || card.active === false) throw Error("Elige una tarjeta activa.");
+  const amount = opts.amount,
+    total = opts.totalPayments;
+  if (!Number.isSafeInteger(amount) || amount <= 0)
+    throw Error("El importe debe ser mayor que cero.");
+  if (!Number.isInteger(total) || total < 2 || total > 60)
+    throw Error("Elige un plazo de 2 a 60 mensualidades.");
+  if (!validDate(opts.date) || opts.date > today())
+    throw Error("Revisa la fecha de la compra.");
+  if (amount > K.creditSummary(s, card.id).available)
+    throw Error("La compra supera el crédito disponible.");
+  let first = K.creditDueDate(card, opts.date);
+  if (opts.deferred)
+    first = dueDate(addMonth(month(first), 1), card.paymentDay);
+  return newCardInstallment(
+    s,
+    card.id,
+    {
+      name: opts.name,
+      balance: amount,
+      payment: Math.floor(amount / total),
+      totalPayments: total,
+      startDate: first,
+      priorPaid: 0,
+    },
+    {
+      originalAmount: amount,
+      purchaseDate: opts.date,
+      categoryId: opts.categoryId || "",
+    },
+  );
+}
+// Installment purchases shown as movements and consumption on their date.
+function installmentPurchases(s) {
+  return s.debts
+    .filter((d) => d.purchaseDate)
+    .map((d) => ({
+      id: "msi:" + d.id,
+      debtId: d.id,
+      kind: "msi_purchase",
+      name: d.name,
+      amount: d.originalAmount,
+      date: d.purchaseDate,
+      categoryId: d.categoryId || "",
+      creditCardId: d.creditCardId,
+      totalPayments: d.totalPayments,
+    }));
+}
 function absorbIntoCardBalance(s, cardId, amount) {
   const card = s.creditCards.find((c) => c.id === cardId);
   if (!card) throw Error("Tarjeta no encontrada.");
@@ -1992,6 +2053,8 @@ export default {
   absorbIntoCardBalance,
   installmentProgress,
   linkCardInstallment,
+  recordInstallmentPurchase,
+  installmentPurchases,
   setPriorPayments,
   snapshot,
   ledgerEntries,

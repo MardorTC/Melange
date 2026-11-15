@@ -281,6 +281,7 @@ export const kindName = (k) =>
     adjustment: "Ajuste",
     loan_out: "Dinero prestado",
     loan_in: "Cobro de préstamo",
+    msi_purchase: "Compra a meses",
   })[k] || k;
 
 export const debtType = (t) =>

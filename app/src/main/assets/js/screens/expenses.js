@@ -14,7 +14,9 @@ import { donut } from "../ui/charts.js";
 import C from "../domain/finance.js";
 
 export function filtered() {
-  return model.state.transactions
+  // Installment purchases are debts, but the person made a purchase that day:
+  // list it with the movements (it does not move money until it is paid).
+  return [...model.state.transactions, ...C.installmentPurchases(model.state)]
     .filter(
       (t) =>
         (!model.filter.q ||
@@ -68,6 +70,8 @@ function movementRow(t) {
     t.kind === "transfer"
       ? `${esc(kindName(t.kind))} · De ${esc(accountName(t.accountId))} → ${esc(accountName(t.toAccountId))}`
       : `${esc(kindName(t.kind))} · ${esc(accountName(t.creditCardId || t.accountId))}`;
+  if (t.kind === "msi_purchase")
+    return `<button class="movement-row" data-action="debtDetails" data-id="${esc(t.debtId)}"><span class="row-icon blue">${svg("card")}</span><span class="movement-copy"><strong class="item-title">${esc(t.name)}</strong><small>Compra a ${t.totalPayments} meses · ${esc(accountName(t.creditCardId))}</small></span><span class="movement-amount">${money(t.amount)}</span><span class="row-chevron">${svg("chevron")}</span></button>`;
   return `<button class="movement-row" data-action="transactionDetails" data-id="${esc(t.id)}"><span class="row-icon ${tone}">${svg(iconName)}</span><span class="movement-copy"><strong class="item-title">${esc(t.name)}</strong><small>${detail}${t.historical ? " · Importado" : ""}</small></span><span class="movement-amount ${t.kind === "income" ? "good" : ""}">${t.kind === "income" ? "+" : ""}${money(t.amount)}</span><span class="row-chevron">${svg("chevron")}</span></button>`;
 }
 
@@ -117,7 +121,7 @@ export function expensesPage() {
       : "") +
     (model.sub === "fixed"
       ? fixedList()
-      : `<div class="movement-toolbar"><div class="search-field">${svg("search")}<input id="search" aria-label="Buscar movimientos" placeholder="Buscar movimiento" value="${esc(model.filter.q)}"></div><button class="icon" data-action="filters" aria-label="Mostrar filtros" title="Mostrar filtros">${svg("tune")}</button></div><div class="expenses-layout"><details class="card expense-chart"><summary>Consumo por categoría</summary><div class="expense-chart-body">${donut(tx.filter((t) => ["expense", "fixed"].includes(t.kind)))}</div></details><div class="movement-summary"><span>${tx.length} ${tx.length === 1 ? "movimiento" : "movimientos"}</span><strong>Salidas ${money(out)}</strong></div><p class="note">Salidas suma gastos, gastos fijos, pagos de deuda y pagos de tarjeta. No incluye compras a crédito, transferencias ni ingresos.</p><section class="expense-list">${tx.length ? groupedMovements(tx) : `<section class="card">${empty(noHistory ? "Tu historial empieza aquí" : "Sin coincidencias", noHistory ? "Registra tu primera entrada o salida para verla aquí." : "No hay movimientos con estos filtros.")}<div class="actions">${filters.length && !noHistory ? btn("Quitar filtros", "clearFilters") : ""}${btn("Registrar movimiento", "newMovement", "", "primary")}</div></section>`}</section></div>`)
+      : `<div class="movement-toolbar"><div class="search-field">${svg("search")}<input id="search" aria-label="Buscar movimientos" placeholder="Buscar movimiento" value="${esc(model.filter.q)}"></div><button class="icon" data-action="filters" aria-label="Mostrar filtros" title="Mostrar filtros">${svg("tune")}</button></div><div class="expenses-layout"><details class="card expense-chart"><summary>Consumo por categoría</summary><div class="expense-chart-body">${donut(tx.filter((t) => ["expense", "fixed", "msi_purchase"].includes(t.kind)))}</div></details><div class="movement-summary"><span>${tx.length} ${tx.length === 1 ? "movimiento" : "movimientos"}</span><strong>Salidas ${money(out)}</strong></div><p class="note">Salidas suma gastos, gastos fijos, pagos de deuda y pagos de tarjeta. No incluye compras a crédito ni a meses, transferencias ni ingresos.</p><section class="expense-list">${tx.length ? groupedMovements(tx) : `<section class="card">${empty(noHistory ? "Tu historial empieza aquí" : "Sin coincidencias", noHistory ? "Registra tu primera entrada o salida para verla aquí." : "No hay movimientos con estos filtros.")}<div class="actions">${filters.length && !noHistory ? btn("Quitar filtros", "clearFilters") : ""}${btn("Registrar movimiento", "newMovement", "", "primary")}</div></section>`}</section></div>`)
   );
 }
 

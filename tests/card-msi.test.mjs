@@ -304,3 +304,58 @@ test("schema 11 migrates v10 books and refuses data from newer versions", () => 
     /versión más nueva/,
   );
 });
+
+test("a purchase «a meses» creates one linked MSI, counted once as consumption", () => {
+  const { s, id } = card(0);
+  const today = C.today();
+  const d = C.recordInstallmentPurchase(s, {
+    cardId: id,
+    name: "Refri",
+    amount: 1000000,
+    date: today,
+    categoryId: s.categories[0].id,
+    totalPayments: 12,
+  });
+  C.refreshAllBudgets(s);
+  assert.equal(s.transactions.length, 0);
+  assert.equal(d.payment, 83333);
+  assert.equal(d.startDate, C.creditDueDate(s.creditCards[0], today));
+  assert.equal(C.creditSummary(s, id).used, 1000000);
+  assert.equal(C.metrics(s).consumption, 1000000);
+  assert.deepEqual(
+    C.installmentPurchases(s).map((p) => [p.kind, p.amount, p.date]),
+    [["msi_purchase", 1000000, today]],
+  );
+  // The last installment carries what flooring left out.
+  const last = C.addMonth(C.month(d.startDate), 11);
+  d.paidPayments = Array.from({ length: 11 }, (_, i) => i + 1);
+  d.balance = 1000000 - 11 * 83333;
+  assert.equal(C.schedule(d, last).amount, 83337);
+});
+
+test("a deferred first installment moves one statement later; limits apply", () => {
+  const { s, id } = card(0);
+  const d = C.recordInstallmentPurchase(s, {
+    cardId: id,
+    name: "Sala",
+    amount: 600000,
+    date: C.today(),
+    totalPayments: 6,
+    deferred: true,
+  });
+  assert.equal(
+    C.month(d.startDate),
+    C.addMonth(C.month(C.creditDueDate(s.creditCards[0], C.today())), 1),
+  );
+  assert.throws(
+    () =>
+      C.recordInstallmentPurchase(s, {
+        cardId: id,
+        name: "Auto",
+        amount: 9000000,
+        date: C.today(),
+        totalPayments: 12,
+      }),
+    /crédito disponible/,
+  );
+});

@@ -100,7 +100,7 @@ export function homePage() {
         : ""
     }
   </div>
-  <details class="card home-spending"><summary>En qué se fue tu dinero · ${mlabel(C.month())}</summary>${donut(model.state.transactions.filter((t) => C.month(t.date) === C.month() && ["expense", "fixed"].includes(t.kind)))}${btn("Ver movimientos", "tab", "expense", "link-btn")}</details>
+  <details class="card home-spending"><summary>En qué se fue tu dinero · ${mlabel(C.month())}</summary>${donut([...model.state.transactions, ...C.installmentPurchases(model.state)].filter((t) => C.month(t.date) === C.month() && ["expense", "fixed", "msi_purchase"].includes(t.kind)))}${btn("Ver movimientos", "tab", "expense", "link-btn")}</details>
   <div class="section-head"><h2>Cuentas</h2><button class="text-action" data-action="tab" data-id="accounts" data-account-sub="wallet">Ver todas</button></div>
   <section class="card account-list">${
     accounts.length
