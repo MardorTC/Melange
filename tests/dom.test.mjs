@@ -351,17 +351,23 @@ assert.equal(C.metrics(stored.state).consumption, 50000);
 await click("tab", "debt");
 await click("debtSub", "owe");
 await click("editDebt");
+// Linking a card reveals whether the purchase was already in its balance.
+const linkSelect = doc.querySelector('#form [name="creditCardId"]');
+linkSelect.value = cardId;
+linkSelect.dispatchEvent(new w.Event("change", { bubbles: true }));
+assert.equal(doc.querySelector('#form [name="inCardBalance"]').disabled, false);
+assert.equal(doc.querySelector('#form [name="dueDay"]').disabled, true);
 await submit({
   name: "MSI de prueba",
   type: "msi",
   creditCardId: cardId,
+  inCardBalance: "no",
   originalAmount: "1200",
   balance: "1200",
   payment: "100",
   totalPayments: 12,
   priorPaid: 0,
   startDate: C.month() + "-01",
-  dueDay: Number(C.today().slice(8)),
   financingCost: "0",
 });
 assert.equal(stored.state.debts[0].creditCardId, cardId);

@@ -312,6 +312,7 @@ try {
   await click("Agregar deuda");
   await page.locator("[name=name]").fill("MSI a revolvente");
   await page.locator("[name=creditCardId]").selectOption(cardId);
+  await page.locator("[name=inCardBalance]").selectOption("no");
   await page.locator("[name=balance]").fill("600");
   await page.locator("[name=payment]").fill("100");
   await page.locator("[name=totalPayments]").fill("6");

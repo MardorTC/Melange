@@ -88,7 +88,8 @@ document.addEventListener("input", (e) => {
   if (
     e.target.closest("#card-installments") ||
     e.target.name === "openingBalance" ||
-    e.target.name === "paymentDay"
+    e.target.name === "paymentDay" ||
+    e.target.name === "closingDay"
   )
     updateCardPreview();
   if (e.target.matches("[data-chart-slider]")) {

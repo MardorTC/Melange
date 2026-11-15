@@ -267,13 +267,22 @@ function schedule(d, m) {
       }
     if (!n) return null;
     if (d.balance <= 0 && !d.paidPayments.includes(n)) return null;
+    // The last installment carries the cents a bank rounds away from the
+    // others, so the plan ends at zero instead of leaving a residual.
+    let amount = d.payment;
+    if (n === d.totalPayments && d.balanceMode !== "principal") {
+      const unpaid = d.totalPayments - d.paidPayments.length,
+        rounding = d.balance - d.payment * unpaid;
+      if (unpaid > 0 && rounding > 0 && rounding <= d.totalPayments)
+        amount += rounding;
+    }
     return {
       key: `debt:${d.id}:${n}`,
       ref: d.id,
       n,
       kind: "debt",
       name: d.name,
-      amount: d.payment,
+      amount,
       date: dueDate(m, d.dueDay),
       paid: d.paidPayments.includes(n),
     };
@@ -1656,13 +1665,15 @@ function saveCreditCard(s, cardId, value, installments = []) {
     let d = input.id && copy.debts.find((d) => d.id === input.id);
     if (input.id && (!d || d.creditCardId !== targetId))
       throw Error("El MSI no pertenece a esta tarjeta.");
+    // A linked MSI is billed on the card's payment day; the form no longer
+    // asks for a separate day, so keep a stored one or use the card's.
     const fields = {
       name: input.name.trim(),
       balance: input.balance,
       payment: input.payment,
       totalPayments: input.totalPayments,
       startDate: input.startDate,
-      dueDay: input.dueDay,
+      dueDay: input.dueDay ?? d?.dueDay ?? value.paymentDay,
     };
     if (!fields.name || fields.payment <= 0 || fields.totalPayments <= 0)
       throw Error("Completa el nombre, mensualidad y plazo de cada MSI.");
@@ -1715,11 +1726,21 @@ function saveCreditCard(s, cardId, value, installments = []) {
     Object.assign(d, fields, { active: fields.balance > 0 });
     if (!paid) setPriorPayments(copy, d, input.priorPaid);
   }
+  // New MSI rows answer whether they were already part of the total typed
+  // above. Those that were not are added to it, so the user never has to
+  // redo the sum to register a purchase the total did not include.
+  const added = installments
+    .filter((i) => !i.id && i.included === false)
+    .reduce((n, i) => n + i.balance, 0);
   const summary = K.creditSummary(copy, targetId),
     openingPaid = K.allocated(copy, "opening", targetId),
     purchases = summary.purchases - card.openingBalance + openingPaid;
   const opening =
-    value.totalBalance - summary.installments - purchases + summary.unassigned;
+    value.totalBalance +
+    added -
+    summary.installments -
+    purchases +
+    summary.unassigned;
   if (!Number.isSafeInteger(opening) || opening < 0)
     throw Error(
       "El saldo total no puede ser menor que los MSI y las compras pendientes, descontando los abonos. Revisa el saldo total de tu banco.",
@@ -1729,6 +1750,19 @@ function saveCreditCard(s, cardId, value, installments = []) {
   validate(copy);
   Object.assign(s, copy);
   return targetId;
+}
+// A debt being linked to a card whose registered balance already included it
+// (the bank's total contains every MSI). Its balance moves out of the card's
+// previous balance instead of being added on top of it.
+function absorbIntoCardBalance(s, cardId, amount) {
+  const card = s.creditCards.find((c) => c.id === cardId);
+  if (!card) throw Error("Tarjeta no encontrada.");
+  const available = card.openingBalance - K.allocated(s, "opening", cardId);
+  if (amount > available)
+    throw Error(
+      `El saldo anterior registrado de «${card.name}» es ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(available / 100)} y esta compra a meses tiene ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(amount / 100)} pendientes. Si la compra no estaba en ese saldo, elige «No, súmala a la tarjeta»; si sí estaba, corrige primero el saldo total de la tarjeta.`,
+    );
+  card.openingBalance -= amount;
 }
 function ledgerEntries(s) {
   let b = Object.fromEntries(s.walletAccounts.map((a) => [a.id, a.opening]));
@@ -1840,6 +1874,7 @@ export default {
   editFixedPayment,
   updateFixed,
   saveCreditCard,
+  absorbIntoCardBalance,
   setPriorPayments,
   snapshot,
   ledgerEntries,

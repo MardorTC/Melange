@@ -53,7 +53,6 @@ try {
     totalPayments: "4",
     priorPaid: "1",
     startDate: C.addMonth(C.month(), -1) + "-01",
-    dueDay: "5",
   }))
     await row.locator(`[name$="_${name}"]`).fill(value);
   assert.match(

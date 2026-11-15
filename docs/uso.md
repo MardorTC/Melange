@@ -177,6 +177,17 @@ En **Deudas**, **Agregar tarjeta** permanece visible aunque ya tengas préstamos
 
 En **Deudas → Agregar tarjeta** o **Cuentas → Crédito → Agregar tarjeta** registra nombre, límite, corte, pago y el **saldo total que debes hoy, incluidas las compras a meses**. Añade esas compras en el mismo formulario: nombre, saldo pendiente, mensualidad, plazo y fecha de primera mensualidad. Puedes añadir varias. La app separa automáticamente compras/saldo anterior de las mensualidades y guarda todo junto; no tienes que hacer restas manuales. Si la primera mensualidad queda después del día límite de pago de ese mismo mes, revisa el aviso y compáralo con tu estado de cuenta: el formulario no cambia el ciclo por su cuenta. La cuenta **BBVA débito** y la tarjeta **BBVA crédito** son independientes: puedes tener cualquiera de las dos o ambas, y pagar la tarjeta desde otra cuenta libre.
 
+Desde 8.7, agregar una compra a meses después ya no exige rehacer la suma:
+
+- **Al editar la tarjeta**, cada compra a meses nueva pregunta **«¿Esta compra ya está incluida en el saldo total de arriba?»**. Si respondes **No**, la app la suma sola al saldo y la vista previa muestra el resultado («Saldo total: $12,000 + $4,000 de compras nuevas = $16,000»).
+- **Al vincular un MSI desde Deudas → Nueva deuda**, la app pregunta si la compra ya estaba incluida en el saldo que registraste de la tarjeta. Si respondes **Sí**, la descuenta del saldo anterior en lugar de contarla dos veces.
+- **Las mensualidades se cobran en el día de pago de la tarjeta**; ya no se pide un día propio.
+- **«Mensualidades ya pagadas»** está siempre visible. Mientras no cambies la fecha de la primera mensualidad, la app la calcula para que la siguiente caiga en el próximo pago de la tarjeta.
+- **Cada compra muestra un resumen antes de guardar**, por ejemplo «Siguiente: mensualidad 7 de 12, 5 dic 2026. Quedan 6 × $1,000 = $6,000». Si esa fecha ya pasó, la app avisa.
+- **Se aceptan mensualidades redondeadas** como las del banco: $4,000 a 12 meses son 12 × $333.33, y la última cubre los centavos ($333.37).
+- **La fecha límite de pago del saldo de la tarjeta se calcula** con el corte y el día de pago.
+- **Una tarjeta con compras a meses vivas no se puede archivar**, aunque un pago sin desglose deje el saldo usado en cero.
+
 El saldo de compras y saldo anterior (sin las mensualidades de compras a meses) es el componente que calcula la app después de separarlas. No crea gastos ni retira dinero. Al editar la tarjeta aparecen los mismos datos, el saldo actual total y las compras a meses. Corregir ese total cambia solo el saldo de compras/saldo anterior; no elimina pagos ni compras. No se acepta un total menor que los cargos y mensualidades pendientes, descontando pagos. Las compras a meses con pagos reales conservan importes y calendario protegidos; el formulario lo explica y permite corregir su nombre.
 
 En **Nuevo gasto → Pagar desde**, elige la opción terminada en **Crédito**. La compra aparece en consumo y reduce el crédito disponible, pero no el disponible libre. El vencimiento se estima con corte y pago; las compras del día de corte se incluyen en ese corte. Puedes indicar otra fecha de vencimiento al registrar o editar una compra si tu estado de cuenta difiere. Los días inexistentes se ajustan al último día del mes. Cambiar el calendario de la tarjeta afecta nuevas compras; las ya registradas conservan su vencimiento.
