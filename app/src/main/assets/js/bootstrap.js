@@ -25,10 +25,16 @@ import {
 import { openStore, readStore, writeStore } from "./platform/storage.js";
 import { syncReminders } from "./state/ledger.js";
 import { updateCardPreview } from "./screens/credit.js";
-import { syncReserveFields } from "./ui/forms.js";
+import { syncReserveFields, updateMsiPurchasePreview } from "./ui/forms.js";
 
 document.addEventListener("change", (e) => {
   if (e.target.matches("[data-reserve-kind]")) syncReserveFields();
+  if (
+    ["msiTerm", "msiStart", "accountId", "amount", "date"].includes(
+      e.target.name,
+    )
+  )
+    updateMsiPurchasePreview();
   if (e.target.name === "unit") {
     const twice = e.target.value === "twiceMonthly";
     const interval = document.querySelector("[data-recurrence-interval]");
@@ -85,10 +91,13 @@ document.addEventListener("submit", async (e) => {
 });
 
 document.addEventListener("input", (e) => {
+  if (["amount", "date"].includes(e.target.name)) updateMsiPurchasePreview();
   if (
     e.target.closest("#card-installments") ||
     e.target.name === "openingBalance" ||
-    e.target.name === "paymentDay"
+    e.target.name === "nextPayment" ||
+    e.target.name === "paymentDay" ||
+    e.target.name === "closingDay"
   )
     updateCardPreview();
   if (e.target.matches("[data-chart-slider]")) {

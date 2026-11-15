@@ -69,8 +69,8 @@ try {
       original: original.state,
     };
   });
-  assert.equal(migrated.schema, 10);
-  assert.equal(migrated.history, 10);
+  assert.equal(migrated.schema, 11);
+  assert.equal(migrated.history, 11);
   assert.deepEqual(migrated.original, old);
   await page.locator('[data-action="tab"][data-id="accounts"]').first().click();
   await page.locator('[data-action="accountSub"][data-id="credit"]').click();
@@ -256,7 +256,10 @@ try {
   await page.locator("[name=totalPayments]").fill("12");
   await page.locator("[name=priorPaid]").fill("0");
   await page.locator("[name=startDate]").fill(C.month() + "-01");
-  await page.locator("[name=dueDay]").fill("20");
+  // A linked MSI is billed on the card's payment day and must say whether the
+  // card balance already contained it.
+  assert.equal(await page.locator("[name=dueDay]").isVisible(), false);
+  await page.locator("[name=inCardBalance]").selectOption("no");
   await page.locator("[name=financingCost]").fill("0");
   await page.locator("[name=annualRate]").fill("0");
   // The selected type is authoritative; this remains an MSI linked to the card.

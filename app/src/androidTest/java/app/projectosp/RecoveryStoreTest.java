@@ -13,6 +13,37 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class RecoveryStoreTest {
   @Test
+  public void bridgeAcceptsOnlyTheCurrentLedgerSchema() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    String databaseName = "schema-test-" + System.nanoTime() + ".db";
+    LedgerStore store = new LedgerStore(context, databaseName);
+    try {
+      NativeBridge bridge = new NativeBridge(null, store, null, null);
+      String current =
+          "{\"state\":{\"schemaVersion\":"
+              + NativeBridge.SCHEMA_VERSION
+              + "},\"history\":[],\"revision\":1}";
+      assertEquals("OK", bridge.write(current));
+      assertEquals(current, bridge.read());
+      assertTrue(
+          bridge
+              .write("{\"state\":{\"schemaVersion\":10},\"history\":[],\"revision\":2}")
+              .startsWith("ERROR:"));
+      assertTrue(
+          bridge
+              .write(
+                  "{\"state\":{\"schemaVersion\":"
+                      + (NativeBridge.SCHEMA_VERSION + 1)
+                      + "},\"history\":[],\"revision\":2}")
+              .startsWith("ERROR:"));
+      assertEquals(current, bridge.read());
+    } finally {
+      store.close();
+      context.deleteDatabase(databaseName);
+    }
+  }
+
+  @Test
   public void readsAndRewritesABookLargerThanOneCursorWindow() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     String databaseName = "large-ledger-test-" + System.nanoTime() + ".db";

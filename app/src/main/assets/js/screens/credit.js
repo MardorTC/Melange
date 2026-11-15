@@ -25,24 +25,125 @@ import {
   dlabel,
 } from "../ui/components.js";
 
+// Whether the open card form edits an existing card: only then do new MSI
+// rows ask if the total above already includes them.
+let cardFormEditing = false;
+
+// Default first installment for a new row: the next payment date of the card
+// as typed in the form, so a purchase made today is not born overdue.
+function defaultInstallmentDate() {
+  const closingDay = Number(
+      document.querySelector('#form [name="closingDay"]')?.value,
+    ),
+    paymentDay = Number(
+      document.querySelector('#form [name="paymentDay"]')?.value,
+    );
+  if (
+    ![closingDay, paymentDay].every(
+      (d) => Number.isInteger(d) && d >= 1 && d <= 31,
+    )
+  )
+    return C.today();
+  return C.creditDueDate({ closingDay, paymentDay }, C.today());
+}
+
+// First installment of a plan whose next unpaid one is due on `nextDue`.
+export function firstInstallmentDate(nextDue, priorPaid) {
+  return C.dueDate(
+    C.addMonth(C.month(nextDue), -priorPaid),
+    Number(nextDue.slice(8)),
+  );
+}
+
+document.addEventListener("input", (event) => {
+  if (event.target.matches?.('[data-msi-row] [name$="_startDate"]'))
+    event.target.dataset.auto = "0";
+  if (
+    event.target.matches?.(
+      '[data-msi-row] [name$="_balance"], [data-msi-row] [name$="_priorPaid"]',
+    )
+  )
+    event.target.dataset.touched = "1";
+});
+
 function installmentFields(d = {}, draftKey) {
   const key = d.id || draftKey || C.id(),
+    editingCard = cardFormEditing,
     locked =
       d.id &&
       (C.allocations(model.state).some((a) => a.ref === d.id) ||
         model.state.transactions.some((t) => t.ref === d.id)),
     field = (name) => `msi_${key}_${name}`;
   return `<section class="card msi-editor" data-msi-row="${esc(key)}" data-existing="${esc(d.id || "")}">
-    <div class="row"><h3>${d.id ? "Editar compra a meses sin intereses" : "Compra a meses sin intereses"}</h3>${!d.id ? `<button type="button" class="btn" data-action="creditMsiRemove">Quitar</button>` : ""}</div>
+    <div class="row"><h3>${d.id ? "Editar compra a meses sin intereses" : "Compra a meses sin intereses"}</h3>${!d.id ? `<button type="button" class="btn" data-action="creditMsiRemove">Quitar</button>` : `<button type="button" class="btn" data-action="creditMsiDelete" data-id="${esc(d.id)}">Quitar</button>`}</div>
     ${input(field("name"), "Nombre de la compra", d.name || "", "text", 'required maxlength="120"')}
-    ${amount(field("balance"), "Saldo pendiente de esta compra", d.balance || 0)}
-    ${amount(field("payment"), "Mensualidad", d.payment || 0)}
-    ${input(field("totalPayments"), "Mensualidades en total", d.totalPayments || 12, "number", 'required min="1" max="1200"')}
-    ${input(field("priorPaid"), "Mensualidades pagadas antes de usar la app", d.historicalPaidPayments?.length || 0, "number", 'required min="0" max="1200"')}
-    ${input(field("startDate"), "Fecha de la primera mensualidad", d.startDate || C.today(), "date", "required")}
-    ${input(field("dueDay"), "Día de pago de la mensualidad", d.dueDay || 5, "number", 'required min="1" max="31"')}
-    ${locked ? '<p class="note">Esta compra a meses ya tiene pagos: conservamos sus importes y calendario. Puedes corregir el nombre sin alterar esos pagos.</p>' : '<p class="note">El saldo pendiente ya debe descontar lo que pagaste antes. Esas mensualidades no se cobrarán de nuevo.</p>'}
+    ${
+      !d.id && editingCard
+        ? select(
+            field("included"),
+            "¿Esta compra ya está incluida en el saldo total de arriba?",
+            [
+              ["", "Elige una opción"],
+              ["no", "No, súmala al saldo de la tarjeta"],
+              ["yes", "Sí, ya está incluida"],
+            ],
+            "",
+          ).replace("<select ", "<select required ")
+        : ""
+    }
+    ${amount(field("payment"), "Mensualidad", d.id ? d.payment : null)}
+    ${input(field("totalPayments"), "Mensualidades en total", d.totalPayments || "", "number", 'required min="1" max="1200" placeholder="Ej. 12"')}
+    ${d.id ? "" : input(field("current"), "¿Qué número de mensualidad viene en tu próximo pago?", "", "number", 'min="1" max="1200" placeholder="Ej. 4 si tu estado de cuenta dice «4 de 12»"') + '<p class="note">Con la mensualidad, el plazo y este número calculamos los datos de abajo. Corrígelos solo si tu banco dice otra cosa.</p>'}
+    ${amount(field("balance"), "Saldo pendiente de esta compra", d.id ? d.balance : null)}
+    ${input(field("priorPaid"), "Mensualidades ya pagadas antes de usar la app", d.historicalPaidPayments?.length || 0, "number", 'required min="0" max="1200"')}
+    ${input(field("startDate"), "Fecha de la primera mensualidad", d.startDate || defaultInstallmentDate(), "date", `required ${d.id ? "" : 'data-auto="1"'}`)}
+    <p class="note" data-msi-summary aria-live="polite"></p>
+    ${locked ? '<p class="note">Esta compra a meses ya tiene pagos: conservamos sus importes y calendario. Puedes corregir el nombre sin alterar esos pagos.</p>' : '<p class="note">El saldo pendiente ya debe descontar lo que pagaste antes. La mensualidad se cobra en el día de pago de la tarjeta.</p>'}
   </section>`;
+}
+
+// What the app will do with a row, in the bank's own terms, so a wrong prior
+// count or first date is visible before saving.
+export function installmentSummary(row, paymentDay, noun = "mensualidad") {
+  const value = (name) =>
+    row.querySelector(`[name$="_${name}"], [name="${name}"]`)?.value || "";
+  const total = Number(value("totalPayments")),
+    prior = Number(value("priorPaid")),
+    start = value("startDate");
+  let balance, payment;
+  try {
+    balance = moneyValue(value("balance") || "0");
+    payment = moneyValue(value("payment") || "0");
+  } catch {
+    return "";
+  }
+  if (
+    !Number.isInteger(total) ||
+    total < 1 ||
+    !Number.isInteger(prior) ||
+    prior < 0 ||
+    prior >= total ||
+    !C.validDate(start) ||
+    payment <= 0
+  )
+    return "";
+  const next = prior + 1,
+    nextMonth = C.addMonth(C.month(start), prior),
+    nextDate =
+      Number.isInteger(paymentDay) && paymentDay >= 1 && paymentDay <= 31
+        ? C.dueDate(nextMonth, paymentDay)
+        : nextMonth + "-01",
+    remaining = total - prior,
+    expected = payment * remaining;
+  let text = `Siguiente: ${noun} ${next} de ${total}, ${dlabel(nextDate)}. Quedan ${remaining} × ${money(payment)} = ${money(expected)}.`;
+  if (balance > expected && balance - expected <= total)
+    text += ` La última será de ${money(payment + balance - expected)} para cubrir los centavos.`;
+  if (nextDate < C.today())
+    text +=
+      " Esa fecha ya pasó: si ya pagaste esas mensualidades, súmalas en «ya pagadas».";
+  else if (balance && Math.abs(balance - expected) > remaining)
+    text += ` El saldo pendiente que escribiste es ${money(balance)}; revisa mensualidad, plazo o pagadas.`;
+  return text;
 }
 
 function lockInstallments() {
@@ -59,10 +160,35 @@ function lockInstallments() {
   }
 }
 
+// "Pago X de N" fills what the bank does not print, unless the user already
+// wrote those numbers.
+function applyInstallmentProgress() {
+  for (const row of document.querySelectorAll("[data-msi-row]")) {
+    const current = Number(row.querySelector('[name$="_current"]')?.value);
+    if (!current) continue;
+    try {
+      const read = (name) => row.querySelector(`[name$="_${name}"]`);
+      const progress = C.installmentProgress({
+        payment: moneyValue(read("payment").value || "0"),
+        totalPayments: Number(read("totalPayments").value),
+        current,
+        nextDue: defaultInstallmentDate(),
+      });
+      if (!read("priorPaid").dataset.touched)
+        read("priorPaid").value = progress.priorPaid;
+      if (!read("balance").dataset.touched && progress.balance)
+        read("balance").value = String(progress.balance / 100);
+    } catch {
+      // Incomplete numbers: the summary stays empty until they are valid.
+    }
+  }
+}
+
 export function updateCardPreview() {
   const target = document.querySelector("#card-balance-preview");
   if (!target) return;
   const dateWarning = document.querySelector("#card-date-warning");
+  applyInstallmentProgress();
   try {
     const total = moneyValue(
       document.querySelector('[name="openingBalance"]').value || "0",
@@ -74,10 +200,50 @@ export function updateCardPreview() {
         sum + moneyValue(row.querySelector('[name$="_balance"]').value || "0"),
       0,
     );
-    target.textContent = `Saldo total: ${money(total)} · Compras a meses pendientes: ${money(installments)}. La app separa las mensualidades automáticamente; no las restes del saldo total.`;
+    const added = [...document.querySelectorAll("[data-msi-row]")]
+      .filter((row) => row.querySelector('[name$="_included"]')?.value === "no")
+      .reduce(
+        (sum, row) =>
+          sum +
+          moneyValue(row.querySelector('[name$="_balance"]').value || "0"),
+        0,
+      );
+    const nextPaymentRaw =
+      document.querySelector('#form [name="nextPayment"]')?.value || "";
+    if (nextPaymentRaw.trim() && !installments) {
+      const next = moneyValue(nextPaymentRaw);
+      target.textContent =
+        next > total
+          ? "El pago del próximo estado de cuenta no puede ser mayor que el saldo total."
+          : `Se cobrarán ${money(next)} en tu próximo pago; ${money(total - next)} quedarán como compras a meses por asociar.`;
+    } else
+      target.textContent = added
+        ? `Saldo total: ${money(total)} + ${money(added)} de compras nuevas = ${money(total + added)} · Compras a meses pendientes: ${money(installments)}.`
+        : `Saldo total: ${money(total)} · Compras a meses pendientes: ${money(installments)}. La app separa las mensualidades automáticamente; no las restes del saldo total.`;
     const paymentDay = Number(
       document.querySelector('[name="paymentDay"]')?.value,
     );
+    for (const row of document.querySelectorAll("[data-msi-row]")) {
+      // An untouched first date follows "ya pagadas": the next installment
+      // stays on the card's next payment date.
+      const start = row.querySelector('[name$="_startDate"]');
+      const prior = Number(row.querySelector('[name$="_priorPaid"]')?.value);
+      if (start?.dataset.auto === "1" && Number.isInteger(prior) && prior >= 0)
+        start.value = firstInstallmentDate(defaultInstallmentDate(), prior);
+      const summary = row.querySelector("[data-msi-summary]");
+      if (summary) summary.textContent = installmentSummary(row, paymentDay);
+    }
+    const dueField = document.querySelector('#form [name="openingDueDate"]');
+    const closingDay = Number(
+      document.querySelector('#form [name="closingDay"]')?.value,
+    );
+    if (
+      dueField?.dataset.auto === "1" &&
+      [closingDay, paymentDay].every(
+        (d) => Number.isInteger(d) && d >= 1 && d <= 31,
+      )
+    )
+      dueField.value = C.lastStatementDueDate({ closingDay, paymentDay });
     const mismatch = [...document.querySelectorAll("[data-msi-row]")]
       .map((row) => ({
         startDate: row.querySelector('[name$="_startDate"]')?.value || "",
@@ -92,7 +258,6 @@ export function updateCardPreview() {
         if (
           !C.validDate(startDate) ||
           balance <= 0 ||
-          payments <= 0 ||
           !Number.isInteger(paymentDay) ||
           paymentDay < 1 ||
           paymentDay > 31
@@ -118,6 +283,12 @@ export function updateCardPreview() {
       dateWarning.hidden = true;
     }
   }
+}
+
+// MSI that the bank total included but are not detailed yet.
+function pendingNote(cardId, pending) {
+  if (!pending) return "";
+  return `<div class="note warning"><p>${money(pending)} de compras a meses por asociar: ya cuentan en el saldo, pero no se cobran hasta que indiques cuáles son. Captúralas con «¿Qué número de mensualidad viene en tu próximo pago?».</p>${btn("Asociar compras a meses", "creditMsiAssociate", cardId)}</div>`;
 }
 
 export function creditCardsSection() {
@@ -147,6 +318,7 @@ export function creditCardsSection() {
           ${v.used > c.limit ? '<p class="note warning">El saldo usado supera el límite. Revisa si registraste la misma compra como gasto y como mensualidades a meses.</p>' : ""}
           ${v.unassigned ? `<p class="note">${money(v.unassigned)} de pagos todavía sin desglose: reducen el saldo, pero no marcan compras o cuotas como pagadas.</p>` : ""}
           ${msi.length ? `<p class="note">${msi.length} ${msi.length === 1 ? "compra" : "compras"} a meses sin intereses (MSI) · ${money(v.installments)} pendiente.</p>` : ""}
+          ${pendingNote(c.id, v.pendingInstallments)}
           <div class="toolbar wrap"><button class="btn" data-action="creditDetails" data-id="${esc(c.id)}">Ver desglose</button></div>
            <details class="more-actions"><summary>Opciones de la tarjeta</summary><div class="toolbar wrap">${v.used > 0 ? btn("Registrar pago sin desglose", "creditUnassigned", c.id) : ""}${v.unassigned ? btn("Indicar a qué cargos van los pagos", "creditApply", c.id) : ""}${btn("Editar", "creditEdit", c.id)}${c.active !== false ? btn("Archivar", "creditArchive", c.id, "danger") : btn("Reactivar", "creditActivate", c.id)}</div></details>
         </div>
@@ -410,7 +582,7 @@ function creditPaymentReassignForm(txId) {
 }
 function statementLines(item, history = false) {
   const lines = item.lines.filter((i) => history || i.remaining > 0);
-  return `<div class="credit-lines">${lines.map((i) => `<div class="item row"><div><strong>${esc(i.name)}</strong><p class="muted">${i.kind === "debt" ? `Compra a meses · Cuota ${i.n}` : i.kind === "opening" ? "Saldo anterior" : "Compra"}${i.paid || !i.remaining ? " · Pagado" : ""}</p></div><strong>${money(history && !i.remaining ? i.amount : i.remaining)}</strong></div>`).join("")}</div>`;
+  return `<div class="credit-lines">${lines.map((i) => `<div class="item row"><div><strong>${esc(i.name)}</strong><p class="muted">${i.kind === "debt" ? `Compra a meses · Mensualidad ${i.n}` : i.kind === "opening" ? "Lo que debías al registrar la tarjeta" : "Compra"}${i.paid || !i.remaining ? " · Pagado" : ""}</p></div><strong>${money(history && !i.remaining ? i.amount : i.remaining)}</strong></div>`).join("")}</div>`;
 }
 function creditDetails(id) {
   const c = model.state.creditCards.find((c) => c.id === id);
@@ -441,12 +613,13 @@ function creditDetails(id) {
     `<p class="note">Las fechas se estiman con el día de corte y la fecha límite de pago que registraste. Puedes corregir la fecha de una compra con tu estado de cuenta. Las compras a meses conservan su calendario.</p>${C.creditSummary(model.state, id).unassigned ? `<p class="note">Pagos todavía sin desglose: ${money(C.creditSummary(model.state, id).unassigned)}. Reducen lo que debes, pero las compras y mensualidades seguirán pendientes hasta que indiques a qué cargos van.</p>${btn("Indicar a qué cargos van los pagos", "creditApply", id)}` : ""}${
       pending.map((p) => renderPeriod(p)).join("") ||
       "<p>No tienes cargos pendientes.</p>"
-    }${paid.length ? `<details class="paid-periods"><summary>Historial: ${paid.length} periodos pagados</summary>${paid.map((p) => renderPeriod(p, true)).join("")}</details>` : ""}${payments.length ? `<details class="more-actions"><summary>Pagos registrados: ${payments.length}</summary><p class="note">Corregir un pago no revierte los demás pagos. Puedes cambiar su importe, fecha u origen, o mover un importe entre cargos sin alterar el dinero que ya salió de tu cuenta.</p>${paymentRows}</details>` : ""}${msi.length ? `<h3>Compras a meses</h3>${msi.map((d) => `<button class="list-row" data-action="debtDetails" data-id="${esc(d.id)}"><span>${esc(d.name)} · ${money(d.balance)} pendiente</span>${svg("chevron")}</button>`).join("")}` : ""}<div class="toolbar wrap">${btn("Editar tarjeta y compras a meses", "creditEdit", id)}</div>`,
+    }${paid.length ? `<details class="paid-periods"><summary>Historial: ${paid.length} periodos pagados</summary>${paid.map((p) => renderPeriod(p, true)).join("")}</details>` : ""}${payments.length ? `<details class="more-actions"><summary>Pagos registrados: ${payments.length}</summary><p class="note">Corregir un pago no revierte los demás pagos. Puedes cambiar su importe, fecha u origen, o mover un importe entre cargos sin alterar el dinero que ya salió de tu cuenta.</p>${paymentRows}</details>` : ""}${msi.length ? `<h3>Compras a meses</h3>${msi.map((d) => `<button class="list-row" data-action="debtDetails" data-id="${esc(d.id)}"><span>${esc(d.name)} · ${money(d.balance)} pendiente</span>${svg("chevron")}</button>`).join("")}` : ""}${pendingNote(id, C.creditSummary(model.state, id).pendingInstallments)}<div class="toolbar wrap">${btn("Editar tarjeta y compras a meses", "creditEdit", id)}</div>`,
   );
 }
 export function creditAction(action, id, el) {
   if (!action.startsWith("credit")) return false;
   const c = model.state.creditCards.find((c) => c.id === id);
+  if (action === "creditEdit") cardFormEditing = !!c;
   if (action === "creditDetails") creditDetails(id);
   else if (action === "creditMsiAdd") {
     document
@@ -457,6 +630,47 @@ export function creditAction(action, id, el) {
       .focus();
     updateCardPreview();
     document.dispatchEvent(new Event("formstructurechange"));
+  } else if (action === "creditMsiAssociate") {
+    // Open the card with a new MSI row already marked as part of the total.
+    cardFormEditing = true;
+    creditAction("creditEdit", id);
+    creditAction("creditMsiAdd", id);
+    const row = [...document.querySelectorAll("[data-msi-row]")].at(-1);
+    const included = row?.querySelector('[name$="_included"]');
+    if (included) included.value = "yes";
+    updateCardPreview();
+  } else if (action === "creditMsiDelete") {
+    const d = model.state.debts.find((x) => x.id === id);
+    if (!d) return true;
+    form(
+      `Quitar «${d.name}»`,
+      `<p>¿Qué pasó con esta compra a meses de ${money(d.balance)}?</p>${select(
+        "mode",
+        "Elige una opción",
+        [
+          ["", "Elige una opción"],
+          [
+            "mistake",
+            "No existe o la capturé dos veces: baja el saldo de la tarjeta",
+          ],
+          [
+            "keep",
+            d.purchaseDate
+              ? "Fue una compra normal, no a meses: conviértela"
+              : "Es parte del saldo normal de la tarjeta: consérvalo ahí",
+          ],
+        ],
+        "",
+      ).replace(
+        "<select ",
+        "<select required ",
+      )}<p class="note">No se mueve dinero de tus cuentas. Puedes deshacerlo.</p>`,
+      async (f) =>
+        commit("Compra a meses quitada", (s) =>
+          C.removeCardInstallment(s, id, f.mode),
+        ),
+      "Quitar",
+    );
   } else if (action === "creditMsiRemove") {
     el.closest("[data-msi-row]").remove();
     updateCardPreview();
@@ -485,6 +699,13 @@ export function creditAction(action, id, el) {
       (s) => {
         if (C.creditSummary(s, id).used)
           throw Error("Liquida el saldo antes de archivar.");
+        const live = s.debts.filter(
+          (d) => d.creditCardId === id && !d.archived && d.balance > 0,
+        );
+        if (live.length)
+          throw Error(
+            `Esta tarjeta todavía tiene compras a meses con saldo (${live.map((d) => d.name).join(", ")}). Aunque un pago sin desglose deje el saldo usado en cero, indica primero a qué cargos fue ese pago.`,
+          );
         s.creditCards.find((c) => c.id === id).active = false;
       },
     );
@@ -519,13 +740,27 @@ export function creditAction(action, id, el) {
           c ? C.creditSummary(model.state, id).used : 0,
         ) +
         '<p class="note">Copia el saldo total de tu banco, incluyendo lo que falta de tus compras a meses sin intereses. No restes esas compras.</p>' +
+        (c
+          ? C.creditSummary(model.state, id).pendingInstallments
+            ? `<p class="note warning">De ese saldo, ${money(C.creditSummary(model.state, id).pendingInstallments)} son compras a meses por asociar. Agrégalas abajo y responde «Sí, ya está incluida»: se descuentan de ese importe.</p>`
+            : ""
+          : input(
+              "nextPayment",
+              "Pago para no generar intereses de tu próximo estado de cuenta (opcional)",
+              "",
+              "text",
+              'inputmode="decimal" data-money="1" placeholder="0.00"',
+            ) +
+            '<p class="note">Si tu saldo total incluye compras a meses que no vas a capturar ahora, escribe este pago. La diferencia quedará como compras a meses por asociar: ocupa crédito, pero no se cobra hasta que las asocies.</p>') +
         input(
           "openingDueDate",
-          "Fecha límite de compras y saldo anterior (sin mensualidades)",
-          c?.openingDueDate || C.today(),
+          "Fecha límite de pago de ese saldo",
+          c?.openingDueDate ||
+            C.lastStatementDueDate({ closingDay: 15, paymentDay: 5 }),
           "date",
-          "required",
+          `required ${c ? "" : 'data-auto="1"'}`,
         ) +
+        '<p class="note">Se calcula con el corte y el día de pago. Cámbiala solo si tu estado de cuenta dice otra fecha.</p>' +
         '<h3>Compras a meses sin intereses</h3><p class="note">Agrega aquí las compras que ya están incluidas en el saldo total. Se guardará todo junto, sin crear gastos ni retirar dinero.</p>' +
         `<div id="card-installments">${model.state.debts
           .filter((d) => d.creditCardId === id && !d.archived)
@@ -549,7 +784,9 @@ export function creditAction(action, id, el) {
             totalPayments: Number(field("totalPayments")),
             priorPaid: Number(field("priorPaid")),
             startDate: field("startDate"),
-            dueDay: Number(field("dueDay")),
+            ...(field("included")
+              ? { included: field("included") === "yes" }
+              : {}),
           };
         });
         return commit("Tarjeta guardada", (s) =>
@@ -563,6 +800,9 @@ export function creditAction(action, id, el) {
               paymentDay: Number(f.paymentDay),
               totalBalance: moneyValue(f.openingBalance),
               openingDueDate: f.openingDueDate,
+              ...(String(f.nextPayment ?? "").trim()
+                ? { nextPayment: moneyValue(f.nextPayment) }
+                : {}),
             },
             installments,
           ),
@@ -591,6 +831,12 @@ export function creditAction(action, id, el) {
       },
     );
   if (action === "creditEdit") {
+    document
+      .querySelector("#form")
+      ?.querySelector('[name="openingDueDate"]')
+      ?.addEventListener("input", (event) => {
+        event.target.dataset.auto = "0";
+      });
     lockInstallments();
     updateCardPreview();
   }

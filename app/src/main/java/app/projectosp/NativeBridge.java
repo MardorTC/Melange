@@ -10,6 +10,9 @@ import org.json.JSONObject;
 
 /** The only interface exposed to packaged JavaScript. */
 public final class NativeBridge {
+  /** Ledger schema written by this version of the web layer (finance.js). */
+  static final int SCHEMA_VERSION = 11;
+
   private final MainActivity activity;
   private final LedgerStore store;
   private final BackupController backups;
@@ -41,7 +44,7 @@ public final class NativeBridge {
       if (json.length() > 40 * 1024 * 1024)
         throw new Exception("El libro es demasiado grande para guardarse");
       JSONObject obj = new JSONObject(json);
-      if (obj.getJSONObject("state").getInt("schemaVersion") != 10)
+      if (obj.getJSONObject("state").getInt("schemaVersion") != SCHEMA_VERSION)
         throw new Exception("Versión incompatible");
       store.write(json);
       return "OK";
@@ -60,7 +63,7 @@ public final class NativeBridge {
       if (bytes == 0 || bytes > BackupController.MAX_BACKUP_BYTES)
         throw new Exception("Respaldo fuera del límite");
       JSONObject obj = new JSONObject(json);
-      if (obj.getJSONObject("state").getInt("schemaVersion") != 10)
+      if (obj.getJSONObject("state").getInt("schemaVersion") != SCHEMA_VERSION)
         throw new Exception("Versión incompatible");
       store.writeRecovery(json);
       return "OK";

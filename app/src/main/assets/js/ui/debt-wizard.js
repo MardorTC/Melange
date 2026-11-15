@@ -2,6 +2,7 @@ import C from "../domain/finance.js";
 import { model } from "../state/model.js";
 import { commit } from "../state/ledger.js";
 import { input, select, esc, moneyValue, form } from "./components.js";
+import { installmentSummary, firstInstallmentDate } from "../screens/credit.js";
 
 const TYPE_OPTIONS = [
   ["msi", "Compra a meses sin intereses (MSI)"],
@@ -110,15 +111,21 @@ function syncDebtFields() {
     "annualRate",
     "notes",
   ]);
+  const linkedCard =
+    type === "msi" ? form?.querySelector('[name="creditCardId"]')?.value : "";
   if (type === "msi") visible.add("creditCardId");
   if (showsOpenPayment) {
     visible.add("payment");
-    visible.add("dueDay");
+    // A linked MSI is billed on the card's payment day.
+    if (!linkedCard) visible.add("dueDay");
   }
+  if (linkedCard && linkedCard !== (form?.dataset.debtOriginalCard || ""))
+    visible.add("inCardBalance");
   if (INSTALLMENT_TYPES.includes(type)) {
     visible.add("totalPayments");
     visible.add("startDate");
     visible.add("priorPaid");
+    if (form?.dataset.debtEditing !== "1") visible.add("current");
   }
   if (
     type === "loan-open" &&
@@ -137,7 +144,91 @@ function syncDebtFields() {
   }
   const help = form?.querySelector("[data-debt-type-help]");
   if (help) help.textContent = TYPE_HELP[type] || "";
+  const labels = type === "msi" ? MSI_LABELS : INSTALLMENT_LABELS;
+  for (const [name, text] of Object.entries(labels)) {
+    const label = form?.querySelector(`[data-debt-field="${name}"] label`);
+    if (label?.firstChild?.nodeType === Node.TEXT_NODE)
+      label.firstChild.nodeValue = text;
+  }
+  for (const name of ["totalPayments", "inCardBalance"]) {
+    const control = form?.querySelector(`[name="${name}"]`);
+    if (control && !control.disabled)
+      control.required = name === "inCardBalance" || type === "msi";
+  }
+  // A new linked MSI keeps its next unpaid installment on the card's next
+  // payment date: the first one moves back by the installments already paid.
+  // Today's date would make the purchase look overdue.
+  const start = form?.querySelector('[name="startDate"]');
+  const card = model.state.creditCards.find((c) => c.id === linkedCard);
+  // "Pago X de N": fill what the statement does not print, unless typed.
+  const current = Number(form?.querySelector('[name="current"]')?.value || 0);
+  if (current && form?.dataset.debtEditing !== "1") {
+    const dueDay = Number(form.querySelector('[name="dueDay"]')?.value || 1);
+    const nextDue = card
+      ? C.creditDueDate(card, C.today())
+      : C.dueDate(C.month(), dueDay) >= C.today()
+        ? C.dueDate(C.month(), dueDay)
+        : C.dueDate(C.addMonth(C.month(), 1), dueDay);
+    try {
+      const raw = form.querySelector('[name="payment"]')?.value || "0";
+      const progress = C.installmentProgress({
+        payment: moneyValue(raw),
+        totalPayments: Number(
+          form.querySelector('[name="totalPayments"]')?.value,
+        ),
+        current,
+        nextDue,
+      });
+      const priorField = form.querySelector('[name="priorPaid"]'),
+        balanceField = form.querySelector('[name="balance"]');
+      if (priorField && !priorField.dataset.touched)
+        priorField.value = progress.priorPaid;
+      if (balanceField && !balanceField.dataset.touched && progress.balance)
+        balanceField.value = String(progress.balance / 100);
+      if (start && !start.dataset.touched) start.value = progress.startDate;
+    } catch {
+      // Incomplete numbers: wait until the plan is valid.
+    }
+  }
+  const prior = Number(form?.querySelector('[name="priorPaid"]')?.value || 0);
+  if (
+    !current &&
+    card &&
+    start &&
+    form?.dataset.debtEditing !== "1" &&
+    !start.dataset.touched &&
+    Number.isInteger(prior) &&
+    prior >= 0
+  )
+    start.value = firstInstallmentDate(C.creditDueDate(card, C.today()), prior);
+  const summary = form?.querySelector("[data-msi-summary]");
+  if (summary)
+    summary.textContent = INSTALLMENT_TYPES.includes(type)
+      ? installmentSummary(
+          form,
+          card
+            ? card.paymentDay
+            : Number(form.querySelector('[name="dueDay"]')?.value),
+          type === "msi" ? "mensualidad" : "cuota",
+        )
+      : "";
 }
+
+// The same words as the MSI rows of the card form.
+const MSI_LABELS = {
+  current: "¿Qué número de mensualidad viene en tu próximo pago?",
+  payment: "Mensualidad",
+  totalPayments: "Mensualidades en total",
+  priorPaid: "Mensualidades ya pagadas antes de usar la app",
+  startDate: "Fecha de la primera mensualidad",
+};
+const INSTALLMENT_LABELS = {
+  current: "¿Qué número de cuota viene en tu próximo pago?",
+  payment: "Cuota mensual (0 si no la conoces)",
+  totalPayments: "Número de cuotas (0 = sin plazo)",
+  priorPaid: "Cuotas ya liquidadas antes del registro",
+  startDate: "Fecha de primera cuota",
+};
 
 function integerField(value, label, min = 0, max = 1200) {
   const number = Number(value || 0);
@@ -210,16 +301,6 @@ export function debtForm(id) {
       ),
     ) +
     field(
-      "priorPaid",
-      input(
-        "priorPaid",
-        "Cuotas ya liquidadas antes del registro",
-        d.historicalPaidPayments?.length || 0,
-        "number",
-        'min="0" max="1200"',
-      ),
-    ) +
-    field(
       "financingCost",
       moneyField(
         "financingCost",
@@ -284,6 +365,39 @@ export function debtForm(id) {
       ),
     ) +
     field(
+      "priorPaid",
+      input(
+        "priorPaid",
+        "Cuotas ya liquidadas antes del registro",
+        d.historicalPaidPayments?.length || 0,
+        "number",
+        'min="0" max="1200"',
+      ),
+    ) +
+    field(
+      "current",
+      input(
+        "current",
+        "¿Qué número de mensualidad viene en tu próximo pago?",
+        "",
+        "number",
+        'min="1" max="1200" placeholder="Ej. 4 si tu estado de cuenta dice «4 de 12»"',
+      ),
+    ) +
+    field(
+      "inCardBalance",
+      select(
+        "inCardBalance",
+        "¿Esta compra ya está incluida en el saldo que registraste de la tarjeta?",
+        [
+          ["", "Elige una opción"],
+          ["no", "No, súmala a la tarjeta"],
+          ["yes", "Sí, ya está incluida en ese saldo"],
+        ],
+        "",
+      ),
+    ) +
+    field(
       "startDate",
       input(
         "startDate",
@@ -303,6 +417,7 @@ export function debtForm(id) {
         'min="1" max="31" required',
       ),
     ) +
+    '<p class="note" data-msi-summary aria-live="polite"></p>' +
     `<details data-debt-advanced ${advancedOpen ? "open" : ""}><summary>Más detalles (opcional)</summary><div style="display:grid;gap:13px;margin-top:12px">${advancedFields}</div></details>` +
     '<p class="note">Las cuotas liquidadas antes del registro son antecedentes: no generan salidas ni vuelven a reducir el saldo.</p>' +
     (hasPaid
@@ -375,6 +490,10 @@ export function debtForm(id) {
             : 1
           : integerField(f.dueDay, "el día de vencimiento", 1, 31);
       if (!f.name?.trim()) throw Error("Escribe un nombre.");
+      if (selectedType === "msi" && !totalPayments)
+        throw Error(
+          "Una compra a meses necesita el número de mensualidades. Si no tiene plazo fijo, elige «Crédito sin plazo fijo».",
+        );
       if (linkedCard && (!totalPayments || !startDate))
         throw Error(
           "Un MSI vinculado a tarjeta necesita un plazo mayor a cero y una fecha de primera cuota.",
@@ -387,6 +506,13 @@ export function debtForm(id) {
         throw Error(
           "Un MSI vinculado a tarjeta necesita una cuota mayor a cero.",
         );
+      const card = model.state.creditCards.find((c) => c.id === linkedCard),
+        newlyLinked = !!linkedCard && linkedCard !== (d.creditCardId || ""),
+        includedInCard = newlyLinked && f.inCardBalance === "yes";
+      if (newlyLinked && !["yes", "no"].includes(f.inCardBalance))
+        throw Error(
+          "Indica si esta compra ya está incluida en el saldo que registraste de la tarjeta.",
+        );
       const value = {
         name: f.name.trim(),
         creditorId: f.creditorId,
@@ -397,7 +523,11 @@ export function debtForm(id) {
         payment,
         totalPayments,
         startDate: startDate || null,
-        dueDay,
+        dueDay: card
+          ? newlyLinked
+            ? card.paymentDay
+            : (d.dueDay ?? card.paymentDay)
+          : dueDay,
         financingCost,
         annualRate: Number(f.annualRate || 0),
         notes: f.notes || "",
@@ -457,6 +587,26 @@ export function debtForm(id) {
               `Ya registraste "${duplicate.name}" por ese importe en esta tarjeta. Si es la misma compra, no la dupliques como MSI: revisa la compra o elimina una de las dos fuentes.`,
             );
         }
+        if (!id && linkedCard) {
+          // Same path as the card form: one validation, one shape.
+          const { name, balance, payment, totalPayments, startDate, ...extra } =
+            value;
+          C.linkCardInstallment(
+            s,
+            linkedCard,
+            { name, balance, payment, totalPayments, startDate, priorPaid },
+            includedInCard,
+            {
+              creditorId: extra.creditorId || "",
+              originalAmount: extra.originalAmount || undefined,
+              financingCost: extra.financingCost,
+              annualRate: extra.annualRate,
+              notes: extra.notes,
+            },
+          );
+          C.refreshAllBudgets(s);
+          return;
+        }
         if (id)
           Object.assign(
             s.debts.find((x) => x.id === id),
@@ -478,6 +628,10 @@ export function debtForm(id) {
             s.debts.find((x) => x.id === debtId),
             priorPaid,
           );
+        // The bank's total already contained this purchase: move it out of the
+        // card's previous balance instead of counting it twice.
+        if (includedInCard)
+          C.absorbIntoCardBalance(s, linkedCard, value.balance);
         C.refreshAllBudgets(s);
       });
     },
@@ -496,7 +650,35 @@ export function debtForm(id) {
     formEl.dataset.debtAntecedents = hasAntecedents ? "1" : "0";
     formEl.dataset.debtEditing = id ? "1" : "0";
     formEl.dataset.debtOriginalType = d.type;
+    formEl.dataset.debtOriginalCard = d.creditCardId || "";
   }
+  formEl
+    ?.querySelector('[name="creditCardId"]')
+    ?.addEventListener("change", syncDebtFields);
+  // Registered before the summary refresh below so a typed date is kept.
+  formEl
+    ?.querySelector('[name="startDate"]')
+    ?.addEventListener("input", (event) => {
+      event.target.dataset.touched = "1";
+    });
+  for (const name of ["priorPaid", "balance"])
+    formEl
+      ?.querySelector(`[name="${name}"]`)
+      ?.addEventListener("input", (event) => {
+        event.target.dataset.touched = "1";
+      });
+  for (const name of [
+    "current",
+    "payment",
+    "priorPaid",
+    "totalPayments",
+    "balance",
+    "startDate",
+    "dueDay",
+  ])
+    formEl
+      ?.querySelector(`[name="${name}"]`)
+      ?.addEventListener("input", syncDebtFields);
   const typeSelect = formEl?.querySelector('[name="type"]');
   typeSelect?.addEventListener("change", syncDebtFields);
   formEl

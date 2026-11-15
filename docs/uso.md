@@ -2,10 +2,10 @@
 
 Aplicación instalable para Android 8.0 o posterior, con Android System WebView actualizado. Funciona sin internet, sin cuenta y sin servidor. El APK no contiene datos financieros del propietario ni datos de ejemplo.
 
-## Actualizar ProjectOSP 7.0 a Melange 8.6
+## Actualizar ProjectOSP 7.0 a Melange 8.7
 
 1. Exporta un respaldo por precaución; no tendrás que importarlo para actualizar.
-2. Abre `Melange-8.6.1.apk` desde Descargas, o selecciónalo desde Ajustes → Instalar actualización.
+2. Abre `Melange-8.7.0.apk` desde Descargas, o selecciónalo desde Ajustes → Instalar actualización.
 3. Android debe ofrecer actualizar la app existente. No la desinstales ni borres sus datos.
 4. Abre Melange y comprueba tus saldos, movimientos, metas y deudas.
 
@@ -28,7 +28,7 @@ La gráfica de liquidez muestra las observaciones y los saldos calculados que ya
 
 ## Instalar y migrar desde v6
 
-1. Descarga `Melange-8.6.1.apk` en tu teléfono.
+1. Descarga `Melange-8.7.0.apk` en tu teléfono.
 2. Ábrelo desde Archivos / Descargas. Si Android lo solicita, permite instalar aplicaciones desde esa aplicación de archivos o navegador.
 3. Abre Melange y elige **Importar respaldo de Melange / ProjectOSP**.
 4. Selecciona tu `projectosp-backup.json`. Revisa los saldos y cantidades de registros que muestra la vista previa y pulsa **Importar estos datos**.
@@ -176,6 +176,24 @@ En **Deudas**, **Agregar tarjeta** permanece visible aunque ya tengas préstamos
 ## Tarjetas de crédito y pagos agrupados
 
 En **Deudas → Agregar tarjeta** o **Cuentas → Crédito → Agregar tarjeta** registra nombre, límite, corte, pago y el **saldo total que debes hoy, incluidas las compras a meses**. Añade esas compras en el mismo formulario: nombre, saldo pendiente, mensualidad, plazo y fecha de primera mensualidad. Puedes añadir varias. La app separa automáticamente compras/saldo anterior de las mensualidades y guarda todo junto; no tienes que hacer restas manuales. Si la primera mensualidad queda después del día límite de pago de ese mismo mes, revisa el aviso y compáralo con tu estado de cuenta: el formulario no cambia el ciclo por su cuenta. La cuenta **BBVA débito** y la tarjeta **BBVA crédito** son independientes: puedes tener cualquiera de las dos o ambas, y pagar la tarjeta desde otra cuenta libre.
+
+Desde 8.7, agregar una compra a meses después ya no exige rehacer la suma:
+
+- **Al editar la tarjeta**, cada compra a meses nueva pregunta **«¿Esta compra ya está incluida en el saldo total de arriba?»**. Si respondes **No**, la app la suma sola al saldo y la vista previa muestra el resultado («Saldo total: $12,000 + $4,000 de compras nuevas = $16,000»).
+- **Al vincular un MSI desde Deudas → Nueva deuda**, la app pregunta si la compra ya estaba incluida en el saldo que registraste de la tarjeta. Si respondes **Sí**, la descuenta del saldo anterior en lugar de contarla dos veces.
+- **Las mensualidades se cobran en el día de pago de la tarjeta**; ya no se pide un día propio.
+- **«Mensualidades ya pagadas»** está siempre visible. Mientras no cambies la fecha de la primera mensualidad, la app la calcula para que la siguiente caiga en el próximo pago de la tarjeta.
+- **Cada compra muestra un resumen antes de guardar**, por ejemplo «Siguiente: mensualidad 7 de 12, 5 dic 2026. Quedan 6 × $1,000 = $6,000». Si esa fecha ya pasó, la app avisa.
+- **Se aceptan mensualidades redondeadas** como las del banco: $4,000 a 12 meses son 12 × $333.33, y la última cubre los centavos ($333.37).
+- **La fecha límite de pago del saldo de la tarjeta se calcula** con el corte y el día de pago.
+- **Una tarjeta con compras a meses vivas no se puede archivar**, aunque un pago sin desglose deje el saldo usado en cero.
+
+**Compras a meses sin hacer cuentas (8.7):**
+
+- **Capturar un MSI:** escribe la mensualidad, el plazo y **«¿Qué número de mensualidad viene en tu próximo pago?»** (por ejemplo, 4 si tu estado de cuenta dice «4 de 12»). La app calcula el saldo pendiente, las ya pagadas y la fecha de la primera mensualidad. Funciona igual en la tarjeta y en Deudas, y para préstamos con «cuota».
+- **Alta de tarjeta:** si tu saldo total incluye compras a meses que no vas a capturar ahora, escribe el **pago para no generar intereses** de tu próximo estado de cuenta. La diferencia queda como **compras a meses por asociar**: ocupa crédito, pero no se cobra. Cuando quieras, pulsa **Asociar compras a meses** en la tarjeta y captúralas una por una; se descuentan de ese importe.
+- **Compras nuevas:** en **Nuevo gasto**, al elegir una tarjeta aparece **«¿A meses sin intereses?»**. Elige el plazo y, si tu banco difiere la primera mensualidad, «Un mes después». La compra cuenta como consumo ese día, aparece en Movimientos como «Compra a N meses» y la mensualidad se calcula como la del banco. Si ya la registraste como compra normal, edítala y elige el plazo para convertirla.
+- **Quitar una compra a meses** desde la tarjeta o desde su detalle: elige si no existía (baja el saldo) o si era una compra normal o parte del saldo (se conserva el importe). Si ya tiene pagos aplicados, primero reasígnalos desde «Pagos registrados».
 
 El saldo de compras y saldo anterior (sin las mensualidades de compras a meses) es el componente que calcula la app después de separarlas. No crea gastos ni retira dinero. Al editar la tarjeta aparecen los mismos datos, el saldo actual total y las compras a meses. Corregir ese total cambia solo el saldo de compras/saldo anterior; no elimina pagos ni compras. No se acepta un total menor que los cargos y mensualidades pendientes, descontando pagos. Las compras a meses con pagos reales conservan importes y calendario protegidos; el formulario lo explica y permite corregir su nombre.
 

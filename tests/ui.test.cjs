@@ -452,10 +452,10 @@ const fs = require("fs");
       };
     });
     assert.deepEqual(migrated, {
-      schema: 10,
+      schema: 11,
       balances: { cash: 12300, debit: 500000 },
       draft: false,
-      history: 10,
+      history: 11,
       available: 212300,
     });
     const backup = await page.evaluate(
@@ -530,7 +530,7 @@ const fs = require("fs");
         history: model.history.length,
       };
     });
-    assert.deepEqual(tolerant, { schema: 10, history: 0 });
+    assert.deepEqual(tolerant, { schema: 11, history: 0 });
 
     assert.deepEqual(errors, []);
     await browser.close();

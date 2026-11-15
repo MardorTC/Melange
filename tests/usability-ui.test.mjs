@@ -53,7 +53,6 @@ try {
     totalPayments: "4",
     priorPaid: "1",
     startDate: C.addMonth(C.month(), -1) + "-01",
-    dueDay: "5",
   }))
     await row.locator(`[name$="_${name}"]`).fill(value);
   assert.match(
@@ -110,11 +109,13 @@ try {
       exact: true,
     })
     .click();
+  // Editing offers every field of creation except the next statement
+  // payment: after creation, MSI pending association are detailed one by one.
   assert.deepEqual(
     await page
       .locator("#form > label input")
       .evaluateAll((es) => es.map((e) => e.name).sort()),
-    commonFields,
+    commonFields.filter((name) => name !== "nextPayment"),
   );
   assert.equal(
     await page.locator('[name="openingBalance"]').inputValue(),

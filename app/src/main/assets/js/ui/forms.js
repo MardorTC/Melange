@@ -143,7 +143,26 @@ export function transactionForm(kind = "expense", existing) {
     ) +
     accountCreateControl("accountId") +
     (kind === "expense"
-      ? `<div id="credit-purchase-fields" ${t.creditCardId ? "" : "hidden"}><p class="note">La compra cuenta como gasto y usa crédito. Tu disponible libre solo cambia cuando pagas la tarjeta.</p>${input("cardDueDate", "Vencimiento del estado de cuenta (opcional)", t.cardDueDate || "", "date")}<p class="note">Si lo dejas vacío, se calcula usando corte y día de pago. Las compras del día de corte se incluyen en ese corte.</p><p class="note warning">Si esta compra es a MSI, regístrala como deuda vinculada a la tarjeta y no la dupliques aquí.</p></div>`
+      ? `<div id="credit-purchase-fields" ${t.creditCardId ? "" : "hidden"}><p class="note">La compra cuenta como gasto y usa crédito. Tu disponible libre solo cambia cuando pagas la tarjeta.</p>${input("cardDueDate", "Vencimiento del estado de cuenta (opcional)", t.cardDueDate || "", "date")}<p class="note">Si lo dejas vacío, se calcula usando corte y día de pago. Las compras del día de corte se incluyen en ese corte.</p>${select(
+          "msiTerm",
+          "¿A meses sin intereses?",
+          [
+            ["", "No, compra normal"],
+            ...[3, 6, 9, 10, 12, 13, 15, 18, 20, 24].map((n) => [
+              String(n),
+              `${n} meses`,
+            ]),
+          ],
+          "",
+        )}<div id="msi-purchase-fields" hidden>${select(
+          "msiStart",
+          "Primera mensualidad",
+          [
+            ["", "En el estado de cuenta de esta compra"],
+            ["deferred", "Un mes después (si tu banco la difiere)"],
+          ],
+          "",
+        )}<p class="note" id="msi-purchase-preview" aria-live="polite"></p></div></div>`
       : "") +
     (kind === "expense"
       ? select(
@@ -197,6 +216,25 @@ export function transactionForm(kind = "expense", existing) {
       };
       if (kind === "transfer" && f.toAccountId === f.accountId)
         throw Error("El origen y destino deben ser diferentes.");
+      if (kind === "expense" && value.creditCardId && f.msiTerm) {
+        // A purchase in installments is an MSI linked to the card from the
+        // start; an ordinary purchase being corrected is replaced by it.
+        await commit("Compra a meses registrada", (s) => {
+          const resolved = applyContextualCreations(s, value);
+          if (existing) C.reverseTransaction(s, existing.id);
+          C.recordInstallmentPurchase(s, {
+            cardId: resolved.creditCardId,
+            name: resolved.name,
+            amount: resolved.amount,
+            date: resolved.date,
+            categoryId: resolved.categoryId,
+            totalPayments: Number(f.msiTerm),
+            deferred: f.msiStart === "deferred",
+          });
+          C.refreshAllBudgets(s);
+        });
+        return;
+      }
       if (kind === "expense" && value.creditCardId) {
         const duplicate = model.state.debts.find(
           (d) =>
@@ -229,6 +267,44 @@ export function transactionForm(kind = "expense", existing) {
       ...contextualDraftOptions(),
     },
   );
+}
+
+// Live preview of a purchase in installments, in the bank's words.
+export function updateMsiPurchasePreview() {
+  const box = document.querySelector("#msi-purchase-fields");
+  if (!box) return;
+  const formEl = document.querySelector("#form");
+  const term = Number(formEl.querySelector('[name="msiTerm"]')?.value || 0);
+  box.hidden = !term;
+  const due = formEl.querySelector('[name="cardDueDate"]')?.closest("label");
+  if (due) due.hidden = !!term;
+  const preview = document.querySelector("#msi-purchase-preview");
+  if (!term) {
+    preview.textContent = "";
+    return;
+  }
+  try {
+    const amount = moneyValue(
+      formEl.querySelector('[name="amount"]').value || "0",
+    );
+    const cardId = String(
+      formEl.querySelector('[name="accountId"]').value || "",
+    ).replace(/^credit:/, "");
+    const card = model.state.creditCards.find((c) => c.id === cardId);
+    const date = formEl.querySelector('[name="date"]').value;
+    if (!card || !amount || !C.validDate(date)) {
+      preview.textContent = "Escribe el importe para ver las mensualidades.";
+      return;
+    }
+    let first = C.creditDueDate(card, date);
+    if (formEl.querySelector('[name="msiStart"]').value === "deferred")
+      first = C.dueDate(C.addMonth(C.month(first), 1), card.paymentDay);
+    const payment = Math.floor(amount / term),
+      last = amount - payment * (term - 1);
+    preview.textContent = `${term} mensualidades de ${money(payment)}${last !== payment ? ` (la última de ${money(last)})` : ""}; la primera se paga el ${dlabel(first)}. Cuenta como consumo en la fecha de compra y ocupa ${money(amount)} de tu crédito; no se registra también como compra normal.`;
+  } catch {
+    preview.textContent = "Revisa el importe.";
+  }
 }
 
 export function choosePayment() {
@@ -577,7 +653,8 @@ export function deleteEntity(type, id) {
       (type === "Account" &&
         model.state.debts.some((d) => d.creditorId === id)) ||
       (type === "Category" &&
-        model.state.transactions.some((t) => t.categoryId === id))
+        (model.state.transactions.some((t) => t.categoryId === id) ||
+          model.state.debts.some((d) => d.categoryId === id)))
     ) {
       modal(
         "Este elemento tiene movimientos",
@@ -639,7 +716,7 @@ export function debtDetails(id) {
       )
       .join(
         "",
-      )}</div><p>${esc(d.notes || "Sin notas")}</p><p class="note">${d.historicalPaidPayments?.length || 0} cuotas como antecedentes; ${d.paidPayments.length - (d.historicalPaidPayments?.length || 0)} liquidadas mediante pagos registrados. Los antecedentes no afectan el saldo de tus cuentas.</p>${btn("Editar deuda", "editDebt", id, "full")}${d.balance > 0 ? btn("Registrar abono adicional", "extraPayment", id, "full") : ""}<h3 style="margin-top:20px">Movimientos vinculados</h3>${
+      )}</div><p>${esc(d.notes || "Sin notas")}</p><p class="note">${d.historicalPaidPayments?.length || 0} cuotas como antecedentes; ${d.paidPayments.length - (d.historicalPaidPayments?.length || 0)} liquidadas mediante pagos registrados. Los antecedentes no afectan el saldo de tus cuentas.</p>${btn("Editar deuda", "editDebt", id, "full")}${d.balance > 0 ? btn("Registrar abono adicional", "extraPayment", id, "full") : ""}${d.creditCardId ? btn("Quitar compra a meses", "creditMsiDelete", id, "full danger") : ""}<h3 style="margin-top:20px">Movimientos vinculados</h3>${
       model.state.transactions
         .filter((t) => t.ref === id)
         .map(

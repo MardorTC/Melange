@@ -307,8 +307,8 @@ test("opening balances are liabilities without invented spending and migrations 
     draft: null,
     revision: 5,
   });
-  assert.equal(migrated.state.schemaVersion, 10);
-  assert.equal(migrated.history[0].state.schemaVersion, 10);
+  assert.equal(migrated.state.schemaVersion, 11);
+  assert.equal(migrated.history[0].state.schemaVersion, 11);
   assert.deepEqual(migrated.state.creditCards, []);
   assert.equal(JSON.stringify(old), before);
   assert.deepEqual(C.migrate(JSON.parse(JSON.stringify(s))), s);
@@ -324,8 +324,8 @@ test("v9 backup and undo history migrate to v10 without changing balances or car
     draft: null,
     revision: 3,
   });
-  assert.equal(envelope.state.schemaVersion, 10);
-  assert.equal(envelope.history[0].state.schemaVersion, 10);
+  assert.equal(envelope.state.schemaVersion, 11);
+  assert.equal(envelope.history[0].state.schemaVersion, 11);
   assert.equal(envelope.state.transactions[0].id, old.transactions[0].id);
   assert.deepEqual(C.balances(envelope.state), C.balances(old));
   assert.equal(C.creditSummary(envelope.state, "bbva-credit").used, 50000);

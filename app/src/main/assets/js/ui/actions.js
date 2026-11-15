@@ -325,7 +325,7 @@ export async function action(a, id, el) {
 function openFilters() {
   form(
     "Filtrar movimientos",
-    `<p class="note">Los filtros se aplican a la lista y al consumo del periodo.</p><div class="filters">${input("from", "Desde", model.filter.from, "date")}${input("to", "Hasta", model.filter.to, "date")}${select("category", "Categoría", [["", "Todas"], ...model.state.categories.map((c) => [c.id, c.name])], model.filter.category)}${select("accountId", "Origen", [["", "Todos"], ...[...model.state.walletAccounts, ...model.state.creditCards].map((a) => [a.id, a.name])], model.filter.accountId)}${select("kind", "Tipo", [["", "Todos"], ...["expense", "fixed", "debt", "income", "transfer", "adjustment", "loan_out", "loan_in", "card_payment"].map((k) => [k, kindLabel(k)])], model.filter.kind)}${input("min", "Importe mínimo", model.filter.min, "number", 'min="0" step="0.01"')}${input("max", "Importe máximo", model.filter.max, "number", 'min="0" step="0.01"')}</div><button type="button" class="btn" data-action="clearFilters">Limpiar filtros</button>`,
+    `<p class="note">Los filtros se aplican a la lista y al consumo del periodo.</p><div class="filters">${input("from", "Desde", model.filter.from, "date")}${input("to", "Hasta", model.filter.to, "date")}${select("category", "Categoría", [["", "Todas"], ...model.state.categories.map((c) => [c.id, c.name])], model.filter.category)}${select("accountId", "Origen", [["", "Todos"], ...[...model.state.walletAccounts, ...model.state.creditCards].map((a) => [a.id, a.name])], model.filter.accountId)}${select("kind", "Tipo", [["", "Todos"], ...["expense", "fixed", "debt", "income", "transfer", "adjustment", "loan_out", "loan_in", "card_payment", "msi_purchase"].map((k) => [k, kindLabel(k)])], model.filter.kind)}${input("min", "Importe mínimo", model.filter.min, "number", 'min="0" step="0.01"')}${input("max", "Importe máximo", model.filter.max, "number", 'min="0" step="0.01"')}</div><button type="button" class="btn" data-action="clearFilters">Limpiar filtros</button>`,
     async (f) => {
       model.filter = { ...model.filter, ...f };
       closeModal();
@@ -347,6 +347,7 @@ function kindLabel(k) {
       adjustment: "Ajuste",
       loan_out: "Dinero prestado",
       loan_in: "Cobro de préstamo",
+      msi_purchase: "Compra a meses",
     }[k] || k
   );
 }

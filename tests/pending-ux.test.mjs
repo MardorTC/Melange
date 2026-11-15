@@ -127,7 +127,7 @@ test("transfer rows show origin and destination", () => {
   );
   assert.match(
     html,
-    /No incluye compras a crédito, transferencias ni ingresos/,
+    /No incluye compras a crédito ni a meses, transferencias ni ingresos/,
   );
 });
 

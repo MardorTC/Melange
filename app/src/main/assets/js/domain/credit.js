@@ -7,10 +7,15 @@ export function validateInstallmentPlan(d, priorPaid = 0, actualPaid = 0) {
   const remaining = d.totalPayments - priorPaid - actualPaid;
   if (!Number.isInteger(priorPaid) || priorPaid < 0 || remaining < 0)
     throw Error("Revisa el plazo y las mensualidades ya pagadas.");
-  if (d.balance > d.payment * remaining)
+  // Banks round each installment down to the cent and settle the difference
+  // in the last one ($4,000 in 12 = 11 × $333.33 + $333.37). Up to one cent
+  // per remaining installment is accepted; the schedule adds it to the last.
+  if (d.balance - d.payment * remaining > remaining) {
+    const needed = Math.ceil(d.balance / Math.max(1, remaining));
     throw Error(
-      `Las ${remaining} mensualidades restantes no alcanzan para cubrir el saldo de «${d.name}». Revisa el saldo, la mensualidad y el plazo.`,
+      `Las ${remaining} mensualidades restantes no alcanzan para cubrir el saldo de «${d.name}». Con ese saldo, cada mensualidad debe ser de al menos ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(needed / 100)}; revisa también el plazo y las mensualidades ya pagadas.`,
     );
+  }
 }
 export function allocations(s) {
   return s.transactions
@@ -33,6 +38,14 @@ export function creditDueDate(card, date) {
     due = L.dueDate(L.addMonth(closingMonth, 1), card.paymentDay);
   return due;
 }
+// Due date of the statement the opening balance belongs to: the last closed
+// cycle while its payment date is still ahead, otherwise the current cycle.
+export function lastStatementDueDate(card, date = L.today()) {
+  let m = L.month(date);
+  if (L.dueDate(m, card.closingDay) > date) m = L.addMonth(m, -1);
+  const due = creditDueDate(card, L.dueDate(m, card.closingDay));
+  return due >= date ? due : creditDueDate(card, date);
+}
 export function creditSummary(s, cardId) {
   const card = s.creditCards.find((c) => c.id === cardId);
   if (!card) throw Error("Tarjeta no encontrada.");
@@ -50,13 +63,18 @@ export function creditSummary(s, cardId) {
     (d) => d.balance,
   );
   const unassigned = allocated(s, "unassigned", cardId);
+  // MSI the bank total included but the user has not detailed yet: they use
+  // credit, but no installment is billed until they are associated.
+  const pendingInstallments = card.pendingInstallments || 0;
   return {
     ...card,
     purchases,
     installments,
     unassigned,
-    used: purchases + installments - unassigned,
-    available: card.limit - purchases - installments + unassigned,
+    pendingInstallments,
+    used: purchases + installments + pendingInstallments - unassigned,
+    available:
+      card.limit - purchases - installments - pendingInstallments + unassigned,
   };
 }
 export function statement(s, cardId, period, items) {
@@ -67,7 +85,7 @@ export function statement(s, cardId, period, items) {
     lines.push({
       kind: "opening",
       ref: cardId,
-      name: "Saldo anterior sin MSI",
+      name: "Saldo anterior",
       date: card.openingDueDate,
       amount: card.openingBalance,
       recorded,
@@ -154,6 +172,7 @@ export function validateCredit(s) {
       !money(c.limit) ||
       !c.limit ||
       !money(c.openingBalance) ||
+      !money(c.pendingInstallments ?? 0) ||
       !L.validDate(c.openingDueDate) ||
       ![c.closingDay, c.paymentDay].every(
         (d) => Number.isInteger(d) && d >= 1 && d <= 31,
