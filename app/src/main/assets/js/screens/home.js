@@ -35,7 +35,9 @@ export function homePage() {
       .filter((c) => c.active !== false)
       .reduce((n, c) => n + C.creditSummary(model.state, c.id).available, 0),
     saved = m.reserved + m.frozen,
-    margin = m.available - m.pending,
+    overdue = C.overdueObligations(model.state),
+    overdueTotal = overdue.reduce((n, i) => n + i.remaining, 0),
+    margin = m.available - m.pending - overdueTotal,
     justStarted =
       !model.state.transactions.length &&
       !model.state.debts.length &&
@@ -57,6 +59,7 @@ export function homePage() {
   </div>
   <div class="home-outlook">
     <div><span>Pagos pendientes de ${monthLong(C.month())}</span><strong data-testid="home-pending">${money(m.pending)}</strong></div>
+    ${overdueTotal ? `<div><span>Atrasados de meses anteriores</span><strong class="bad" data-testid="home-overdue">${money(overdueTotal)}</strong></div>` : ""}
     <div class="outlook-margin"><span>Tras cubrir esos pagos</span><strong class="${margin < 0 && !plan.unassigned ? "bad" : ""}" data-testid="home-margin">${plan.unassigned ? "Revisar pagos de tarjeta" : money(margin)}</strong></div>
     <p>${plan.unassigned ? `Hay ${money(plan.unassigned)} en pagos de tarjeta sin desglose. Indica qué cargos cubrió el banco para calcular el margen.` : "Estimación con lo que tienes hoy. Aún faltan tus compras futuras y pagos de otros meses; no incluye ingresos previstos."}</p>
   </div>
@@ -69,7 +72,7 @@ export function homePage() {
     <button data-action="choosePayment" aria-label="Pagar un compromiso"><span class="icon">${svg("pay")}</span>Pagar</button>
   </div>
    ${justStarted ? `<section class="card first-steps"><h2>Empieza con algo de hoy</h2><p class="note">Registra una compra para ver cómo cambia tu dinero. Después puedes añadir renta, servicios o deudas.</p>${btn("Registrar primer gasto", "expense", "", "primary full")}</section>` : ""}
-  ${plan.latePayment ? `<section class="card danger-zone"><div class="row"><div><strong>Tienes cuotas atrasadas</strong><p class="note">${plan.lateCount} ${plan.lateCount === 1 ? "cuota" : "cuotas"} por ${money(plan.latePayment)} de meses anteriores.</p></div><span class="pill bad">Revisar</span></div>${btn("Ver deudas", "tab", "debt", "full")}</section>` : ""}
+  ${overdue.length ? `<section class="card danger-zone"><div class="row"><div><strong>Tienes pagos atrasados</strong><p class="note">${overdue.length} ${overdue.length === 1 ? "pago" : "pagos"} por ${money(overdueTotal)} de meses anteriores. Ya se restan de lo que te queda.</p></div><span class="pill bad">Revisar</span></div>${btn("Ver y pagar", "choosePayment", "", "full")}</section>` : plan.latePayment ? `<section class="card danger-zone"><div class="row"><div><strong>Tienes cuotas atrasadas</strong><p class="note">${plan.lateCount} ${plan.lateCount === 1 ? "cuota" : "cuotas"} por ${money(plan.latePayment)} de meses anteriores.</p></div><span class="pill bad">Revisar</span></div>${btn("Ver deudas", "tab", "debt", "full")}</section>` : ""}
   <div class="section-head"><h2>Pagos de este mes</h2><button class="text-action" data-action="tab" data-id="calendar">Calendario</button></div>
   <section class="card list">${items.length ? items.slice(0, 3).map(paymentRow).join("") : empty("Sin pagos pendientes registrados este mes", "Puedes agregar servicios y suscripciones desde Movimientos.")}</section>
   ${breakdown.total || m.reserved ? '<div class="section-head"><h2>Deudas y metas</h2></div>' : ""}

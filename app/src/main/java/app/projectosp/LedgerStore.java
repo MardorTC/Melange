@@ -26,10 +26,33 @@ final class LedgerStore extends SQLiteOpenHelper {
     throw new IllegalStateException("No hay migración registrada");
   }
 
+  // A CursorWindow holds about 2 MB. The vault row contains the book and its undo
+  // history, so it is read in bounded slices instead of one getString call.
+  static final int READ_CHUNK_CHARS = 256 * 1024;
+
   synchronized String read() {
-    try (Cursor c = getReadableDatabase().rawQuery("SELECT current FROM vault WHERE id=1", null)) {
-      return c.moveToFirst() ? c.getString(0) : "";
+    SQLiteDatabase db = getReadableDatabase();
+    long length;
+    try (Cursor c = db.rawQuery("SELECT length(current) FROM vault WHERE id=1", null)) {
+      if (!c.moveToFirst() || c.isNull(0)) return "";
+      length = c.getLong(0);
     }
+    if (length > Integer.MAX_VALUE) throw new IllegalStateException("Libro demasiado grande");
+    StringBuilder out = new StringBuilder((int) length);
+    for (long start = 1; start <= length; start += READ_CHUNK_CHARS) {
+      try (Cursor c =
+          db.rawQuery(
+              "SELECT substr(current, "
+                  + start
+                  + ", "
+                  + READ_CHUNK_CHARS
+                  + ") FROM vault WHERE id=1",
+              null)) {
+        if (!c.moveToFirst()) throw new IllegalStateException("No se pudo leer el libro completo");
+        out.append(c.getString(0));
+      }
+    }
+    return out.toString();
   }
 
   private SQLiteDatabase draftDatabase() {

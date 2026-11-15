@@ -34,19 +34,45 @@ window.nativeSaved = (id, result) => {
   else pending.reject(Error(result.replace("ERROR:", "")));
 };
 
-export async function writeStore(v) {
+// Below NativeBridge's 40M-character guard. Undo copies are the first thing to
+// give up: a large book must stay saveable even when its history no longer fits.
+export const MAX_ENVELOPE_CHARS = 32 * 1024 * 1024;
+
+export function boundEnvelope(v, limit = MAX_ENVELOPE_CHARS) {
+  let json = JSON.stringify(v);
+  if (json.length <= limit) return { envelope: v, json };
+  const history = [...(v.history || [])];
+  const sizes = history.map((entry) => JSON.stringify(entry).length + 1);
+  let total = json.length;
+  while (history.length && total > limit) {
+    total -= sizes.shift();
+    history.shift();
+  }
+  const envelope = { ...v, history };
+  json = JSON.stringify(envelope);
+  if (json.length > limit)
+    throw Error(
+      "El libro es demasiado grande para guardarse en este dispositivo. Exporta un respaldo y revisa los datos importados.",
+    );
+  return { envelope, json };
+}
+
+// Returns the envelope actually written: its history may be shorter than the
+// one requested when older undo copies had to be dropped to fit.
+export async function writeStore(requested) {
+  const { envelope: v, json } = boundEnvelope(requested);
   if (window.NativeOSP) {
     if (window.NativeOSP.writeAsync) {
       await new Promise((resolve, reject) => {
         const id = ++saveSerial;
         saveRequests.set(id, { resolve, reject });
-        window.NativeOSP.writeAsync(JSON.stringify(v), id);
+        window.NativeOSP.writeAsync(json, id);
       });
     } else {
-      const r = window.NativeOSP.write(JSON.stringify(v));
+      const r = window.NativeOSP.write(json);
       if (r !== "OK") throw Error(r.replace("ERROR:", ""));
     }
-    return;
+    return v;
   }
   await new Promise((res, rej) => {
     const tx = storeDB.transaction("state", "readwrite");
@@ -66,6 +92,7 @@ export async function writeStore(v) {
     tx.onerror = () => rej(tx.error);
     tx.onabort = () => rej(tx.error);
   });
+  return v;
 }
 
 export async function writeRecoveryStore(value) {
