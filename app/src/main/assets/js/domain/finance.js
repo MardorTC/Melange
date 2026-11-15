@@ -1926,6 +1926,40 @@ function installmentPurchases(s) {
       totalPayments: d.totalPayments,
     }));
 }
+// Remove an MSI captured by mistake. "mistake": it never existed, so the
+// card owes less. "keep": the amount was real but not in installments; a
+// purchase made "a meses" becomes an ordinary card purchase and an MSI
+// copied from the statement goes back to the card's previous balance.
+function removeCardInstallment(s, debtId, mode) {
+  const d = s.debts.find((x) => x.id === debtId);
+  if (!d || !d.creditCardId) throw Error("Compra a meses no encontrada.");
+  if (!["mistake", "keep"].includes(mode))
+    throw Error("Elige qué pasó con esta compra a meses.");
+  const paid =
+    s.transactions.some((t) => t.ref === d.id) ||
+    K.allocations(s).some((a) => a.ref === d.id);
+  if (paid)
+    throw Error(
+      `«${d.name}» ya tiene pagos de tarjeta aplicados. En la tarjeta, abre «Pagos registrados» y usa «Reasignar» para mover esos importes a otro cargo o a «sin asignar»; después podrás quitarla.`,
+    );
+  s.debts = s.debts.filter((x) => x.id !== d.id);
+  if (mode === "keep" && d.balance > 0) {
+    if (d.purchaseDate)
+      record(s, {
+        kind: "expense",
+        name: d.name,
+        amount: d.balance,
+        date: d.purchaseDate,
+        accountId: null,
+        creditCardId: d.creditCardId,
+        categoryId: d.categoryId || "",
+      });
+    else
+      s.creditCards.find((c) => c.id === d.creditCardId).openingBalance +=
+        d.balance;
+  }
+  refreshAllBudgets(s);
+}
 function absorbIntoCardBalance(s, cardId, amount) {
   const card = s.creditCards.find((c) => c.id === cardId);
   if (!card) throw Error("Tarjeta no encontrada.");
@@ -2054,6 +2088,7 @@ export default {
   installmentProgress,
   linkCardInstallment,
   recordInstallmentPurchase,
+  removeCardInstallment,
   installmentPurchases,
   setPriorPayments,
   snapshot,

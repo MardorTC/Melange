@@ -191,4 +191,13 @@ Ordenados por probabilidad × gravedad.
 
 Pruebas: `tests/card-msi.test.mjs` (6 casos, todos fallan con el código anterior). Se actualizaron las pruebas DOM y de UI que vinculan MSI desde Deudas, que ahora responden la pregunta nueva.
 
-Siguen pendientes las fases 1 a 4: captura «Pago X de N», «MSI por asociar», «¿A meses?» en Nuevo gasto y quitar MSI desde la tarjeta.
+## 8. Estado: fases 1 a 4 de tarjeta + MSI
+
+| Fase | Hecho                                                                                                                                                                                                                                                        |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1    | «¿Qué número de mensualidad viene en tu próximo pago?» en la tarjeta y en Deudas (también para préstamos). `installmentProgress` calcula ya pagadas, saldo y primera fecha. `newCardInstallment` / `linkCardInstallment` son la única forma de crear un MSI. |
+| 2    | Esquema v11. `pendingInstallments` («compras a meses por asociar»): campo «pago para no generar intereses» en el alta y botón «Asociar compras a meses». Asociar consume primero lo por asociar.                                                             |
+| 3    | «¿A meses sin intereses?» en Nuevo gasto con tarjeta (`recordInstallmentPurchase`): MSI con fecha y categoría de compra, consumo una sola vez, visible en Movimientos y en la dona. Editar una compra normal y elegir plazo la convierte.                    |
+| 4    | «Quitar compra a meses» desde la tarjeta o su detalle (`removeCardInstallment`): «no existía» baja el saldo; «era normal» la convierte en compra o la regresa al saldo anterior. Con pagos aplicados, el mensaje indica cómo liberarlos con «Reasignar».     |
+
+Queda fuera: el pago sin desglose «aplicado en orden» como opción predeterminada (§2.2 E) y la corrección de planes con pagos («aplicar desde la cuota N», §5.5).

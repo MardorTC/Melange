@@ -359,3 +359,52 @@ test("a deferred first installment moves one statement later; limits apply", () 
     /crédito disponible/,
   );
 });
+
+test("an MSI captured by mistake can be removed, kept as balance or converted", () => {
+  // Duplicated MSI: the card owes less after removing it.
+  const dup = card(1200000, [row()]);
+  C.removeCardInstallment(dup.s, dup.s.debts[0].id, "mistake");
+  assert.equal(dup.s.debts.length, 0);
+  assert.equal(C.creditSummary(dup.s, dup.id).used, 600000);
+  // Part of the ordinary balance: the total stays the same.
+  const keep = card(1200000, [row()]);
+  C.removeCardInstallment(keep.s, keep.s.debts[0].id, "keep");
+  assert.equal(C.creditSummary(keep.s, keep.id).used, 1200000);
+  assert.deepEqual(C.overdueObligations(keep.s), []);
+  // Bought "a meses" by mistake: becomes an ordinary purchase that day.
+  const bought = card(0);
+  const d = C.recordInstallmentPurchase(bought.s, {
+    cardId: bought.id,
+    name: "Refri",
+    amount: 900000,
+    date: C.today(),
+    categoryId: bought.s.categories[0].id,
+    totalPayments: 3,
+  });
+  C.removeCardInstallment(bought.s, d.id, "keep");
+  assert.equal(bought.s.debts.length, 0);
+  assert.deepEqual(
+    bought.s.transactions.map((t) => [t.name, t.amount, t.creditCardId]),
+    [["Refri", 900000, bought.id]],
+  );
+  assert.equal(C.metrics(bought.s).consumption, 900000);
+  assert.equal(C.creditSummary(bought.s, bought.id).used, 900000);
+});
+
+test("an MSI with card payments explains how to free them before removing", () => {
+  const { s, id } = card(0);
+  const d = C.recordInstallmentPurchase(s, {
+    cardId: id,
+    name: "Tele",
+    amount: 300000,
+    date: C.today(),
+    totalPayments: 3,
+  });
+  C.refreshAllBudgets(s);
+  C.payCard(s, id, C.month(d.startDate), {
+    accountId: "debit",
+    amount: 100000,
+  });
+  assert.throws(() => C.removeCardInstallment(s, d.id, "mistake"), /Reasignar/);
+  assert.equal(s.debts.length, 1);
+});

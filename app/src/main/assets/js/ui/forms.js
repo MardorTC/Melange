@@ -716,7 +716,7 @@ export function debtDetails(id) {
       )
       .join(
         "",
-      )}</div><p>${esc(d.notes || "Sin notas")}</p><p class="note">${d.historicalPaidPayments?.length || 0} cuotas como antecedentes; ${d.paidPayments.length - (d.historicalPaidPayments?.length || 0)} liquidadas mediante pagos registrados. Los antecedentes no afectan el saldo de tus cuentas.</p>${btn("Editar deuda", "editDebt", id, "full")}${d.balance > 0 ? btn("Registrar abono adicional", "extraPayment", id, "full") : ""}<h3 style="margin-top:20px">Movimientos vinculados</h3>${
+      )}</div><p>${esc(d.notes || "Sin notas")}</p><p class="note">${d.historicalPaidPayments?.length || 0} cuotas como antecedentes; ${d.paidPayments.length - (d.historicalPaidPayments?.length || 0)} liquidadas mediante pagos registrados. Los antecedentes no afectan el saldo de tus cuentas.</p>${btn("Editar deuda", "editDebt", id, "full")}${d.balance > 0 ? btn("Registrar abono adicional", "extraPayment", id, "full") : ""}${d.creditCardId ? btn("Quitar compra a meses", "creditMsiDelete", id, "full danger") : ""}<h3 style="margin-top:20px">Movimientos vinculados</h3>${
       model.state.transactions
         .filter((t) => t.ref === id)
         .map(

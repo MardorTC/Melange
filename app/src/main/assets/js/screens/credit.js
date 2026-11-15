@@ -75,7 +75,7 @@ function installmentFields(d = {}, draftKey) {
         model.state.transactions.some((t) => t.ref === d.id)),
     field = (name) => `msi_${key}_${name}`;
   return `<section class="card msi-editor" data-msi-row="${esc(key)}" data-existing="${esc(d.id || "")}">
-    <div class="row"><h3>${d.id ? "Editar compra a meses sin intereses" : "Compra a meses sin intereses"}</h3>${!d.id ? `<button type="button" class="btn" data-action="creditMsiRemove">Quitar</button>` : ""}</div>
+    <div class="row"><h3>${d.id ? "Editar compra a meses sin intereses" : "Compra a meses sin intereses"}</h3>${!d.id ? `<button type="button" class="btn" data-action="creditMsiRemove">Quitar</button>` : `<button type="button" class="btn" data-action="creditMsiDelete" data-id="${esc(d.id)}">Quitar</button>`}</div>
     ${input(field("name"), "Nombre de la compra", d.name || "", "text", 'required maxlength="120"')}
     ${
       !d.id && editingCard
@@ -639,6 +639,38 @@ export function creditAction(action, id, el) {
     const included = row?.querySelector('[name$="_included"]');
     if (included) included.value = "yes";
     updateCardPreview();
+  } else if (action === "creditMsiDelete") {
+    const d = model.state.debts.find((x) => x.id === id);
+    if (!d) return true;
+    form(
+      `Quitar «${d.name}»`,
+      `<p>¿Qué pasó con esta compra a meses de ${money(d.balance)}?</p>${select(
+        "mode",
+        "Elige una opción",
+        [
+          ["", "Elige una opción"],
+          [
+            "mistake",
+            "No existe o la capturé dos veces: baja el saldo de la tarjeta",
+          ],
+          [
+            "keep",
+            d.purchaseDate
+              ? "Fue una compra normal, no a meses: conviértela"
+              : "Es parte del saldo normal de la tarjeta: consérvalo ahí",
+          ],
+        ],
+        "",
+      ).replace(
+        "<select ",
+        "<select required ",
+      )}<p class="note">No se mueve dinero de tus cuentas. Puedes deshacerlo.</p>`,
+      async (f) =>
+        commit("Compra a meses quitada", (s) =>
+          C.removeCardInstallment(s, id, f.mode),
+        ),
+      "Quitar",
+    );
   } else if (action === "creditMsiRemove") {
     el.closest("[data-msi-row]").remove();
     updateCardPreview();
