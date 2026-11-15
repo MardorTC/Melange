@@ -79,6 +79,7 @@ export function requireFunds(
   amount,
   kind = "reserve",
   categoryId = "",
+  { internal = false } = {},
 ) {
   const a = accountSummary(s).find((a) => a.id === accountId);
   if (!a || a.active === false) throw Error("Elige una cuenta activa.");
@@ -90,11 +91,15 @@ export function requireFunds(
       (kind !== "reversal" && !a.allowedCategories.includes(categoryId)))
   )
     throw Error("Esta cuenta de vales no permite esta operación o categoría.");
+  // Moving money between two free accounts keeps the free total unchanged, so
+  // only the source account limits it. That is how an overdraft is covered.
   const usable =
-    a.type === "restricted" ? a.available : Math.min(a.available, available(s));
+    a.type === "restricted" || internal
+      ? a.available
+      : Math.min(a.available, available(s));
   if (amount > usable)
     throw Error(
-      `Faltan ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2 }).format((amount - Math.max(0, usable)) / 100)} MXN disponibles. Abre Cuentas para revisar dinero reservado o congelado, o corregir el saldo.`,
+      `Faltan ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2 }).format((amount - usable) / 100)} MXN disponibles. Abre Cuentas para revisar dinero reservado o congelado, o corregir el saldo.`,
     );
 }
 export function requireDestination(s, id, kind) {

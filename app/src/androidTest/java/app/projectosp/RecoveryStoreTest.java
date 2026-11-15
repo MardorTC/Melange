@@ -13,6 +13,30 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class RecoveryStoreTest {
   @Test
+  public void readsAndRewritesABookLargerThanOneCursorWindow() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    String databaseName = "large-ledger-test-" + System.nanoTime() + ".db";
+    LedgerStore store = new LedgerStore(context, databaseName);
+    try {
+      // About 5 MB in UTF-8, with multibyte characters crossing chunk borders.
+      StringBuilder notes = new StringBuilder();
+      while (notes.length() < 2_400_000) notes.append("Nómina ñ € 😀 ");
+      String large =
+          "{\"state\":{\"schemaVersion\":10,\"notes\":\""
+              + notes
+              + "\"},\"history\":[],\"revision\":1}";
+      store.write(large);
+      assertEquals(large, store.read());
+      String next = large.replace("\"revision\":1", "\"revision\":2");
+      store.write(next);
+      assertEquals(next, store.read());
+    } finally {
+      store.close();
+      context.deleteDatabase(databaseName);
+    }
+  }
+
+  @Test
   public void recoveryPreservesCorruptOriginalAndRollsBackOnFailure() {
     // An isolated database; never open the application's real projectosp.db.
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();

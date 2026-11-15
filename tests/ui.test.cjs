@@ -517,25 +517,20 @@ const fs = require("fs");
       });
     }, originalEnvelope);
     await page.reload();
+    // A valid book opens even when an old undo copy no longer validates: that
+    // copy is dropped with an explicit notice instead of locking the data.
+    await page.getByRole("heading", { name: "Cada grano cuenta." }).waitFor();
     await page
-      .getByRole("heading", { name: "No se pudieron abrir los datos" })
+      .getByText("Se descartaron 1 cambio antiguo de Deshacer")
       .waitFor();
-    const unmodified = await page.evaluate(
-      () =>
-        new Promise((resolve) => {
-          const r = indexedDB.open("projectosp-android-preview", 1);
-          r.onsuccess = () => {
-            const db = r.result,
-              g = db.transaction("state").objectStore("state").get("current");
-            g.onsuccess = () => {
-              resolve(g.result);
-              db.close();
-            };
-          };
-        }),
-    );
-    assert.equal(unmodified.state.schemaVersion, 7);
-    assert.deepEqual(unmodified.history[0].state, { invalid: true });
+    const tolerant = await page.evaluate(async () => {
+      const { model } = await import("/js/state/model.js");
+      return {
+        schema: model.state.schemaVersion,
+        history: model.history.length,
+      };
+    });
+    assert.deepEqual(tolerant, { schema: 10, history: 0 });
 
     assert.deepEqual(errors, []);
     await browser.close();

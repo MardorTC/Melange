@@ -232,10 +232,13 @@ export function transactionForm(kind = "expense", existing) {
 }
 
 export function choosePayment() {
-  const items = C.obligations(model.state).filter((i) => !i.paid);
+  const overdue = C.overdueObligations(model.state),
+    items = C.obligations(model.state)
+      .filter((i) => !i.paid)
+      .sort((a, b) => a.date.localeCompare(b.date));
   modal(
     "Elegir compromiso",
-    `<p class="note">Pagos pendientes de este mes. Para otros meses, abre Calendario.</p>${items.map(paymentRow).join("") || empty("Al día", "No hay pagos pendientes.")}`,
+    `${overdue.length ? `<h3>Atrasados</h3>${overdue.map(paymentRow).join("")}<h3>Este mes</h3>` : ""}<p class="note">Pagos pendientes de este mes. Para meses futuros, abre Calendario.</p>${items.map(paymentRow).join("") || empty(overdue.length ? "Sin pendientes este mes" : "Al día", "No hay pagos pendientes este mes.")}`,
   );
 }
 
@@ -532,7 +535,7 @@ export function deleteEntity(type, id) {
         if (linked) {
           s.debts.find((x) => x.id === id).archived = true;
         } else s.debts = s.debts.filter((x) => x.id !== id);
-        C.refreshBudget(s);
+        C.refreshAllBudgets(s);
       },
     );
   } else if (type === "Fixed")
@@ -651,35 +654,37 @@ export function debtDetails(id) {
 export function extraPayment(id) {
   const d = model.state.debts.find((x) => x.id === id);
   if (d.creditCardId) return creditPayForm(d.creditCardId);
+  const principalOnly = d.balanceMode === "principal";
   form(
     "Abono adicional",
     afterSelect(
-      paymentFields(0),
+      paymentFields(null),
       "accountId",
       accountCreateControl("accountId"),
     ) +
-      amount("principal", "Reducción del saldo", 0) +
-      '<p class="note">No marca cuotas como pagadas ni recalcula el contrato. Si cambia el calendario, ajusta la deuda después.</p>',
+      (principalOnly
+        ? input(
+            "principal",
+            "Parte que reduce el capital (opcional)",
+            "",
+            "text",
+            'inputmode="decimal" data-money="1" placeholder="Todo el importe"',
+          ) +
+          '<p class="note">El saldo de esta deuda es solo capital. Si una parte del abono son intereses, escribe aquí solo lo que reduce el capital; si lo dejas vacío, todo el importe reduce el saldo.</p>'
+        : '<p class="note">Todo el abono reduce el saldo pendiente.</p>') +
+      `<p class="note">Saldo pendiente: ${money(d.balance)}. No marca cuotas como pagadas ni recalcula el contrato. Si cambia el calendario, ajusta la deuda después.</p>`,
     async (f) =>
       commit("Abono registrado", (s) => {
-        const value = applyContextualCreations(s, f),
-          debt = s.debts.find((x) => x.id === id),
-          a = moneyValue(value.amount),
-          p = moneyValue(value.principal);
-        if (p > a || p > debt.balance)
-          throw Error("Revisa la reducción de saldo.");
-        C.record(s, {
-          kind: "debt",
-          name: debt.name + " · Abono",
-          amount: a,
-          principal: p,
-          ref: id,
+        const value = applyContextualCreations(s, f);
+        C.extraPayment(s, id, {
+          amount: moneyValue(value.amount),
+          principal:
+            principalOnly && String(value.principal ?? "").trim()
+              ? moneyValue(value.principal)
+              : undefined,
           date: value.date,
           accountId: value.accountId,
-          categoryId: "",
         });
-        debt.balance -= p;
-        if (!debt.balance) debt.active = false;
       }),
     "Guardar",
     contextualDraftOptions(),

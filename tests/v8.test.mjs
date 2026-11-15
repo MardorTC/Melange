@@ -228,7 +228,7 @@ test("effective dated recurrence preserves earlier dues and partial payments wit
   assert.equal(C.metrics(s, "2025-02").fixed, 0);
   C.validate(s);
 });
-test("v7 envelope migration is pure, preserves ids, undo and budgets, ignores old drafts and rejects all before saving", () => {
+test("v7 envelope migration is pure, preserves ids, undo and budgets, ignores old drafts, drops invalid undo copies and rejects an invalid book before saving", () => {
   const old = L.empty();
   old.opening = { cash: -500, debit: 500000 };
   L.record(old, {
@@ -265,9 +265,22 @@ test("v7 envelope migration is pure, preserves ids, undo and budgets, ignores ol
   assert.equal(v.history[0].state.transactions[0].id, old.transactions[0].id);
   assert.deepEqual(v.state.budgets, old.budgets);
   assert.equal(v.draft, undefined);
-  assert.throws(() =>
-    C.migrateEnvelope({ ...envelope, history: [{ state: { bad: true } }] }),
+  // An invalid undo copy is dropped with everything older; the book still opens.
+  const tolerant = C.migrateEnvelope({
+    ...envelope,
+    history: [
+      { state: L.clone(old), label: "Más antiguo" },
+      { state: { bad: true }, label: "Dañado" },
+      { state: L.clone(old), label: "Reciente" },
+    ],
+  });
+  assert.deepEqual(
+    tolerant.history.map((h) => h.label),
+    ["Reciente"],
   );
+  assert.equal(tolerant.discardedHistory, 2);
+  assert.equal(v.discardedHistory, 0);
+  assert.throws(() => C.migrateEnvelope({ ...envelope, state: { bad: true } }));
   assert.equal(JSON.stringify(envelope), json);
   assert.deepEqual(C.migrate(v.state), v.state);
 });

@@ -36,13 +36,13 @@ export async function commit(label, fn) {
       ...model.history,
       { label, date: new Date().toISOString(), state: old },
     ].slice(-15);
-    await writeStore({
+    const written = await writeStore({
       state: model.state,
       history: nextHistory,
       revision: model.revision + 1,
     });
     model.revision++;
-    model.history = nextHistory;
+    model.history = written.history;
     persisted = true;
     traceOperation("commit", "persisted", model.revision, trace);
     await finishFormDraft(true);
@@ -88,14 +88,14 @@ export async function undo() {
     const entry = model.history[model.history.length - 1],
       next = C.clone(entry.state);
     C.validate(next);
-    await writeStore({
+    const written = await writeStore({
       state: next,
       history: model.history.slice(0, -1),
       revision: model.revision + 1,
     });
     model.revision++;
     model.state = next;
-    model.history = model.history.slice(0, -1);
+    model.history = written.history;
     persisted = true;
     traceOperation("undo", "persisted", model.revision, trace);
     await finishFormDraft();

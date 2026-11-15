@@ -208,13 +208,18 @@ async function start() {
     // Persist the identity of an empty book too: onboarding drafts must still
     // belong to the same book after a process restart, before its first commit.
     stage = "write";
-    await writeStore({
+    const written = await writeStore({
       state: model.state,
       history: model.history,
       revision: model.revision,
     });
+    model.history = written.history;
     stage = "render";
     render();
+    if (saved?.discardedHistory)
+      toast(
+        `Tus datos están completos. Se descartaron ${saved.discardedHistory} ${saved.discardedHistory === 1 ? "cambio antiguo" : "cambios antiguos"} de Deshacer que ya no se podían abrir.`,
+      );
     syncReminders();
     startUpdates();
   } catch (e) {

@@ -157,11 +157,22 @@ function migrateEnvelope(saved) {
   if (!saved) return null;
   if (!Array.isArray(saved.history) || !Number.isInteger(saved.revision || 0))
     throw Error("Historial de guardado inválido.");
-  return {
-    state: migrate(saved.state),
-    history: saved.history.map((h) => ({ ...h, state: migrate(h.state) })),
-    revision: saved.revision || 0,
-  };
+  const state = migrate(saved.state);
+  // Undo copies are snapshots of earlier versions. A copy that no longer
+  // validates must not lock a valid current book: keep the newest valid run
+  // and drop that copy together with everything older than it.
+  const history = [];
+  let discardedHistory = 0;
+  for (let i = saved.history.length - 1; i >= 0; i--) {
+    try {
+      const h = saved.history[i];
+      history.unshift({ ...h, state: migrate(h.state) });
+    } catch {
+      discardedHistory = i + 1;
+      break;
+    }
+  }
+  return { state, history, revision: saved.revision || 0, discardedHistory };
 }
 function validate(s) {
   if (
@@ -340,24 +351,34 @@ function isPaid(s, i) {
   );
 }
 function baseObligations(s, m = month()) {
-  return (s.budgets[m]?.items || planned(s, m)).map((i) => {
-    const recorded = obligationRecorded(s, i.key),
-      paid = isPaid(s, i);
-    return {
-      ...i,
-      paid,
-      recorded,
-      remaining: paid
-        ? 0
-        : Math.min(
-            Math.max(0, i.amount - recorded),
-            i.kind === "debt" &&
-              s.debts.find((d) => d.id === i.ref)?.balanceMode === "total"
-              ? s.debts.find((d) => d.id === i.ref).balance
-              : Infinity,
-          ),
-    };
-  });
+  return (s.budgets[m]?.items || planned(s, m))
+    .filter((i) => {
+      // A removed or archived debt must not leave unpaid commitments behind in
+      // other months' snapshots: they could be neither paid nor removed.
+      if (i.kind !== "debt") return true;
+      const d = s.debts.find((x) => x.id === i.ref);
+      return (
+        (d && !d.archived) || isPaid(s, i) || obligationRecorded(s, i.key) > 0
+      );
+    })
+    .map((i) => {
+      const recorded = obligationRecorded(s, i.key),
+        paid = isPaid(s, i);
+      return {
+        ...i,
+        paid,
+        recorded,
+        remaining: paid
+          ? 0
+          : Math.min(
+              Math.max(0, i.amount - recorded),
+              i.kind === "debt" &&
+                s.debts.find((d) => d.id === i.ref)?.balanceMode === "total"
+                ? s.debts.find((d) => d.id === i.ref).balance
+                : Infinity,
+            ),
+      };
+    });
 }
 function creditStatement(s, cardId, period = month()) {
   return K.statement(s, cardId, period, baseObligations(s, period));
@@ -388,6 +409,26 @@ function obligations(s, m = month()) {
       .map((c) => creditStatement(s, c.id, m))
       .filter((i) => i.amount > 0),
   ];
+}
+// Unpaid commitments of earlier months. Only months the app was already in use
+// (with a budget snapshot) count, and a fixed expense only from the day it was
+// registered, so a bill created today with an old first due date does not
+// produce invented arrears.
+const OVERDUE_MONTHS = 6;
+function overdueObligations(s, m = month(), lookback = OVERDUE_MONTHS) {
+  const out = [];
+  for (let p = addMonth(m, -lookback); p < m; p = addMonth(p, 1)) {
+    if (!s.budgets[p]) continue;
+    for (const i of obligations(s, p)) {
+      if (i.paid || !(i.remaining > 0) || i.date >= today()) continue;
+      if (i.kind === "fixed") {
+        const f = s.fixedExpenses.find((x) => x.id === i.ref);
+        if (!f || (f.createdDate && i.date < f.createdDate)) continue;
+      }
+      out.push(i);
+    }
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date));
 }
 function creditPeriods(s, cardId) {
   const card = s.creditCards.find((c) => c.id === cardId),
@@ -489,6 +530,10 @@ function applyCardCredit(s, cardId, period, amount, target = null) {
       "El importe supera el abono sin asignar o el periodo pendiente.",
     );
   let left = amount;
+  // What this call already applied to each statement line. A per-reference
+  // total would mix every installment of the same MSI and block the second.
+  const added = new Map();
+  const lineKey = (line) => `${line.kind}:${line.ref}:${line.obligation || ""}`;
   for (const payment of s.transactions.filter(
     (t) => t.kind === "card_payment" && t.creditCardId === cardId,
   )) {
@@ -497,10 +542,9 @@ function applyCardCredit(s, cardId, period, amount, target = null) {
     )) {
       let sourceLeft = Math.min(left, unapplied.amount);
       for (const line of lines) {
-        const previously = K.allocated(s, line.kind, line.ref);
         const remaining = Math.max(
           0,
-          line.remaining - (previously - line.recorded),
+          line.remaining - (added.get(lineKey(line)) || 0),
         );
         const part = Math.min(sourceLeft, remaining);
         if (!part) continue;
@@ -516,12 +560,11 @@ function applyCardCredit(s, cardId, period, amount, target = null) {
             ? { obligation: line.obligation, period, n: line.n }
             : {}),
         });
+        added.set(lineKey(line), (added.get(lineKey(line)) || 0) + part);
         if (line.kind === "debt") {
           const d = s.debts.find((d) => d.id === line.ref);
           d.balance -= part;
-          if (part === remaining && !d.paidPayments.includes(line.n))
-            d.paidPayments.push(line.n);
-          if (!d.balance) d.active = false;
+          syncCardInstallment(s, d, line.n);
         }
         unapplied.amount -= part;
         sourceLeft -= part;
@@ -996,6 +1039,43 @@ function metrics(s, m = month()) {
     dti: income > 0 ? (debt / income) * 100 : null,
   };
 }
+// An extra payment outside the installment schedule. When the balance is the
+// total owed, all of it reduces the debt; in principal-only mode the caller may
+// say which part is principal (the rest being interest), defaulting to all.
+function extraPayment(s, debtId, opts) {
+  const debt = s.debts.find((x) => x.id === debtId);
+  if (!debt || debt.archived) throw Error("Deuda no disponible.");
+  const amount = opts.amount;
+  if (!Number.isSafeInteger(amount) || amount <= 0)
+    throw Error("El importe debe ser mayor que cero.");
+  const principal =
+    debt.balanceMode === "principal" &&
+    opts.principal !== undefined &&
+    opts.principal !== null
+      ? opts.principal
+      : amount;
+  if (!Number.isSafeInteger(principal) || principal <= 0 || principal > amount)
+    throw Error(
+      "La parte que reduce el capital debe ser mayor que cero y no superar el importe pagado.",
+    );
+  if (principal > debt.balance)
+    throw Error(
+      `El abono supera el saldo pendiente de «${debt.name}» (${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(debt.balance / 100)}).`,
+    );
+  const value = record(s, {
+    kind: "debt",
+    name: debt.name + " · Abono",
+    amount,
+    principal,
+    ref: debtId,
+    date: opts.date,
+    accountId: opts.accountId,
+    categoryId: "",
+  });
+  debt.balance -= principal;
+  if (!debt.balance) debt.active = false;
+  return value;
+}
 function pay(s, key, opts) {
   const m = opts.period || month(),
     item = baseObligations(s, m).find((i) => i.key === key);
@@ -1134,9 +1214,25 @@ function checkMovement(s, t, replay = false) {
   }
   if (t.kind === "adjustment" && ![-1, 1].includes(t.direction))
     throw Error("Dirección inválida.");
+  if (!replay && t.kind === "adjustment" && t.direction === -1) {
+    // A balance may go negative (an overdraft), but never below the money
+    // that goals and boxes still claim: that would leave reserves of money
+    // that no longer exists.
+    const a = F.accountSummary(s).find((x) => x.id === t.accountId);
+    const committed = a ? a.total - a.available : 0;
+    if (committed > 0 && a.total - t.amount < committed)
+      throw Error(
+        `${a.name} tiene ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(committed / 100)} reservados en metas o congelados en cajitas. El saldo real no puede quedar por debajo de esa cantidad: libera primero esas reservas desde Metas o la cajita desde Cuentas.`,
+      );
+  }
   if (!replay) {
     if ([...F.cashKinds, "transfer"].includes(t.kind))
-      F.requireFunds(s, t.accountId, t.amount, t.kind, t.categoryId);
+      F.requireFunds(s, t.accountId, t.amount, t.kind, t.categoryId, {
+        internal:
+          t.kind === "transfer" &&
+          s.walletAccounts.find((x) => x.id === t.toAccountId)?.type !==
+            "restricted",
+      });
     else if (["income", "loan_in"].includes(t.kind))
       F.requireDestination(s, t.accountId, t.kind);
   }
@@ -1313,30 +1409,34 @@ function reverseTransaction(s, idTx) {
     (t.kind === "adjustment" && t.direction === 1)
   )
     F.requireFunds(s, t.accountId, t.amount, "reversal", t.categoryId);
-  if (t.kind === "transfer")
+  if (t.kind === "transfer") {
+    const restricted =
+      s.walletAccounts.find((a) => a.id === t.toAccountId)?.type ===
+      "restricted";
     F.requireFunds(
       s,
       t.toAccountId,
       t.amount,
-      s.walletAccounts.find((a) => a.id === t.toAccountId)?.type ===
-        "restricted"
-        ? "reversal"
-        : "transfer",
+      restricted ? "reversal" : "transfer",
+      "",
+      { internal: !restricted },
     );
+  }
   if (t.kind === "loan_out" && F.loanBalance(s, t.ref) < t.amount)
     throw Error("Revierte primero los cobros asociados.");
   if (K.isCreditPurchase(t) && K.allocated(s, "purchase", t.id))
     throw Error(
       "Revierte primero los pagos de tarjeta que cubren esta compra.",
     );
+  // Installments are re-derived after the payment is gone, so a mark left by a
+  // correction (legacyPaid) cannot keep a reopened installment looking paid.
+  const resync = [];
   if (t.kind === "card_payment") {
     for (const a of t.allocations.filter((a) => a.kind === "debt")) {
       const d = s.debts.find((d) => d.id === a.ref);
       d.balance += a.amount;
       d.active = true;
-      d.paidPayments = d.paidPayments.filter(
-        (n) => n !== a.n || d.historicalPaidPayments.includes(n),
-      );
+      resync.push([d, a.n]);
     }
   }
   if (t.kind === "debt") {
@@ -1355,6 +1455,7 @@ function reverseTransaction(s, idTx) {
     }
   }
   s.transactions = s.transactions.filter((x) => x.id !== idTx);
+  for (const [d, n] of resync) syncCardInstallment(s, d, n);
 }
 function editTransaction(s, idTx, value) {
   const original = s.transactions.find((t) => t.id === idTx);
@@ -1476,7 +1577,7 @@ function updateFixed(s, idFixed, value, rule) {
   const copy = clone(s);
   let f = copy.fixedExpenses.find((x) => x.id === idFixed);
   if (!f) {
-    f = { id: idFixed || id(), rules: [] };
+    f = { id: idFixed || id(), rules: [], createdDate: today() };
     copy.fixedExpenses.push(f);
   }
   if (!value.name?.trim()) throw Error("Escribe un nombre.");
@@ -1687,26 +1788,18 @@ function snapshot(s) {
   else s.liquidityHistory.push({ date, value, observed: true });
   s.liquidityHistory.sort((a, b) => a.date.localeCompare(b.date));
 }
+// The next 12 months plus the same bounded arrears that Home shows. Scanning
+// every month since the oldest start date made each save slower and counted
+// years of bills paid outside the app as pending.
 function reminders(s) {
   const dates = [],
-    months = new Set(Object.keys(s.budgets));
-  for (const c of s.creditCards)
-    for (const m of creditPeriods(s, c.id)) months.add(m);
-  let earliest = month();
-  for (const d of s.debts)
-    if (d.startDate && month(d.startDate) < earliest)
-      earliest = month(d.startDate);
-  for (const f of s.fixedExpenses)
-    for (const r of R.rulesFor(f))
-      if (!r.legacy && month(r.effectiveFrom) < earliest)
-        earliest = month(r.effectiveFrom);
-  earliest =
-    earliest < addMonth(month(), -1200) ? addMonth(month(), -1200) : earliest;
-  for (let m = earliest; m <= addMonth(month(), 11); m = addMonth(m, 1))
-    months.add(m);
-  for (const m of months)
+    current = month();
+  for (const i of overdueObligations(s, current))
+    dates.push({ id: i.key, name: i.name, date: i.date });
+  for (let m = current; m <= addMonth(current, 11); m = addMonth(m, 1))
     for (const i of obligations(s, m))
-      if (!i.paid) dates.push({ id: i.key, name: i.name, date: i.date });
+      if (!i.paid && i.remaining > 0)
+        dates.push({ id: i.key, name: i.name, date: i.date });
   for (const l of s.receivables)
     if (!l.archived && l.dueDate && F.loanBalance(s, l.id) > 0)
       dates.push({ id: "loan:" + l.id, name: l.name, date: l.dueDate });
@@ -1737,8 +1830,10 @@ export default {
   refreshAllBudgets,
   isPaid,
   obligations,
+  overdueObligations,
   metrics,
   pay,
+  extraPayment,
   record,
   reverseTransaction,
   editTransaction,
