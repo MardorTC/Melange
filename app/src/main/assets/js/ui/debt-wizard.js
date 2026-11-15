@@ -125,6 +125,7 @@ function syncDebtFields() {
     visible.add("totalPayments");
     visible.add("startDate");
     visible.add("priorPaid");
+    if (form?.dataset.debtEditing !== "1") visible.add("current");
   }
   if (
     type === "loan-open" &&
@@ -159,8 +160,39 @@ function syncDebtFields() {
   // Today's date would make the purchase look overdue.
   const start = form?.querySelector('[name="startDate"]');
   const card = model.state.creditCards.find((c) => c.id === linkedCard);
+  // "Pago X de N": fill what the statement does not print, unless typed.
+  const current = Number(form?.querySelector('[name="current"]')?.value || 0);
+  if (current && form?.dataset.debtEditing !== "1") {
+    const dueDay = Number(form.querySelector('[name="dueDay"]')?.value || 1);
+    const nextDue = card
+      ? C.creditDueDate(card, C.today())
+      : C.dueDate(C.month(), dueDay) >= C.today()
+        ? C.dueDate(C.month(), dueDay)
+        : C.dueDate(C.addMonth(C.month(), 1), dueDay);
+    try {
+      const raw = form.querySelector('[name="payment"]')?.value || "0";
+      const progress = C.installmentProgress({
+        payment: moneyValue(raw),
+        totalPayments: Number(
+          form.querySelector('[name="totalPayments"]')?.value,
+        ),
+        current,
+        nextDue,
+      });
+      const priorField = form.querySelector('[name="priorPaid"]'),
+        balanceField = form.querySelector('[name="balance"]');
+      if (priorField && !priorField.dataset.touched)
+        priorField.value = progress.priorPaid;
+      if (balanceField && !balanceField.dataset.touched && progress.balance)
+        balanceField.value = String(progress.balance / 100);
+      if (start && !start.dataset.touched) start.value = progress.startDate;
+    } catch {
+      // Incomplete numbers: wait until the plan is valid.
+    }
+  }
   const prior = Number(form?.querySelector('[name="priorPaid"]')?.value || 0);
   if (
+    !current &&
     card &&
     start &&
     form?.dataset.debtEditing !== "1" &&
@@ -177,18 +209,21 @@ function syncDebtFields() {
           card
             ? card.paymentDay
             : Number(form.querySelector('[name="dueDay"]')?.value),
+          type === "msi" ? "mensualidad" : "cuota",
         )
       : "";
 }
 
 // The same words as the MSI rows of the card form.
 const MSI_LABELS = {
+  current: "¿Qué número de mensualidad viene en tu próximo pago?",
   payment: "Mensualidad",
   totalPayments: "Mensualidades en total",
   priorPaid: "Mensualidades ya pagadas antes de usar la app",
   startDate: "Fecha de la primera mensualidad",
 };
 const INSTALLMENT_LABELS = {
+  current: "¿Qué número de cuota viene en tu próximo pago?",
   payment: "Cuota mensual (0 si no la conoces)",
   totalPayments: "Número de cuotas (0 = sin plazo)",
   priorPaid: "Cuotas ya liquidadas antes del registro",
@@ -337,6 +372,16 @@ export function debtForm(id) {
         d.historicalPaidPayments?.length || 0,
         "number",
         'min="0" max="1200"',
+      ),
+    ) +
+    field(
+      "current",
+      input(
+        "current",
+        "¿Qué número de mensualidad viene en tu próximo pago?",
+        "",
+        "number",
+        'min="1" max="1200" placeholder="Ej. 4 si tu estado de cuenta dice «4 de 12»"',
       ),
     ) +
     field(
@@ -542,6 +587,26 @@ export function debtForm(id) {
               `Ya registraste "${duplicate.name}" por ese importe en esta tarjeta. Si es la misma compra, no la dupliques como MSI: revisa la compra o elimina una de las dos fuentes.`,
             );
         }
+        if (!id && linkedCard) {
+          // Same path as the card form: one validation, one shape.
+          const { name, balance, payment, totalPayments, startDate, ...extra } =
+            value;
+          C.linkCardInstallment(
+            s,
+            linkedCard,
+            { name, balance, payment, totalPayments, startDate, priorPaid },
+            includedInCard,
+            {
+              creditorId: extra.creditorId || "",
+              originalAmount: extra.originalAmount || undefined,
+              financingCost: extra.financingCost,
+              annualRate: extra.annualRate,
+              notes: extra.notes,
+            },
+          );
+          C.refreshAllBudgets(s);
+          return;
+        }
         if (id)
           Object.assign(
             s.debts.find((x) => x.id === id),
@@ -596,7 +661,15 @@ export function debtForm(id) {
     ?.addEventListener("input", (event) => {
       event.target.dataset.touched = "1";
     });
+  for (const name of ["priorPaid", "balance"])
+    formEl
+      ?.querySelector(`[name="${name}"]`)
+      ?.addEventListener("input", (event) => {
+        event.target.dataset.touched = "1";
+      });
   for (const name of [
+    "current",
+    "payment",
     "priorPaid",
     "totalPayments",
     "balance",

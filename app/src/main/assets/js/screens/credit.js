@@ -58,6 +58,12 @@ export function firstInstallmentDate(nextDue, priorPaid) {
 document.addEventListener("input", (event) => {
   if (event.target.matches?.('[data-msi-row] [name$="_startDate"]'))
     event.target.dataset.auto = "0";
+  if (
+    event.target.matches?.(
+      '[data-msi-row] [name$="_balance"], [data-msi-row] [name$="_priorPaid"]',
+    )
+  )
+    event.target.dataset.touched = "1";
 });
 
 function installmentFields(d = {}, draftKey) {
@@ -85,9 +91,10 @@ function installmentFields(d = {}, draftKey) {
           ).replace("<select ", "<select required ")
         : ""
     }
-    ${amount(field("balance"), "Saldo pendiente de esta compra", d.id ? d.balance : null)}
     ${amount(field("payment"), "Mensualidad", d.id ? d.payment : null)}
     ${input(field("totalPayments"), "Mensualidades en total", d.totalPayments || "", "number", 'required min="1" max="1200" placeholder="Ej. 12"')}
+    ${d.id ? "" : input(field("current"), "¿Qué número de mensualidad viene en tu próximo pago?", "", "number", 'min="1" max="1200" placeholder="Ej. 4 si tu estado de cuenta dice «4 de 12»"') + '<p class="note">Con la mensualidad, el plazo y este número calculamos los datos de abajo. Corrígelos solo si tu banco dice otra cosa.</p>'}
+    ${amount(field("balance"), "Saldo pendiente de esta compra", d.id ? d.balance : null)}
     ${input(field("priorPaid"), "Mensualidades ya pagadas antes de usar la app", d.historicalPaidPayments?.length || 0, "number", 'required min="0" max="1200"')}
     ${input(field("startDate"), "Fecha de la primera mensualidad", d.startDate || defaultInstallmentDate(), "date", `required ${d.id ? "" : 'data-auto="1"'}`)}
     <p class="note" data-msi-summary aria-live="polite"></p>
@@ -97,7 +104,7 @@ function installmentFields(d = {}, draftKey) {
 
 // What the app will do with a row, in the bank's own terms, so a wrong prior
 // count or first date is visible before saving.
-export function installmentSummary(row, paymentDay) {
+export function installmentSummary(row, paymentDay, noun = "mensualidad") {
   const value = (name) =>
     row.querySelector(`[name$="_${name}"], [name="${name}"]`)?.value || "";
   const total = Number(value("totalPayments")),
@@ -128,7 +135,7 @@ export function installmentSummary(row, paymentDay) {
         : nextMonth + "-01",
     remaining = total - prior,
     expected = payment * remaining;
-  let text = `Siguiente: mensualidad ${next} de ${total}, ${dlabel(nextDate)}. Quedan ${remaining} × ${money(payment)} = ${money(expected)}.`;
+  let text = `Siguiente: ${noun} ${next} de ${total}, ${dlabel(nextDate)}. Quedan ${remaining} × ${money(payment)} = ${money(expected)}.`;
   if (balance > expected && balance - expected <= total)
     text += ` La última será de ${money(payment + balance - expected)} para cubrir los centavos.`;
   if (nextDate < C.today())
@@ -153,10 +160,35 @@ function lockInstallments() {
   }
 }
 
+// "Pago X de N" fills what the bank does not print, unless the user already
+// wrote those numbers.
+function applyInstallmentProgress() {
+  for (const row of document.querySelectorAll("[data-msi-row]")) {
+    const current = Number(row.querySelector('[name$="_current"]')?.value);
+    if (!current) continue;
+    try {
+      const read = (name) => row.querySelector(`[name$="_${name}"]`);
+      const progress = C.installmentProgress({
+        payment: moneyValue(read("payment").value || "0"),
+        totalPayments: Number(read("totalPayments").value),
+        current,
+        nextDue: defaultInstallmentDate(),
+      });
+      if (!read("priorPaid").dataset.touched)
+        read("priorPaid").value = progress.priorPaid;
+      if (!read("balance").dataset.touched && progress.balance)
+        read("balance").value = String(progress.balance / 100);
+    } catch {
+      // Incomplete numbers: the summary stays empty until they are valid.
+    }
+  }
+}
+
 export function updateCardPreview() {
   const target = document.querySelector("#card-balance-preview");
   if (!target) return;
   const dateWarning = document.querySelector("#card-date-warning");
+  applyInstallmentProgress();
   try {
     const total = moneyValue(
       document.querySelector('[name="openingBalance"]').value || "0",

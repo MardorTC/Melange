@@ -1702,26 +1702,8 @@ function saveCreditCard(s, cardId, value, installments = []) {
         `El MSI «${d.name}» tiene pagos registrados. Sus importes y calendario se conservan; puedes cambiar su nombre.`,
       );
     if (!d) {
-      d = {
-        id: id(),
-        creditorId: "",
-        type: "msi",
-        creditCardId: targetId,
-        balanceMode: "total",
-        originalAmount: Math.max(
-          input.balance,
-          input.payment * input.totalPayments,
-        ),
-        financingCost: 0,
-        annualRate: 0,
-        notes: "",
-        historicalPaidPayments: [],
-        paidPayments: [],
-        paidMonths: [],
-        active: true,
-        archived: false,
-      };
-      copy.debts.push(d);
+      newCardInstallment(copy, targetId, { ...input, ...fields });
+      continue;
     }
     Object.assign(d, fields, { active: fields.balance > 0 });
     if (!paid) setPriorPayments(copy, d, input.priorPaid);
@@ -1754,6 +1736,86 @@ function saveCreditCard(s, cardId, value, installments = []) {
 // A debt being linked to a card whose registered balance already included it
 // (the bank's total contains every MSI). Its balance moves out of the card's
 // previous balance instead of being added on top of it.
+// The bank prints "Pago 4 de 12": the number of the installment in the next
+// payment. From it and that payment's date, derive what the ledger stores.
+function installmentProgress({ payment, totalPayments, current, nextDue }) {
+  if (
+    !Number.isInteger(totalPayments) ||
+    totalPayments < 1 ||
+    !Number.isInteger(current) ||
+    current < 1 ||
+    current > totalPayments ||
+    !validDate(nextDue)
+  )
+    throw Error(
+      "Revisa el número de mensualidad: debe estar entre 1 y el plazo total.",
+    );
+  const priorPaid = current - 1;
+  return {
+    priorPaid,
+    balance:
+      Number.isSafeInteger(payment) && payment > 0
+        ? payment * (totalPayments - priorPaid)
+        : 0,
+    startDate: dueDate(
+      addMonth(month(nextDue), -priorPaid),
+      Number(nextDue.slice(8)),
+    ),
+  };
+}
+// The single way to create an MSI on a card: from the card form and from
+// Debts. `extra` keeps optional data the Debts form collects.
+function newCardInstallment(s, cardId, input, extra = {}) {
+  const card = s.creditCards.find((c) => c.id === cardId);
+  if (!card) throw Error("Tarjeta no encontrada.");
+  const fields = {
+    name: String(input.name || "").trim(),
+    balance: input.balance,
+    payment: input.payment,
+    totalPayments: input.totalPayments,
+    startDate: input.startDate,
+    dueDay: input.dueDay ?? card.paymentDay,
+  };
+  if (!fields.name || !(fields.payment > 0) || !(fields.totalPayments > 0))
+    throw Error("Completa el nombre, mensualidad y plazo de cada MSI.");
+  if (!validDate(fields.startDate))
+    throw Error("Indica la fecha de la primera mensualidad.");
+  K.validateInstallmentPlan(fields, input.priorPaid || 0, 0);
+  const d = {
+    id: id(),
+    creditorId: "",
+    type: "msi",
+    creditCardId: cardId,
+    balanceMode: "total",
+    originalAmount: Math.max(
+      input.balance,
+      input.payment * input.totalPayments,
+    ),
+    financingCost: 0,
+    annualRate: 0,
+    notes: "",
+    ...Object.fromEntries(
+      Object.entries(extra).filter(([, value]) => value !== undefined),
+    ),
+    ...fields,
+    historicalPaidPayments: [],
+    paidPayments: [],
+    paidMonths: [],
+    active: fields.balance > 0,
+    archived: false,
+  };
+  s.debts.push(d);
+  setPriorPayments(s, d, input.priorPaid || 0);
+  return d;
+}
+// Link a new MSI from Debts. `included`: the card balance already had it.
+function linkCardInstallment(s, cardId, input, included, extra = {}) {
+  const card = s.creditCards.find((c) => c.id === cardId);
+  if (!card || card.active === false) throw Error("Elige una tarjeta activa.");
+  const d = newCardInstallment(s, cardId, input, extra);
+  if (included) absorbIntoCardBalance(s, cardId, d.balance);
+  return d;
+}
 function absorbIntoCardBalance(s, cardId, amount) {
   const card = s.creditCards.find((c) => c.id === cardId);
   if (!card) throw Error("Tarjeta no encontrada.");
@@ -1875,6 +1937,8 @@ export default {
   updateFixed,
   saveCreditCard,
   absorbIntoCardBalance,
+  installmentProgress,
+  linkCardInstallment,
   setPriorPayments,
   snapshot,
   ledgerEntries,

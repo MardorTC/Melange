@@ -146,3 +146,70 @@ test("the previous balance is due on the last closed statement still ahead", () 
     "2026-12-05",
   );
 });
+
+test("«Pago 4 de 12» becomes prior installments, balance and first date", () => {
+  assert.deepEqual(
+    C.installmentProgress({
+      payment: 50000,
+      totalPayments: 12,
+      current: 4,
+      nextDue: "2026-12-05",
+    }),
+    { priorPaid: 3, balance: 450000, startDate: "2026-09-05" },
+  );
+  // Month-end payment days clamp without drifting.
+  assert.equal(
+    C.installmentProgress({
+      payment: 50000,
+      totalPayments: 12,
+      current: 2,
+      nextDue: "2026-03-31",
+    }).startDate,
+    "2026-02-28",
+  );
+  assert.throws(
+    () =>
+      C.installmentProgress({
+        payment: 50000,
+        totalPayments: 12,
+        current: 13,
+        nextDue: "2026-12-05",
+      }),
+    /entre 1 y el plazo/,
+  );
+});
+
+test("an MSI linked from Debts is built like one added on the card", () => {
+  const { s, id } = card(0);
+  const plan = C.installmentProgress({
+    payment: 50000,
+    totalPayments: 12,
+    current: 4,
+    nextDue: C.creditDueDate(s.creditCards[0], C.today()),
+  });
+  const d = C.linkCardInstallment(
+    s,
+    id,
+    { name: "Tele", payment: 50000, totalPayments: 12, ...plan },
+    false,
+    { notes: "Liverpool", originalAmount: undefined },
+  );
+  assert.equal(d.dueDay, 5);
+  assert.equal(d.notes, "Liverpool");
+  assert.equal(d.originalAmount, 600000);
+  assert.deepEqual(d.historicalPaidPayments, [1, 2, 3]);
+  assert.equal(C.creditSummary(s, id).used, 450000);
+  // The next installment is not reported as overdue.
+  C.refreshAllBudgets(s);
+  assert.deepEqual(C.overdueObligations(s), []);
+  assert.throws(
+    () =>
+      C.linkCardInstallment(
+        s,
+        id,
+        { name: "Sin plazo", payment: 50000, totalPayments: 0 },
+        false,
+      ),
+    /mensualidad y plazo/,
+  );
+});
