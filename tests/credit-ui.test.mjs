@@ -69,8 +69,8 @@ try {
       original: original.state,
     };
   });
-  assert.equal(migrated.schema, 10);
-  assert.equal(migrated.history, 10);
+  assert.equal(migrated.schema, 11);
+  assert.equal(migrated.history, 11);
   assert.deepEqual(migrated.original, old);
   await page.locator('[data-action="tab"][data-id="accounts"]').first().click();
   await page.locator('[data-action="accountSub"][data-id="credit"]').click();

@@ -53,6 +53,17 @@ La migración v8 → v9 agrega el catálogo vacío a libro y deshacer. SQLite y 
 
 El esquema v10 admite aplicaciones `unassigned` en `card_payment`. El pago sigue siendo una transacción única que descuenta efectivo. El crédito utilizado resta esas aplicaciones sin alterar saldos de MSI ni marcar obligaciones pagadas. `applyCardCredit` traslada aplicaciones del mismo pago a líneas existentes, conservando el importe y la fecha originales; al completar una cuota se actualiza la deuda. La validación comprueba referencias, suma de aplicaciones y saldo no negativo. Deshacer el pago revierte también cualquier aplicación conciliada. La migración v9 → v10 transforma libro e historial sin tocar sus importes; las reglas de gastos fijos pueden guardar `creditCardId` como origen previsto por vigencia.
 
+## Libro v11 y compras a meses por asociar
+
+El esquema v11 agrega a cada tarjeta el campo opcional `pendingInstallments` (centavos): compras a meses que el saldo total del banco incluye pero que el usuario aún no detalla. `creditSummary` las suma al usado y las resta del disponible, pero ningún estado de cuenta las cobra.
+
+- **Alta de tarjeta:** `saveCreditCard` acepta `nextPayment` (el «pago para no generar intereses»). El saldo anterior queda en ese pago menos las mensualidades capturadas en ese periodo, y el resto se guarda como por asociar.
+- **Asociar:** un MSI nuevo marcado como incluido, ya sea desde la tarjeta o con `linkCardInstallment` desde Deudas, se descuenta primero de lo por asociar y después del saldo anterior (`absorbIntoCardBalance`).
+- **Una sola forma de crear MSI:** `newCardInstallment`. `installmentProgress` convierte «Pago X de N» en mensualidades pagadas, saldo y primera fecha.
+- **Redondeo:** la última mensualidad absorbe hasta un centavo por mensualidad.
+
+La migración v10 → v11 no cambia datos. El número de esquema sube para que una versión anterior no lea una tarjeta con lo por asociar como si tuviera menos deuda. Los datos de un esquema mayor se rechazan con un mensaje que pide actualizar la app. El esquema se valida en `finance.js`, en `NativeBridge` (`write` y `writeRecovery`) y en el sobre de respaldo (`version`).
+
 ## Shell móvil
 
 `navigation.js` separa la cabecera grande de cada pantalla de la barra compacta que aparece al desplazar. La barra se reconstruye solo cuando cambia la pantalla o su visibilidad y no duplica acciones del contenido. Las pantallas de detalle (`timeline`, `projection`, `settings`) ocultan la navegación inferior y ofrecen Volver; Inicio y las cuatro pestañas principales conservan la barra flotante.

@@ -88,11 +88,11 @@ public class AndroidSmokeTest {
       assertEquals(
           "true", eval(instrumentation, web, "JSON.parse(NativeOSP.read()).state.started"));
       assertEquals(
-          "10", eval(instrumentation, web, "JSON.parse(NativeOSP.read()).state.schemaVersion"));
+          "11", eval(instrumentation, web, "JSON.parse(NativeOSP.read()).state.schemaVersion"));
       assertEquals(
           "\"undefined\"", eval(instrumentation, web, "typeof JSON.parse(NativeOSP.read()).draft"));
       assertEquals(
-          "10",
+          "11",
           eval(
               instrumentation, web, "JSON.parse(NativeOSP.read()).history[0].state.schemaVersion"));
       assertEquals(

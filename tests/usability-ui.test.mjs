@@ -109,11 +109,13 @@ try {
       exact: true,
     })
     .click();
+  // Editing offers every field of creation except the next statement
+  // payment: after creation, MSI pending association are detailed one by one.
   assert.deepEqual(
     await page
       .locator("#form > label input")
       .evaluateAll((es) => es.map((e) => e.name).sort()),
-    commonFields,
+    commonFields.filter((name) => name !== "nextPayment"),
   );
   assert.equal(
     await page.locator('[name="openingBalance"]').inputValue(),

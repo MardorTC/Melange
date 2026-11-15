@@ -213,3 +213,94 @@ test("an MSI linked from Debts is built like one added on the card", () => {
     /mensualidad y plazo/,
   );
 });
+
+const cardWithNext = (total, nextPayment, installments = []) => {
+  const s = book();
+  const id = C.saveCreditCard(
+    s,
+    null,
+    {
+      name: "Visa",
+      limit: 5000000,
+      closingDay: 15,
+      paymentDay: 5,
+      totalBalance: total,
+      nextPayment,
+      openingDueDate: C.addMonth(current, 1) + "-05",
+    },
+    installments,
+  );
+  return { s, id };
+};
+
+test("the next statement payment separates MSI still to be associated", () => {
+  const { s, id } = cardWithNext(1200000, 700000);
+  const summary = C.creditSummary(s, id);
+  assert.equal(summary.used, 1200000);
+  assert.equal(summary.pendingInstallments, 500000);
+  assert.equal(
+    C.creditStatement(s, id, C.addMonth(current, 1)).remaining,
+    700000,
+  );
+  assert.throws(() => cardWithNext(500000, 700000), /no puede ser mayor/);
+});
+
+test("associating an MSI takes it from the pending amount first", () => {
+  // Total $12,000, next payment $7,000: $5,000 of MSI not detailed.
+  const fromCard = cardWithNext(1200000, 700000);
+  const plan = C.installmentProgress({
+    payment: 100000,
+    totalPayments: 12,
+    current: 7,
+    nextDue: C.addMonth(current, 1) + "-05",
+  });
+  C.saveCreditCard(
+    fromCard.s,
+    fromCard.id,
+    {
+      name: "Visa",
+      limit: 5000000,
+      closingDay: 15,
+      paymentDay: 5,
+      totalBalance: C.creditSummary(fromCard.s, fromCard.id).used,
+      openingDueDate: C.addMonth(current, 1) + "-05",
+    },
+    [
+      {
+        name: "Laptop",
+        payment: 100000,
+        totalPayments: 12,
+        included: true,
+        ...plan,
+      },
+    ],
+  );
+  const after = C.creditSummary(fromCard.s, fromCard.id);
+  assert.equal(after.used, 1200000);
+  assert.equal(after.pendingInstallments, 0);
+  assert.equal(
+    C.creditStatement(fromCard.s, fromCard.id, C.addMonth(current, 1))
+      .remaining,
+    700000,
+  );
+  // Same result linking it from Debts as "ya incluida".
+  const fromDebts = cardWithNext(1200000, 700000);
+  C.linkCardInstallment(
+    fromDebts.s,
+    fromDebts.id,
+    { name: "Laptop", payment: 100000, totalPayments: 12, ...plan },
+    true,
+  );
+  assert.equal(C.creditSummary(fromDebts.s, fromDebts.id).used, 1200000);
+  assert.equal(fromDebts.s.creditCards[0].pendingInstallments, 0);
+  assert.equal(fromDebts.s.creditCards[0].openingBalance, 600000);
+});
+
+test("schema 11 migrates v10 books and refuses data from newer versions", () => {
+  const v10 = { ...C.empty(), schemaVersion: 10 };
+  assert.equal(C.migrate(v10).schemaVersion, 11);
+  assert.throws(
+    () => C.migrate({ ...C.empty(), schemaVersion: 12 }),
+    /versión más nueva/,
+  );
+});

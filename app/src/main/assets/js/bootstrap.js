@@ -88,6 +88,7 @@ document.addEventListener("input", (e) => {
   if (
     e.target.closest("#card-installments") ||
     e.target.name === "openingBalance" ||
+    e.target.name === "nextPayment" ||
     e.target.name === "paymentDay" ||
     e.target.name === "closingDay"
   )

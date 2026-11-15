@@ -6,7 +6,7 @@ const { id, clone, cents, today, month, addMonth, dueDate, validDate } = L;
 const balances = F.balances;
 function empty() {
   const s = L.empty();
-  s.schemaVersion = 10;
+  s.schemaVersion = 11;
   s.creditCards = [];
   s.creditors = s.accounts;
   delete s.accounts;
@@ -106,14 +106,22 @@ function convertTransaction(t) {
 }
 function migrate(raw) {
   if (raw?.format === "projectosp-backup") raw = raw.state;
-  if (raw?.schemaVersion === 10) return validate(clone(raw));
+  if (Number.isInteger(raw?.schemaVersion) && raw.schemaVersion > 11)
+    throw Error(
+      "Estos datos son de una versión más nueva de Melange. Actualiza la app para abrirlos.",
+    );
+  if (raw?.schemaVersion === 11) return validate(clone(raw));
+  // v11 adds the optional card field pendingInstallments; v10 data is valid
+  // as is. The bump keeps older versions from reading it with a lower balance.
+  if (raw?.schemaVersion === 10)
+    return validate({ ...clone(raw), schemaVersion: 11 });
   if (raw?.schemaVersion === 9)
-    return validate({ ...clone(raw), schemaVersion: 10 });
+    return validate({ ...clone(raw), schemaVersion: 11 });
   if (raw?.schemaVersion === 8)
-    return validate({ ...clone(raw), schemaVersion: 10, creditCards: [] });
+    return validate({ ...clone(raw), schemaVersion: 11, creditCards: [] });
   const old = L.migrate(raw),
     s = clone(old);
-  s.schemaVersion = 10;
+  s.schemaVersion = 11;
   s.creditCards = [];
   s.creditors = s.accounts;
   delete s.accounts;
@@ -177,7 +185,7 @@ function migrateEnvelope(saved) {
 function validate(s) {
   if (
     !s ||
-    s.schemaVersion !== 10 ||
+    s.schemaVersion !== 11 ||
     !s.settings ||
     !s.budgets ||
     !Number.isSafeInteger(s.income) ||
@@ -1714,20 +1722,61 @@ function saveCreditCard(s, cardId, value, installments = []) {
   const added = installments
     .filter((i) => !i.id && i.included === false)
     .reduce((n, i) => n + i.balance, 0);
-  const summary = K.creditSummary(copy, targetId),
-    openingPaid = K.allocated(copy, "opening", targetId),
-    purchases = summary.purchases - card.openingBalance + openingPaid;
-  const opening =
-    value.totalBalance +
-    added -
-    summary.installments -
-    purchases +
-    summary.unassigned;
-  if (!Number.isSafeInteger(opening) || opening < 0)
-    throw Error(
-      "El saldo total no puede ser menor que los MSI y las compras pendientes, descontando los abonos. Revisa el saldo total de tu banco.",
-    );
-  card.openingBalance = opening + openingPaid;
+  // New rows that were in the total come first out of the MSI still waiting
+  // to be associated, then out of the previous balance.
+  const includedNew = installments
+    .filter((i) => !i.id && i.included !== false)
+    .reduce((n, i) => n + i.balance, 0);
+  card.pendingInstallments = Math.max(
+    0,
+    (card.pendingInstallments || 0) - includedNew,
+  );
+  if (
+    !existing &&
+    value.nextPayment !== undefined &&
+    value.nextPayment !== null
+  ) {
+    // The statement's "pago para no generar intereses" is what is billed
+    // next: previous balance plus the installments of that statement. The
+    // rest of the total is MSI not detailed yet.
+    if (!Number.isSafeInteger(value.nextPayment) || value.nextPayment < 0)
+      throw Error("Revisa el pago de tu próximo estado de cuenta.");
+    const rowsDue = K.statement(
+      copy,
+      targetId,
+      month(value.openingDueDate),
+      baseObligations(copy, month(value.openingDueDate)),
+    )
+      .lines.filter((line) => line.kind === "debt")
+      .reduce((n, line) => n + line.amount, 0);
+    const rows = K.creditSummary(copy, targetId).installments;
+    const opening = value.nextPayment - rowsDue,
+      pending = value.totalBalance - opening - rows;
+    if (opening < 0 || pending < 0)
+      throw Error(
+        value.nextPayment > value.totalBalance
+          ? "El pago del próximo estado de cuenta no puede ser mayor que el saldo total."
+          : "Con las compras a meses capturadas, el pago del próximo estado de cuenta no cuadra con el saldo total. Revisa ambos importes en tu estado de cuenta.",
+      );
+    card.openingBalance = opening;
+    card.pendingInstallments = pending;
+  } else {
+    const summary = K.creditSummary(copy, targetId),
+      openingPaid = K.allocated(copy, "opening", targetId),
+      purchases = summary.purchases - card.openingBalance + openingPaid;
+    const opening =
+      value.totalBalance +
+      added -
+      summary.installments -
+      summary.pendingInstallments -
+      purchases +
+      summary.unassigned;
+    if (!Number.isSafeInteger(opening) || opening < 0)
+      throw Error(
+        "El saldo total no puede ser menor que los MSI y las compras pendientes, descontando los abonos. Revisa el saldo total de tu banco.",
+      );
+    card.openingBalance = opening + openingPaid;
+  }
   refreshAllBudgets(copy);
   validate(copy);
   Object.assign(s, copy);
@@ -1819,11 +1868,15 @@ function linkCardInstallment(s, cardId, input, included, extra = {}) {
 function absorbIntoCardBalance(s, cardId, amount) {
   const card = s.creditCards.find((c) => c.id === cardId);
   if (!card) throw Error("Tarjeta no encontrada.");
+  const pending = card.pendingInstallments || 0,
+    fromPending = Math.min(pending, amount);
+  amount -= fromPending;
   const available = card.openingBalance - K.allocated(s, "opening", cardId);
   if (amount > available)
     throw Error(
       `El saldo anterior registrado de «${card.name}» es ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(available / 100)} y esta compra a meses tiene ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(amount / 100)} pendientes. Si la compra no estaba en ese saldo, elige «No, súmala a la tarjeta»; si sí estaba, corrige primero el saldo total de la tarjeta.`,
     );
+  card.pendingInstallments = pending - fromPending;
   card.openingBalance -= amount;
 }
 function ledgerEntries(s) {

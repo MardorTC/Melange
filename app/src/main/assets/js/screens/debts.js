@@ -43,6 +43,10 @@ export function debtsPage() {
       (n, card) => n + card.summary.unassigned,
       0,
     ),
+    cardPending = breakdown.cards.reduce(
+      (n, card) => n + card.summary.pendingInstallments,
+      0,
+    ),
     noDateCount = plan.rows.filter((row) => !row.end).length,
     parts = [
       loans.length
@@ -67,7 +71,7 @@ export function debtsPage() {
       <small>Deuda total</small>
       <div class="metric">${money(breakdown.total)}</div>
        <p class="note">${parts.length ? parts.join(" · ") : "Sin deudas activas"}</p>
-       ${breakdown.cards.length ? `<p class="note">Tarjetas ya incluidas en el total: ${money(cardPurchases)} de compras y saldo anterior + ${money(cardInstallments)} de compras a meses${cardUnassigned ? ` − ${money(cardUnassigned)} en pagos todavía sin desglose` : ""}. No vuelvas a sumar estos importes.</p>` : ""}
+       ${breakdown.cards.length ? `<p class="note">Tarjetas ya incluidas en el total: ${money(cardPurchases)} de compras y saldo anterior + ${money(cardInstallments)} de compras a meses${cardPending ? ` + ${money(cardPending)} de compras a meses por asociar` : ""}${cardUnassigned ? ` − ${money(cardUnassigned)} en pagos todavía sin desglose` : ""}. No vuelvas a sumar estos importes.</p>` : ""}
       <div class="hero-split">
         <div><small>Libre de cuotas</small><strong class="free-date">${plan.debtFreeMonth ? mlabel(plan.debtFreeMonth) : "Sin fecha"}</strong></div>
         <div><small>Cuota normal</small><strong>${money(plan.monthlyPayment)}</strong></div>
@@ -102,7 +106,7 @@ function cardRow({ card, summary, installments }, plan) {
   const pct = card.limit ? Math.min(100, (summary.used / card.limit) * 100) : 0,
     msi = plan.rows.filter((row) => row.cardId === card.id),
     overdue = next && next.date < C.today();
-  return `<div class="credit-debt-row"><span class="visual-icon debt">${svg("card")}</span><div class="credit-debt-copy"><button class="credit-title-btn" data-action="creditDetails" data-id="${esc(card.id)}">${esc(card.name)}</button><small>${installments.length ? `${installments.length} ${installments.length === 1 ? "compra a meses" : "compras a meses"}` : "Compras y saldo de la tarjeta"}${next ? ` · ${overdue ? "vencido" : "próximo"} ${shortDate(next.date)}` : ""}</small><div class="bar mini"><span style="--p:${pct}%"></span></div></div><div class="credit-debt-side"><strong>${money(summary.used)}</strong>${next && summary.used > 0 ? `<button class="text-action" data-action="creditPay" data-id="${esc(card.id)}">Pagar</button>` : ""}</div></div>${
+  return `<div class="credit-debt-row"><span class="visual-icon debt">${svg("card")}</span><div class="credit-debt-copy"><button class="credit-title-btn" data-action="creditDetails" data-id="${esc(card.id)}">${esc(card.name)}</button><small>${installments.length ? `${installments.length} ${installments.length === 1 ? "compra a meses" : "compras a meses"}` : "Compras y saldo de la tarjeta"}${summary.pendingInstallments ? ` · ${money(summary.pendingInstallments)} por asociar` : ""}${next ? ` · ${overdue ? "vencido" : "próximo"} ${shortDate(next.date)}` : ""}</small><div class="bar mini"><span style="--p:${pct}%"></span></div></div><div class="credit-debt-side"><strong>${money(summary.used)}</strong>${next && summary.used > 0 ? `<button class="text-action" data-action="creditPay" data-id="${esc(card.id)}">Pagar</button>` : ""}</div></div>${
     msi.length
       ? `<details class="more-actions msi-details"><summary>${msi.length} ${msi.length === 1 ? "compra" : "compras"} a meses: cuotas y fechas</summary>${msi.map((row) => `<div class="msi-row"><span>${esc(row.name)}<small>${money(row.payment)}/mes · termina ${row.end ? mlabel(row.end) : "sin fecha"}${row.partial ? ` · faltan ${money(row.currentRemaining)} de esta cuota` : ""}</small></span><strong>${money(row.balance)}</strong></div>`).join("")}</details>`
       : ""

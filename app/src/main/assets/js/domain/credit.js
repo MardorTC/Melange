@@ -63,13 +63,18 @@ export function creditSummary(s, cardId) {
     (d) => d.balance,
   );
   const unassigned = allocated(s, "unassigned", cardId);
+  // MSI the bank total included but the user has not detailed yet: they use
+  // credit, but no installment is billed until they are associated.
+  const pendingInstallments = card.pendingInstallments || 0;
   return {
     ...card,
     purchases,
     installments,
     unassigned,
-    used: purchases + installments - unassigned,
-    available: card.limit - purchases - installments + unassigned,
+    pendingInstallments,
+    used: purchases + installments + pendingInstallments - unassigned,
+    available:
+      card.limit - purchases - installments - pendingInstallments + unassigned,
   };
 }
 export function statement(s, cardId, period, items) {
@@ -167,6 +172,7 @@ export function validateCredit(s) {
       !money(c.limit) ||
       !c.limit ||
       !money(c.openingBalance) ||
+      !money(c.pendingInstallments ?? 0) ||
       !L.validDate(c.openingDueDate) ||
       ![c.closingDay, c.paymentDay].every(
         (d) => Number.isInteger(d) && d >= 1 && d <= 31,

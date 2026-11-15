@@ -49,7 +49,7 @@ function serializeBackup(exported) {
   return JSON.stringify(
     {
       format: "projectosp-backup",
-      version: 10,
+      version: 11,
       exportedAt: new Date().toISOString(),
       state: exported,
     },
