@@ -9,7 +9,7 @@ dialog {
   position: fixed;
   margin: auto auto 0;
   background: var(--paper);
-  box-shadow: 0 -20px 60px #1f191320;
+  box-shadow: 0 -20px 60px #00000026;
   color: var(--ink);
   animation: sheet-in 280ms var(--ease-out);
   overscroll-behavior: contain;
@@ -23,12 +23,12 @@ dialog::before {
   width: 38px;
   height: 4px;
   border-radius: 99px;
-  background: #d9cbbc;
+  background: var(--line-strong);
   transform: translateX(-50%);
 }
 
 dialog[open]::backdrop {
-  background: #241f1857;
+  background: var(--scrim);
   backdrop-filter: blur(4px);
   animation: backdrop-in var(--dur) var(--ease);
 }
@@ -231,7 +231,7 @@ textarea {
   margin: 6px -18px calc(-18px - env(safe-area-inset-bottom));
   padding: 12px 18px calc(18px + env(safe-area-inset-bottom));
   background: var(--paper);
-  border-top: 1px solid #f0e8dd;
+  border-top: 1px solid var(--line-soft);
   z-index: 2;
 }
 
@@ -250,8 +250,8 @@ textarea {
   right: 14px;
   margin: auto;
   max-width: 520px;
-  background: #2e2621;
-  color: #fffaf6;
+  background: var(--toast-bg);
+  color: var(--toast-ink);
   border-radius: 14px;
   padding: 13px 15px;
   z-index: 30;
@@ -280,7 +280,7 @@ textarea {
 }
 
 #toast button {
-  color: #ffd9b8;
+  color: var(--toast-action);
   background: transparent;
   border: 0;
   font-weight: 750;

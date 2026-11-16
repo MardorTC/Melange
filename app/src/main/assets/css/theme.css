@@ -1,48 +1,101 @@
 /* Melange design tokens: warm sand, espresso, copper, sage. */
+/* Melange · sistema Arrakis, dirección Paisaje.
+   Día: arena y especia. Noche: cielo de Arrakis, dos lunas y especia.
+   Los nombres heredados (--bg, --paper, --brand…) se conservan para que todas
+   las hojas sigan funcionando; los nuevos (--spice, --water…) los nombran por uso. */
 :root {
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    "Manrope", "Roboto", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
   --font-display:
     "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
 
-  --bg: #f7f2e9;
-  --paper: #fffdf9;
+  --bg: #f3ece1;
+  --paper: #fbf8f3;
   --paper-strong: #ffffff;
-  --surface-soft: #f8f2e8;
-  --surface-muted: #efe6d8;
-  --ink: #241f18;
-  --ink-soft: #453c33;
-  --muted: #6e5e50;
-  --muted-strong: #675a4d;
-  --line: #ebe1d3;
-  --line-strong: #d8c8b5;
+  --surface-soft: #ece3d5;
+  --surface-muted: #e5dacb;
+  --ink: #1f1a15;
+  --ink-soft: #3f362d;
+  --muted: #6b5e52;
+  --muted-strong: #554a40;
+  --line: #e0d4c3;
+  --line-soft: #e9e0d2;
+  --line-strong: #cdbda7;
 
-  --green: #2f6847;
-  --mint: #e6f2e9;
-  --brand: #9e4e27;
-  --brand-dark: #8c4624;
-  --brand-soft: #f6e2d4;
-  --brand-faint: #fcf4ee;
-  --orange: #c58a44;
-  --red: #b04b43;
-  --danger: #b04b43;
-  --danger-soft: #f8e5e1;
-  --warning: #8d5818;
-  --warning-soft: #fff0d8;
-  --info: #41677e;
-  --info-soft: #e8f0f4;
-  --violet: #83749d;
+  --green: #3c6a4c;
+  --mint: #dfeadf;
+  --brand: #b34618;
+  --brand-dark: #9a3c14;
+  --brand-soft: #f5dccb;
+  --brand-faint: #faeee4;
+  --on-brand: #fffaf6;
+  --orange: #d9822f;
+  --red: #a1322b;
+  --danger: #a1322b;
+  --danger-soft: #f4dcd6;
+  --danger-line: #e7b9b1;
+  --warning: #8a5413;
+  --warning-soft: #f8e7cc;
+  --info: #2b5da8;
+  --info-soft: #dde6f2;
+  --violet: #7b6c98;
+
+  /* Nombres por uso */
+  --spice: var(--brand);
+  --spice-ink: var(--brand-dark);
+  --spice-soft: var(--brand-soft);
+  --water: var(--info);
+  --water-soft: var(--info-soft);
+  --oasis: var(--green);
+  --oasis-soft: var(--mint);
+  --rust: var(--danger);
+
+  /* Escena */
+  --sky-1: #eab48a;
+  --sky-2: #f3cfae;
+  --sky-3: #f4e2cd;
+  --orb: #d9561f;
+  --orb-2: #f08a4b;
+  --glow: rgba(232, 110, 50, 0.45);
+  --far-1: #e2b48a;
+  --far-2: #d9a578;
+  --mid-1: #ebc9a3;
+  --mid-2: #e2b88f;
+  --ridge: rgba(255, 248, 236, 0.95);
+  --ripple: rgba(140, 80, 40, 0.16);
+  --star-o: 0;
+  --moon2-o: 0;
+  --grain-o: 0.5;
+  --sky-ink: #1f1a15;
+  --sky-ink-2: #4a3e33;
+  --st1: #8f3714;
+  --st2: #c4521c;
+  --st3: #df8a4f;
+  --st4: #ebb27f;
+  --st5: #f2d3b0;
+  --card-1: #3a2c24;
+  --card-2: #1c1612;
+  --card-ink: #f4ebdd;
+  --card-ink-2: #c9b9a3;
+  --toast-bg: #2a2420;
+  --toast-ink: #f4ebdd;
+  --toast-action: #f5c6a3;
+  --scrim: rgba(31, 26, 21, 0.4);
+  --glass: rgba(243, 236, 225, 0.88);
 
   --shadow: 0 8px 24px #2d241c0a;
   --shadow-sm: 0 1px 2px #2d241c06, 0 3px 10px #2d241c08;
-  --shadow-md: 0 8px 24px #2d241c0d;
-  --shadow-lg: 0 20px 50px #2d241c16;
+  --shadow-md: 0 8px 24px #2d241c0f;
+  --shadow-lg: 0 20px 50px #2d241c1a;
 
   --radius-sm: 11px;
-  --radius-md: 15px;
+  --radius-md: 16px;
   --radius-lg: 22px;
-  --radius-xl: 30px;
+  --radius-xl: 28px;
   --radius-pill: 999px;
+  --pebble: 46% 54% 50% 50% / 58% 48% 52% 42%;
+  --pebble-2: 55% 45% 48% 52% / 46% 56% 44% 54%;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -54,7 +107,7 @@
   --space-8: 40px;
 
   --app-max: 620px;
-  --nav-height: 64px;
+  --nav-height: 72px;
 
   --ease: cubic-bezier(0.22, 0.8, 0.22, 1);
   --ease-out: cubic-bezier(0.2, 0.9, 0.3, 1);
@@ -63,6 +116,90 @@
   --dur-slow: 320ms;
 
   color-scheme: light;
+}
+
+/* Noche: se aplica por preferencia del sistema o por la elección en Ajustes. */
+:root[data-theme="noche"] {
+  --bg: #121219;
+  --paper: #1b1b25;
+  --paper-strong: #23232f;
+  --surface-soft: #1f1f2a;
+  --surface-muted: #2a2937;
+  --ink: #f1e8da;
+  --ink-soft: #ddd2c2;
+  --muted: #a89c8c;
+  --muted-strong: #c3b8a8;
+  --line: #2e2d3a;
+  --line-soft: #24232f;
+  --line-strong: #3f3e4f;
+
+  --green: #8cc29b;
+  --mint: #18291f;
+  --brand: #f07a3c;
+  --brand-dark: #f39463;
+  --brand-soft: #3a2419;
+  --brand-faint: #26190f;
+  --on-brand: #1c0e05;
+  --orange: #f0a15c;
+  --red: #f08d80;
+  --danger: #f08d80;
+  --danger-soft: #3a1d1b;
+  --danger-line: #6a3430;
+  --warning: #e7b46a;
+  --warning-soft: #33281a;
+  --info: #8fb0f2;
+  --info-soft: #1c2640;
+  --violet: #b4a6d4;
+
+  --sky-1: #070914;
+  --sky-2: #141429;
+  --sky-3: #2a1d36;
+  --orb: #efe6d2;
+  --orb-2: #cfc4ad;
+  --glow: rgba(240, 230, 210, 0.22);
+  --far-1: #2b2238;
+  --far-2: #211b2d;
+  --mid-1: #1e1a29;
+  --mid-2: #181520;
+  --ridge: rgba(240, 122, 60, 0.7);
+  --ripple: rgba(240, 122, 60, 0.14);
+  --star-o: 0.9;
+  --moon2-o: 1;
+  --grain-o: 0.35;
+  --sky-ink: #f4ebdd;
+  --sky-ink-2: #cfc3b2;
+  --st1: #f5a172;
+  --st2: #e86f33;
+  --st3: #b84f22;
+  --st4: #7d3a1f;
+  --st5: #4a2a22;
+  --card-1: #2e2a3d;
+  --card-2: #15131d;
+  --toast-bg: #f1e8da;
+  --toast-ink: #1c1712;
+  --toast-action: #a3431a;
+  --scrim: rgba(5, 5, 10, 0.62);
+  --glass: rgba(18, 18, 25, 0.86);
+
+  --shadow: 0 8px 24px #0000004d;
+  --shadow-sm: 0 1px 2px #00000040, 0 3px 10px #00000033;
+  --shadow-md: 0 8px 24px #00000059;
+  --shadow-lg: 0 20px 50px #00000080;
+
+  color-scheme: dark;
+}
+
+/* Manrope variable (400–800), subconjunto latino. Licencia en fonts/OFL-Manrope.txt. */
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("../fonts/manrope-latin-var.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
@@ -197,36 +334,34 @@ small,
   color: var(--danger);
 }
 
-/* The hero is shared by home, accounts and debts. */
+/* The hero is shared by accounts and debts summaries. */
 .hero {
-  background:
-    radial-gradient(110% 100% at 100% 0%, #f2d5ba 0%, transparent 60%),
-    linear-gradient(150deg, #fdf6ed, #f8e9d9);
+  background: var(--paper);
   color: var(--ink);
-  border: 1px solid #ecd6c0;
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
 }
 
 .hero .muted,
 .hero small,
 .hero .eyebrow,
 .hero p {
-  color: #705b4b;
+  color: var(--muted);
 }
 
 .hero .metric,
 .hero-amount {
-  color: #2d231b;
+  color: var(--ink);
 }
 
 .accent {
   background: var(--warning-soft);
-  border-color: #efd5ac;
+  border-color: var(--line);
 }
 
 .sage {
   background: var(--mint);
-  border-color: #cfe2d3;
+  border-color: var(--line);
 }
 
 .pill {
@@ -264,8 +399,8 @@ small,
 }
 
 .danger-zone {
-  border-color: #ebc4bc;
-  background: #fff9f7;
+  border-color: var(--danger-line);
+  background: var(--danger-soft);
 }
 
 @media (prefers-reduced-motion: reduce) {

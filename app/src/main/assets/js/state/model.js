@@ -3,6 +3,9 @@ import C from "../domain/finance.js";
 export const model = {
   revision: 0,
   routes: [],
+  // Pantallas de detalle: { kind, id } y las vistas que registra cada módulo.
+  detail: null,
+  detailViews: {},
   state: undefined,
   history: [],
   tab: "home",

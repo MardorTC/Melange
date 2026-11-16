@@ -640,9 +640,8 @@
   border-radius: 26px;
   padding: 20px;
   margin: 2px 0 14px;
-  background:
-    radial-gradient(110% 120% at 100% 0%, #614531 0%, transparent 60%), #2b221c;
-  border: 1px solid #2b221c;
+  background: linear-gradient(145deg, var(--card-1), var(--card-2));
+  border: 1px solid var(--card-2);
   color: #fff8f1;
   box-shadow: var(--shadow-md);
 }
@@ -988,8 +987,8 @@
 .credit-ticket {
   border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 12px 30px #2d241c14;
-  border: 1px solid #e7d8c7;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--line);
 }
 
 .credit-ticket.archived {
@@ -1001,9 +1000,7 @@
   overflow: hidden;
   padding: 18px;
   color: #fff8f1;
-  background:
-    radial-gradient(120% 130% at 100% 0%, #6b4a34 0%, transparent 58%),
-    linear-gradient(145deg, #332821, #241c17);
+  background: linear-gradient(145deg, var(--card-1), var(--card-2));
 }
 
 .credit-ticket-top::after {
@@ -1580,11 +1577,11 @@
 
 .calendar-day.selected {
   background: var(--brand);
-  color: #fffaf6;
+  color: var(--on-brand);
 }
 
 .calendar-day.selected::after {
-  background: #fffaf6;
+  background: var(--on-brand);
 }
 
 .calendar-foot {
@@ -1633,9 +1630,8 @@
 }
 
 .timeline-summary {
-  background:
-    radial-gradient(120% 120% at 100% 0%, #5a4030 0%, transparent 62%), #2f2620;
-  border-color: #2f2620;
+  background: linear-gradient(145deg, var(--card-1), var(--card-2));
+  border-color: var(--card-2);
   color: #fff8f1;
   padding: 20px;
 }
@@ -1779,7 +1775,7 @@
   background: repeating-linear-gradient(
     45deg,
     var(--brand-soft) 0 4px,
-    #fdf2e8 4px 8px
+    var(--paper) 4px 8px
   );
 }
 
@@ -1836,7 +1832,7 @@
   background: repeating-linear-gradient(
     45deg,
     var(--brand-soft) 0 3px,
-    #fdf2e8 3px 6px
+    var(--paper) 3px 6px
   );
 }
 .legend-swatch.overdue {

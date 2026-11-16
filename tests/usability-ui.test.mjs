@@ -26,7 +26,7 @@ try {
   await page.locator('[name="income"]').fill("");
   await page.getByRole("button", { name: "Empezar", exact: true }).click();
   await page.locator("dialog").waitFor({ state: "hidden" });
-  await page.locator('.hero-account[data-account-sub="credit"]').click();
+  await page.locator('.pano[data-account-sub="credit"]').click();
   assert.equal(
     await page
       .locator('[data-action="accountSub"][data-id="credit"]')
@@ -126,7 +126,7 @@ try {
   await page.getByRole("button", { name: "Guardar", exact: true }).click();
   await page.locator("dialog").waitFor({ state: "hidden" });
   await page.reload();
-  await page.locator('.hero-account[data-account-sub="credit"]').click();
+  await page.locator('.pano[data-account-sub="credit"]').click();
   await page.evaluate(async (cardId) => {
     const { commit } = await import("/js/state/ledger.js"),
       { default: C } = await import("/js/domain/finance.js");
@@ -170,7 +170,7 @@ try {
   await page.getByRole("button", { name: "Cerrar", exact: true }).click();
   await page.locator('nav [data-id="expense"]').click();
   await page
-    .getByRole("button", { name: "Fijos y suscripciones", exact: true })
+    .getByRole("tab", { name: "Fijos y suscripciones", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Agregar gasto fijo", exact: true })
@@ -191,10 +191,16 @@ try {
     .getByRole("button", { name: "Ver gasto fijo", exact: true })
     .click();
   await page.getByRole("button", { name: /Ver o corregir/ }).click();
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  // El detalle del fijo es una pantalla; el movimiento se abre en una hoja.
+  await page
+    .locator("dialog")
+    .getByRole("button", { name: "Editar", exact: true })
+    .click();
   await page.locator('[name="amount"]').fill("550");
   await page.getByRole("button", { name: "Guardar", exact: true }).click();
   await page.locator("dialog").waitFor({ state: "hidden" });
+  // Al guardar se vuelve al detalle del fijo; Volver regresa a la lista.
+  await page.getByRole("button", { name: "Volver", exact: true }).click();
   await page
     .getByRole("button", { name: "Editar gasto fijo", exact: true })
     .click();
@@ -204,8 +210,8 @@ try {
   await page
     .getByRole("button", { name: "Archivar gasto fijo", exact: true })
     .click();
-  await page.getByRole("button", { name: "Confirmar", exact: true }).click();
-  await page.locator("dialog").waitFor({ state: "hidden" });
+  // Archivar es reversible: se aplica sin confirmación y ofrece Deshacer.
+  await page.locator("#toast").getByText("Gasto fijo archivado").waitFor();
   const fixed = await page.evaluate(async () => {
     const { model } = await import("/js/state/model.js");
     return {
@@ -217,7 +223,8 @@ try {
   });
   assert.equal(fixed.active, false);
   assert.deepEqual(fixed.payments, [55000]);
-  await page.locator('nav [data-id="calendar"]').click();
+  await page.locator('nav [data-id="expense"]').click();
+  await page.locator('#view [data-action="tab"][data-id="calendar"]').click();
   await page.locator('[data-action="calendarDay"][data-id="2"]').click();
   assert.doesNotMatch(await page.locator("#view").innerText(), /Invalid Date/);
   await page

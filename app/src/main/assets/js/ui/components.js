@@ -172,7 +172,13 @@ export function form(
     `<form id="form"><section class="draft-status" aria-live="polite" hidden></section>${fields}<div class="form-error" role="alert"></div><div class="form-actions"><button type="button" class="btn" data-action="${cancelAction}">${cancelLabel}</button><button class="btn primary" type="submit">${submitText}</button></div></form>`,
     onSubmit,
   );
-  beginFormDraft($("#form"), options, toast);
+  // Cerrar un formulario siempre guarda un borrador, salvo los que no
+  // registran dinero (filtros), que conservan el aviso de cambios sin guardar.
+  const draftOptions =
+    options.draftKey || options.noDraft
+      ? options
+      : { ...options, draftKey: "form:" + title };
+  beginFormDraft($("#form"), draftOptions, toast);
 }
 
 export const input = (name, label, value = "", type = "text", extra = "") =>
@@ -262,12 +268,12 @@ export function metric(n, key, cls = "") {
 }
 
 export const colors = [
-  "#c76a3b",
-  "#e0a24f",
-  "#6f9f7b",
-  "#6f91a6",
-  "#d47e72",
-  "#9486ad",
+  "var(--st2)",
+  "var(--water)",
+  "var(--oasis)",
+  "var(--st4)",
+  "var(--violet)",
+  "var(--muted)",
 ];
 
 export const kindName = (k) =>
@@ -293,6 +299,11 @@ export const debtType = (t) =>
     "loan-open": "Préstamo sin plazo",
   })[t] || t;
 
+// Lo reversible se aplica de inmediato y ofrece Deshacer en el aviso.
+export function reversibleAction(label, fn) {
+  return commit(label, fn);
+}
+
 export function confirmAction(title, message, label, fn) {
   form(
     title,
@@ -303,3 +314,28 @@ export function confirmAction(title, message, label, fn) {
 }
 
 window.nativeMessage = (message) => toast(message);
+
+// Encabezado de sección numerada dentro de un formulario largo.
+export const stepHead = (n, title) =>
+  `<p class="form-step-head" data-step-head><span class="step-num" aria-hidden="true">${n}</span><span>${title}</span></p>`;
+
+// Oculta las secciones que, según el tipo elegido, se quedaron sin campos.
+export function syncStepHeads(formEl) {
+  const heads = [...(formEl?.querySelectorAll("[data-step-head]") || [])];
+  for (const head of heads) {
+    let node = head.nextElementSibling,
+      visible = false;
+    while (node && !node.matches("[data-step-head]")) {
+      if (
+        !node.hidden &&
+        node.matches("[data-debt-field], label, details, #card-installments")
+      )
+        visible = true;
+      node = node.nextElementSibling;
+    }
+    head.hidden = !visible;
+  }
+  let n = 0;
+  for (const head of heads)
+    if (!head.hidden) head.querySelector(".step-num").textContent = ++n;
+}

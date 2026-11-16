@@ -83,7 +83,7 @@
 }
 
 .hero-bottom {
-  border-top: 1px solid #bf916033;
+  border-top: 1px solid var(--line);
   padding-top: 13px;
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -126,8 +126,8 @@
 .btn.green {
   background: var(--brand);
   border-color: var(--brand);
-  color: #fffaf6;
-  box-shadow: 0 5px 14px #a7552d2e;
+  color: var(--on-brand);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--brand) 28%, transparent);
 }
 
 .btn.primary:active,
@@ -137,8 +137,8 @@
 
 .btn.danger {
   color: var(--danger);
-  border-color: #e7b9b1;
-  background: #fff8f6;
+  border-color: var(--danger-line);
+  background: var(--danger-soft);
 }
 
 .btn.full {
@@ -223,8 +223,8 @@
 }
 
 .icon.glass {
-  background: #fffaf3b8;
-  border: 1px solid #ffffff9e;
+  background: color-mix(in srgb, var(--paper) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--paper) 60%, transparent);
   backdrop-filter: blur(10px);
   box-shadow: 0 3px 12px #6d4a2a14;
 }
@@ -509,7 +509,7 @@
 
 .visual-icon.neutral,
 .debt-type-icon.info {
-  color: #565b62;
+  color: var(--muted-strong);
   background: var(--surface-muted);
 }
 
@@ -531,8 +531,8 @@
 }
 
 .visual-icon.goal {
-  color: #a75d1f;
-  background: #ffebcf;
+  color: var(--warning);
+  background: var(--warning-soft);
 }
 
 .visual-icon.info {

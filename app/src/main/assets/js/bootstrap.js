@@ -62,6 +62,18 @@ document.addEventListener("change", (e) => {
 ("use strict");
 
 document.addEventListener("click", (e) => {
+  // Importes rápidos: rellenan un campo del formulario abierto.
+  const fill = e.target.closest("[data-fill]");
+  if (fill) {
+    const field = document.querySelector(`#form [name="${fill.dataset.fill}"]`);
+    if (field) {
+      field.value = fill.dataset.value;
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+      field.focus();
+    }
+    return;
+  }
   const point = e.target.closest("[data-chart-point]");
   if (point) {
     selectHistoryPoint(point);

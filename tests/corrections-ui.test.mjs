@@ -137,7 +137,10 @@ try {
   await openPaymentHistory();
   await page.getByRole("button", { name: "Reasignar", exact: true }).click();
   await page.locator('[name="amount"]').fill("100");
-  await page.getByRole("button", { name: "Reasignar", exact: true }).click();
+  await page
+    .locator("dialog")
+    .getByRole("button", { name: "Reasignar", exact: true })
+    .click();
   await page.locator("dialog").waitFor({ state: "hidden" });
   const reassigned = await page.evaluate(async () => {
     const { model } = await import("/js/state/model.js");

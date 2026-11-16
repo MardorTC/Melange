@@ -1,4 +1,6 @@
+import { openDetail } from "../ui/navigation.js";
 import { creditCardsSection } from "./credit.js";
+import { moneyHeader } from "../ui/scene.js";
 import C from "../domain/finance.js";
 import { model } from "../state/model.js";
 import { commit } from "../state/ledger.js";
@@ -13,9 +15,9 @@ import {
   moneyValue,
   accountOptions,
   confirmAction,
+  reversibleAction,
   metric,
   svg,
-  screenHead,
   sectionHead,
   modal,
   empty,
@@ -34,7 +36,6 @@ const accountType = (a) =>
 export function accountsPage() {
   const m = C.metrics(model.state);
   const selected = model.accountSub || "wallet";
-  const tabs = `<div class="segmented" role="tablist" aria-label="Tipo de cuenta"><button class="${selected === "wallet" ? "active" : ""}" role="tab" aria-selected="${selected === "wallet"}" data-action="accountSub" data-id="wallet">Efectivo y débito</button><button class="${selected === "credit" ? "active" : ""}" role="tab" aria-selected="${selected === "credit"}" data-action="accountSub" data-id="credit">Crédito</button></div>`;
   if (selected === "credit") {
     const cards = model.state.creditCards.filter((c) => c.active !== false),
       used = cards.reduce(
@@ -43,39 +44,36 @@ export function accountsPage() {
       ),
       limit = cards.reduce((n, c) => n + c.limit, 0);
     return (
-      screenHead("Cuentas", "Tu crédito, separado de tu dinero.", {
-        action: "creditEdit",
-        actionLabel: "Agregar tarjeta",
-      }) +
-      tabs +
-      `<section class="card credit-hero-compact"><div><small>Disponible</small><strong class="${limit - used < 0 ? "bad" : ""}" data-metric="creditAvailable" data-value="${limit - used}">${money(limit - used)}</strong></div><div><small>Usado</small><strong>${money(used)}</strong></div><div><small>Límite</small><strong>${money(limit)}</strong></div></section>` +
+      moneyHeader(model.state, m, "credit") +
+      `<section class="credit-summary-line"><div><small>Crédito disponible</small><strong class="${limit - used < 0 ? "bad" : ""}" data-metric="creditAvailable" data-value="${limit - used}">${money(limit - used)}</strong></div><div><small>Usado</small><strong>${money(used)}</strong></div><div><small>Límite</small><strong>${money(limit)}</strong></div></section><p class="note credit-caveat">Es dinero prestado: no suma a tu disponible.</p>` +
       creditCardsSection()
     );
   }
   const accounts = C.accountSummary(model.state),
     active = accounts.filter((a) => a.active !== false),
-    archived = accounts.filter((a) => a.active === false);
+    archived = accounts.filter((a) => a.active === false),
+    parts = [
+      ["free", "Disponible", m.available],
+      ["reserved", "Reservado para metas", m.reserved],
+      ["frozen", "Congelado en cajitas", m.frozen],
+    ].filter(([, , n]) => n > 0);
   return (
-    screenHead("Cuentas", "Cada saldo en su lugar.", {
-      action: "walletEdit",
-      actionLabel: "Agregar cuenta",
-    }) +
-    tabs +
-    `<section class="card hero"><small>Disponible libre</small>${metric(m.available, "walletFree")}<div class="hero-bottom"><div><small>Vales / despensa</small><strong>${money(m.restricted)}</strong></div><div><small>Congelado</small><strong>${money(m.frozen)}</strong></div></div></section>` +
+    moneyHeader(model.state, m, "wallet") +
+    `<section class="money-split"><div class="split-bar" role="img" aria-label="${parts.map(([, label, n]) => `${label} ${money(n)}`).join(", ")}">${parts.map(([key, , n]) => `<i class="${key}" style="flex:${Math.max(n, 0)}"></i>`).join("")}</div><div class="split-legend">${parts.map(([key, label, n]) => `<div><i class="${key}"></i><span>${label}</span>${key === "free" ? metric(n, "walletFree") : `<strong>${money(n)}</strong>`}</div>`).join("")}${m.restricted ? `<div><i class="restricted"></i><span>Vales · uso restringido</span><strong>${money(m.restricted)}</strong></div>` : ""}</div></section>` +
     (m.unassigned
-      ? `<section class="card"><h2>Reservas por asignar</h2><p class="note">${money(m.unassigned)} ya se descuentan del disponible global.</p>${model.state.goals
+      ? `<section class="alert-line"><span class="pebble">${svg("goal")}</span><div><strong>Reservas por asignar</strong><p class="note">${money(m.unassigned)} ya se descuentan del disponible global. Elige de qué cuenta salen.</p><div class="actions">${model.state.goals
           .filter((g) => g.allocations.some((r) => !r.accountId))
-          .map((g) => btn(g.name, "contribute", g.id))
-          .join("")}</section>`
+          .map((g) => btn(g.name, "contribute", g.id, "link-btn"))
+          .join("")}</div></div></section>`
       : "") +
     sectionHead(
       "Tus cuentas",
       "",
       "Toca una cuenta para ver reservas y cajitas.",
     ) +
-    `<section class="card account-list">${active.map(accountRow).join("") || empty("Sin cuentas", "Agrega una cuenta para separar tu dinero.")}</section>` +
+    `<section class="account-list">${active.map(accountRow).join("") || empty("Sin cuentas", "Agrega una cuenta para separar tu dinero.")}</section>` +
     (archived.length
-      ? `<details class="card settled-list"><summary>Cuentas archivadas (${archived.length})</summary>${archived.map(accountRow).join("")}</details>`
+      ? `<details class="settled-list"><summary>Cuentas archivadas (${archived.length})</summary>${archived.map(accountRow).join("")}</details>`
       : "")
   );
 }
@@ -86,16 +84,16 @@ function accountRow(a) {
   return `<button class="account-row" data-action="walletDetails" data-id="${esc(a.id)}"><span class="row-icon ${a.type === "cash" ? "green" : a.type === "restricted" ? "gray" : "gray"}">${svg(iconName)}</span><span class="account-copy"><strong>${esc(a.name)}</strong><small>${accountType(a)}${a.reserved ? ` · ${money(a.reserved)} reservado` : ""}${a.frozen ? ` · ${money(a.frozen)} congelado` : ""}</small></span><span class="account-amount">${money(a.total)}</span><span class="account-chevron">${svg("chevron")}</span></button>`;
 }
 
-function walletDetails(id) {
+function walletDetailView(id) {
   const a = C.accountSummary(model.state).find((x) => x.id === id);
-  if (!a) return;
+  if (!a) return null;
   const goals = model.state.goals.filter((g) =>
       g.allocations.some((r) => r.accountId === id),
     ),
     boxes = model.state.boxes.filter((b) => b.accountId === id);
-  modal(
-    a.name,
-    `<div class="details"><div><small>Saldo total</small><strong>${money(a.total)}</strong></div><div><small>Disponible</small><strong>${money(a.available)}</strong></div><div><small>Reservas</small><strong>${money(a.reserved)}</strong></div><div><small>Cajitas</small><strong>${money(a.frozen)}</strong></div></div>${
+  return {
+    title: a.name,
+    html: `<section class="detail-hero"><span class="pebble ${a.type === "cash" ? "oasis" : "water"}">${svg(a.type === "cash" ? "cash" : a.type === "restricted" ? "ticket" : "bank")}</span><div><small>${accountType(a)}</small><strong class="serif-figure">${money(a.total)}</strong><p class="note">${money(a.available)} disponibles para gastar</p></div></section><div class="details"><div><small>Saldo total</small><strong>${money(a.total)}</strong></div><div><small>Disponible</small><strong>${money(a.available)}</strong></div><div><small>Reservas</small><strong>${money(a.reserved)}</strong></div><div><small>Cajitas</small><strong>${money(a.frozen)}</strong></div></div>${
       a.active === false
         ? `<p class="note">Esta cuenta está archivada y conserva sus movimientos.</p><div class="toolbar wrap">${btn("Reactivar cuenta", "walletReactivate", a.id, "primary")}</div>`
         : `<div class="toolbar wrap">${btn("Ajustar saldo", "walletAdjust", a.id, "primary")}${a.type !== "restricted" ? btn("Crear cajita", "boxCreate", a.id) : ""}${btn("Editar", "walletEdit", a.id)}${btn("Archivar", "walletArchive", a.id, "danger")}</div>`
@@ -113,24 +111,19 @@ function walletDetails(id) {
             .join("")}</section>`
         : ""
     }<p class="note">Las reservas y cajitas forman parte de tu efectivo y débito, pero no están disponibles para gastar.</p>`,
-  );
+  };
 }
 export function accountAction(action, id) {
   if (!action.startsWith("wallet") && !action.startsWith("box")) return false;
   const a = model.state.walletAccounts.find((a) => a.id === id),
     b = model.state.boxes.find((b) => b.id === id);
-  if (action === "walletDetails") walletDetails(id);
+  if (action === "walletDetails") openDetail("account", id);
   else if (action === "walletReactivate")
-    confirmAction(
-      "Reactivar cuenta",
-      "Volverá a aparecer para registrar movimientos y recibir reservas.",
-      "Cuenta reactivada",
-      (s) => {
-        const account = s.walletAccounts.find((x) => x.id === id);
-        if (!account) throw Error("Cuenta no encontrada.");
-        account.active = true;
-      },
-    );
+    reversibleAction("Cuenta reactivada", (s) => {
+      const account = s.walletAccounts.find((x) => x.id === id);
+      if (!account) throw Error("Cuenta no encontrada.");
+      account.active = true;
+    });
   else if (action === "walletEdit")
     form(
       a ? "Editar cuenta" : "Nueva cuenta",
@@ -218,19 +211,14 @@ export function accountAction(action, id) {
       { draftKey: `wallet:${id || "new"}` },
     );
   else if (action === "walletArchive")
-    confirmAction(
-      "Archivar cuenta",
-      "Se conservarán sus movimientos. Primero deja su saldo, reservas y cajitas en cero.",
-      "Cuenta archivada",
-      (s) => {
-        const x = C.accountSummary(s).find((a) => a.id === id);
-        if (x.total || x.reserved || x.frozen)
-          throw Error(
-            "Transfiere o corrige el saldo y libera sus reservas antes de archivar.",
-          );
-        s.walletAccounts.find((a) => a.id === id).active = false;
-      },
-    );
+    reversibleAction("Cuenta archivada", (s) => {
+      const x = C.accountSummary(s).find((a) => a.id === id);
+      if (x.total || x.reserved || x.frozen)
+        throw Error(
+          "Transfiere o corrige el saldo y libera sus reservas antes de archivar.",
+        );
+      s.walletAccounts.find((a) => a.id === id).active = false;
+    });
   else if (action === "walletAdjust")
     form(
       "Corregir saldo: " + a.name,
@@ -343,3 +331,5 @@ export function accountAction(action, id) {
     );
   return true;
 }
+
+model.detailViews.account = walletDetailView;

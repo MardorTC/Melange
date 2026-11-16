@@ -63,8 +63,8 @@ main {
   min-height: 52px;
   padding: calc(6px + env(safe-area-inset-top))
     max(16px, calc((100% - var(--app-max)) / 2 + 16px)) 6px;
-  background: #f7f2e9f8;
-  border-bottom: 1px solid #e7dccd;
+  background: var(--glass);
+  border-bottom: 1px solid var(--line);
   backdrop-filter: blur(20px) saturate(1.15);
   -webkit-backdrop-filter: blur(20px) saturate(1.15);
   transform: translateY(-105%);

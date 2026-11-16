@@ -3,6 +3,7 @@ package app.projectosp;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
@@ -12,6 +13,7 @@ import org.json.JSONObject;
 
 public class MainActivity extends Activity {
   private WebView web;
+  private LinearLayout root;
   private LedgerStore store;
   private BackupController backups;
   private UpdateController updates;
@@ -22,15 +24,8 @@ public class MainActivity extends Activity {
     super.onCreate(saved);
     store = new LedgerStore(this);
     backups = new BackupController(this);
-    getWindow().setStatusBarColor(Color.rgb(247, 242, 233));
-    getWindow().setNavigationBarColor(Color.rgb(255, 253, 249));
-    getWindow()
-        .getDecorView()
-        .setSystemUiVisibility(
-            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-    LinearLayout root = new LinearLayout(this);
+    root = new LinearLayout(this);
     root.setOrientation(LinearLayout.VERTICAL);
-    root.setBackgroundColor(Color.rgb(247, 242, 233));
     root.setOnApplyWindowInsetsListener(
         (v, insets) -> {
           v.setPadding(
@@ -53,11 +48,32 @@ public class MainActivity extends Activity {
     settings.setSupportZoom(false);
     settings.setMediaPlaybackRequiresUserGesture(true);
     updates = new UpdateController(this, backups);
-    web.setBackgroundColor(Color.rgb(247, 242, 233));
+    applySystemTheme(systemDark());
     web.addJavascriptInterface(new NativeBridge(this, store, backups, updates), "NativeOSP");
     web.setWebViewClient(new WebViewHost(this));
     web.setWebChromeClient(new WebChromeClient());
     web.loadUrl(WebViewHost.BASE + "index.html");
+  }
+
+  /** True when Android is in night mode; the web layer uses it for «Automático». */
+  boolean systemDark() {
+    return (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+        == Configuration.UI_MODE_NIGHT_YES;
+  }
+
+  /** Paints the system bars and the area behind the WebView with the active theme. */
+  void applySystemTheme(boolean dark) {
+    int ground = dark ? Color.rgb(18, 18, 25) : Color.rgb(243, 236, 225);
+    getWindow().setStatusBarColor(ground);
+    getWindow().setNavigationBarColor(ground);
+    getWindow()
+        .getDecorView()
+        .setSystemUiVisibility(
+            dark
+                ? 0
+                : View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+    root.setBackgroundColor(ground);
+    if (web != null) web.setBackgroundColor(ground);
   }
 
   void message(String text) {

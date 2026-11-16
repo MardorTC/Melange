@@ -129,6 +129,7 @@ assert.equal(
   C.obligations(stored.state).find((i) => i.kind === "fixed").remaining,
   30000,
 );
+await click("tab", "accounts");
 await click("tab", "goal");
 await click("editGoal");
 await submit({ name: "Una escapada", target: "5000" });
@@ -156,8 +157,10 @@ failWrite = false;
 await click("close");
 await w.receiveImport('{"invalid":true}');
 assert.equal(stored.state.debts.length, 1);
-for (const tab of ["home", "expense", "debt", "calendar", "goal"])
+// Calendario vive en Actividad y Metas en Dinero.
+for (const tab of ["home", "expense", "calendar", "debt", "accounts", "goal"])
   await click("tab", tab);
+await click("tab", "expense");
 await click("tab", "calendar");
 await click("projection");
 assert.equal(doc.querySelectorAll("#view .projection-row").length, 12);
@@ -187,7 +190,14 @@ if (process.env.OSP_BACKUP) {
   await click("confirmImport");
   assert.equal(C.balances(stored.state).debit, C.cents(raw.balances.debit));
   assert.equal(C.balances(stored.state).cash, C.cents(raw.balances.cash));
-  for (const name of ["home", "expense", "debt", "calendar", "goal"])
+  for (const name of [
+    "home",
+    "expense",
+    "calendar",
+    "debt",
+    "accounts",
+    "goal",
+  ])
     await click("tab", name);
   await click("tab", "home");
   await click("settings");
@@ -201,7 +211,8 @@ const bbva = stored.state.walletAccounts.find((a) => a.name === "BBVA").id;
 await click("walletDetails", bbva);
 await click("walletAdjust", bbva);
 await submit({ amount: "5000" });
-await click("walletDetails", bbva);
+// Al guardar, la app vuelve al detalle de la cuenta.
+assert.equal(doc.body.dataset.screen, "detail");
 await click("boxCreate", bbva);
 await submit({
   name: "Plazo",
@@ -228,19 +239,19 @@ assert.equal(
   C.accountSummary(stored.state).find((a) => a.id === bbva).available,
   200000,
 );
+await click("screenBack");
 await click("walletEdit");
 await submit({ name: "Temporal", type: "bank" });
 const temporal = stored.state.walletAccounts.find((a) => a.name === "Temporal");
 await click("walletDetails", temporal.id);
 await click("walletArchive", temporal.id);
-await submit({});
+// Reversible: se aplica sin confirmación y ofrece Deshacer.
 assert.equal(
   stored.state.walletAccounts.find((a) => a.id === temporal.id).active,
   false,
 );
-await click("walletDetails", temporal.id);
 await click("walletReactivate", temporal.id);
-await submit({});
+// Reversible: se aplica sin confirmación y ofrece Deshacer.
 assert.equal(
   stored.state.walletAccounts.find((a) => a.id === temporal.id).active,
   true,
@@ -379,7 +390,6 @@ await submit({ amount: "600", accountId: "debit", date: C.today() });
 failWrite = false;
 assert.equal(C.balances(stored.state).debit, 500000);
 await click("close");
-await click("creditDetails", cardId);
 await click("creditPay", cardId);
 await submit({ amount: "600", accountId: "debit", date: C.today() });
 assert.equal(C.balances(stored.state).debit, 440000);

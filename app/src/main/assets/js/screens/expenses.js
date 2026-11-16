@@ -7,10 +7,10 @@ import {
   empty,
   svg,
   btn,
-  screenHead,
   dlabel,
 } from "../ui/components.js";
-import { donut } from "../ui/charts.js";
+import { activityHeader } from "../ui/scene.js";
+import { strata } from "../ui/charts.js";
 import C from "../domain/finance.js";
 
 export function filtered() {
@@ -84,16 +84,24 @@ function groupedMovements(tx) {
   return [...groups.entries()]
     .map(
       ([date, items]) =>
-        `<div class="date-group"><div class="date-label">${dayLabel(date)}</div><section class="card expense-group">${items.map(movementRow).join("")}</section></div>`,
+        `<div class="date-group"><div class="date-label">${dayLabel(date)}</div><section class="expense-group">${items.map(movementRow).join("")}</section></div>`,
     )
     .join("");
 }
 
 export function expensesPage() {
   const f = model.filter;
+  const monthStart = C.month() + "-01",
+    period =
+      f.from === monthStart && f.to === C.today()
+        ? "Este mes"
+        : f.from && f.to
+          ? `${dlabel(f.from)} – ${dlabel(f.to)}`
+          : "";
   const filters = [
-    f.from && `Desde ${dlabel(f.from)}`,
-    f.to && `Hasta ${dlabel(f.to)}`,
+    period,
+    !period && f.from && `Desde ${dlabel(f.from)}`,
+    !period && f.to && `Hasta ${dlabel(f.to)}`,
     f.category && model.state.categories.find((c) => c.id === f.category)?.name,
     f.accountId && accountName(f.accountId),
     f.kind && kindName(f.kind),
@@ -110,38 +118,39 @@ export function expensesPage() {
       )
       .reduce((a, t) => a + t.amount, 0);
   return (
-    screenHead("Movimientos", "Lo que entró y salió.", {
-      action: model.sub === "fixed" ? "editFixed" : "newMovement",
-      actionLabel:
-        model.sub === "fixed" ? "Agregar gasto fijo" : "Agregar movimiento",
-    }) +
-    `<div class="chips"><button class="chip ${model.sub === "all" ? "selected" : ""}" data-action="expenseSub" data-id="all">Movimientos</button><button class="chip ${model.sub === "fixed" ? "selected" : ""}" data-action="expenseSub" data-id="fixed">Fijos y suscripciones</button></div>` +
+    activityHeader(
+      model.state,
+      C.metrics(model.state),
+      model.sub === "fixed" ? "fixed" : "all",
+    ) +
     (model.sub === "all"
       ? `<div class="active-filters">${filters.length ? filters.map((text) => `<span class="pill">${esc(text)}</span>`).join("") + '<button class="btn link-btn" data-action="clearFilters">Quitar filtros</button>' : '<span class="note">Todo el historial</span>'}</div>`
       : "") +
     (model.sub === "fixed"
       ? fixedList()
-      : `<div class="movement-toolbar"><div class="search-field">${svg("search")}<input id="search" aria-label="Buscar movimientos" placeholder="Buscar movimiento" value="${esc(model.filter.q)}"></div><button class="icon" data-action="filters" aria-label="Mostrar filtros" title="Mostrar filtros">${svg("tune")}</button></div><div class="expenses-layout"><details class="card expense-chart"><summary>Consumo por categoría</summary><div class="expense-chart-body">${donut(tx.filter((t) => ["expense", "fixed", "msi_purchase"].includes(t.kind)))}</div></details><div class="movement-summary"><span>${tx.length} ${tx.length === 1 ? "movimiento" : "movimientos"}</span><strong>Salidas ${money(out)}</strong></div><p class="note">Salidas suma gastos, gastos fijos, pagos de deuda y pagos de tarjeta. No incluye compras a crédito ni a meses, transferencias ni ingresos.</p><section class="expense-list">${tx.length ? groupedMovements(tx) : `<section class="card">${empty(noHistory ? "Tu historial empieza aquí" : "Sin coincidencias", noHistory ? "Registra tu primera entrada o salida para verla aquí." : "No hay movimientos con estos filtros.")}<div class="actions">${filters.length && !noHistory ? btn("Quitar filtros", "clearFilters") : ""}${btn("Registrar movimiento", "newMovement", "", "primary")}</div></section>`}</section></div>`)
+      : `<div class="movement-toolbar"><div class="search-field">${svg("search")}<input id="search" aria-label="Buscar movimientos" placeholder="Buscar movimiento" value="${esc(model.filter.q)}"></div><button class="icon" data-action="filters" aria-label="Mostrar filtros" title="Mostrar filtros">${svg("tune")}</button></div><div class="expenses-layout"><details class="expense-chart"><summary>Consumo por categoría</summary><div class="expense-chart-body">${strata(tx.filter((t) => ["expense", "fixed", "msi_purchase"].includes(t.kind)))}</div></details><div class="movement-summary"><span>${tx.length} ${tx.length === 1 ? "movimiento" : "movimientos"}</span><strong>Salidas ${money(out)}</strong></div><p class="note">Salidas suma gastos, gastos fijos, pagos de deuda y pagos de tarjeta. No incluye compras a crédito ni a meses, transferencias ni ingresos.</p><section class="expense-list">${tx.length ? groupedMovements(tx) : `<section class="card">${empty(noHistory ? "Tu historial empieza aquí" : "Sin coincidencias", noHistory ? "Registra tu primera entrada o salida para verla aquí." : "No hay movimientos con estos filtros.")}<div class="actions">${filters.length && !noHistory ? btn("Quitar filtros", "clearFilters") : ""}${btn("Registrar movimiento", "newMovement", "", "primary")}</div></section>`}</section></div>`)
   );
 }
 
 export function fixedList() {
-  return `<section class="card">${
-    model.state.fixedExpenses.length
-      ? model.state.fixedExpenses
-          .map((f) => {
-            const next = C.obligations(model.state).find(
-              (i) => i.ref === f.id && !i.paid,
-            );
-            const button = (text, label, action, id = f.id, extra = "") =>
-              `<button class="btn" aria-label="${label}" data-action="${action}" data-id="${esc(id)}" ${extra}>${text}</button>`;
-            return `<div class="item fixed-item"><div class="row"><div class="wallet-title"><span class="row-icon ${f.active !== false ? "blue" : "gray"}">${svg("receipt")}</span><div><strong class="item-title">${esc(f.name)}</strong><small class="section-note">${f.kind === "subscription" ? "Suscripción" : "Gasto fijo"} · ${esc(C.recurrenceLabel(f))}</small></div></div><strong class="amount">${money(f.amount)}</strong></div><p><span class="pill ${f.active !== false ? "good" : ""}">${f.active !== false ? "Activo" : "Archivado"}</span></p><div class="actions">${button("Detalles y pagos", "Ver gasto fijo", "fixedDetails")}${button("Editar", "Editar gasto fijo", "editFixed")}${next ? button("Pagar", "Pagar gasto fijo", "pay", next.key, `data-period="${C.month()}"`) : ""}${f.active !== false ? button("Dejar de usar", "Archivar gasto fijo", "deleteFixed") : ""}</div></div>`;
-          })
-          .join("")
-      : empty(
-          "Haz visibles tus compromisos",
-          "Renta, internet y suscripciones viven aquí.",
-        ) +
-        `<div class="actions">${btn("Crear gasto fijo", "editFixed", "", "primary")}</div>`
-  }</section>`;
+  const list = model.state.fixedExpenses,
+    active = list.filter((f) => f.active !== false),
+    archived = list.filter((f) => f.active === false),
+    obligations = C.obligations(model.state),
+    monthTotal = obligations
+      .filter((i) => i.kind === "fixed")
+      .reduce((n, i) => n + i.amount, 0),
+    monthPaid = obligations
+      .filter((i) => i.kind === "fixed" && i.paid)
+      .reduce((n, i) => n + i.amount, 0);
+  const row = (f) => {
+    const next = obligations.find((i) => i.ref === f.id && !i.paid);
+    return `<div class="fixed-row"><button class="fixed-main" data-action="fixedDetails" data-id="${esc(f.id)}" aria-label="Ver gasto fijo"><span class="row-icon ${f.active !== false ? "blue" : "gray"}">${svg(f.kind === "subscription" ? "history" : "receipt")}</span><span class="fixed-copy"><strong class="item-title">${esc(f.name)}</strong><small>${f.kind === "subscription" ? "Suscripción" : "Gasto fijo"} · ${esc(C.recurrenceLabel(f))}${next ? ` · próximo ${dlabel(next.date, false)}` : ""}</small></span><strong class="fixed-amount">${money(f.amount)}</strong></button><div class="fixed-actions">${next ? `<button class="chip-btn spice" data-action="pay" data-id="${esc(next.key)}" data-period="${C.month()}" aria-label="Pagar gasto fijo">Pagar</button>` : `<span class="pill ${f.active !== false ? "good" : ""}">${f.active !== false ? "Al día" : "Archivado"}</span>`}<button class="icon ghost small" data-action="editFixed" data-id="${esc(f.id)}" aria-label="Editar gasto fijo" title="Editar gasto fijo">${svg("edit")}</button>${f.active !== false ? `<button class="icon ghost small" data-action="deleteFixed" data-id="${esc(f.id)}" aria-label="Archivar gasto fijo" title="Dejar de usar">${svg("archive")}</button>` : ""}</div></div>`;
+  };
+  if (!list.length)
+    return `<section class="empty-scene">${empty(
+      "Haz visibles tus compromisos",
+      "Renta, internet y suscripciones viven aquí.",
+    )}<div class="actions">${btn("Crear gasto fijo", "editFixed", "", "primary")}</div></section>`;
+  return `<section class="fixed-summary"><div><small>Este mes</small><strong>${money(monthTotal)}</strong><span>${active.length} ${active.length === 1 ? "compromiso activo" : "compromisos activos"}</span></div><div class="split-bar" aria-hidden="true"><i class="paid" style="flex:${monthPaid}"></i><i class="due" style="flex:${Math.max(0, monthTotal - monthPaid)}"></i></div><p class="note">${money(monthPaid)} pagado · ${money(Math.max(0, monthTotal - monthPaid))} por pagar</p></section><section class="fixed-list">${active.map(row).join("")}</section>${archived.length ? `<details class="settled-list"><summary>Ya no los usas (${archived.length})</summary>${archived.map(row).join("")}</details>` : ""}`;
 }

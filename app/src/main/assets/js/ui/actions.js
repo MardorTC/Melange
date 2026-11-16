@@ -2,7 +2,7 @@ import { creditAction } from "../screens/credit.js";
 import { accountAction } from "../screens/accounts.js";
 import { loanAction } from "../screens/receivables.js";
 import { updateAction } from "../platform/updates.js";
-import { backPage, openPage, render } from "./navigation.js";
+import { backPage, openDetail, openPage, render } from "./navigation.js";
 import { model } from "../state/model.js";
 import C from "../domain/finance.js";
 import {
@@ -21,6 +21,7 @@ import {
   esc,
   empty,
   confirmAction,
+  reversibleAction,
   dlabel,
   signedField,
   signedMoney,
@@ -29,6 +30,8 @@ import { commit, undo } from "../state/ledger.js";
 import {
   transactionForm,
   newMovement,
+  moreOperations,
+  switchRegisterKind,
   choosePayment,
   payForm,
   editDebt,
@@ -94,11 +97,17 @@ export async function action(a, id, el) {
     return;
   if (a === "debtSub") {
     model.debtSub = id;
+    if (model.tab !== "debt") {
+      model.tab = "debt";
+      closeModal();
+      window.scrollTo(0, 0);
+    }
     render();
     return;
   }
   if (a === "accountSub") {
     model.accountSub = id;
+    model.tab = "accounts";
     render();
     return;
   }
@@ -121,7 +130,17 @@ export async function action(a, id, el) {
     window.scrollTo(0, 0);
   } else if (a === "close") await requestCloseModal();
   else if (a === "settings") openPage("settings");
-  else if (a === "start") startSetup();
+  else if (a === "appearance") {
+    window.melangeAppearance?.set?.(id);
+    render();
+  } else if (a === "searchMovements") {
+    model.tab = "expense";
+    model.sub = "all";
+    closeModal();
+    render();
+    window.scrollTo(0, 0);
+    $("#search")?.focus();
+  } else if (a === "start") startSetup();
   else if (a === "startEmpty")
     await commit("Libro iniciado", (s) => {
       C.startLedger(s, { banks: [{ name: "", balance: 0 }] });
@@ -132,20 +151,17 @@ export async function action(a, id, el) {
   } else if (a === "undo") await undo();
   else if (a === "expense" || a === "income" || a === "transfer")
     transactionForm(a);
-  else if (a === "newMovement") newMovement();
+  else if (a === "newMovement" || a === "register") newMovement();
+  else if (a === "registerKind") await switchRegisterKind(id);
+  else if (a === "moreOperations") moreOperations();
   else if (a === "choosePayment") choosePayment();
   else if (a === "pay") payForm(id, el.dataset.period || C.month());
   else if (a === "editDebt") editDebt(id);
   else if (a === "debtUnarchive")
-    confirmAction(
-      "Reactivar deuda",
-      "Volverá a generar sus compromisos pendientes.",
-      "Deuda reactivada",
-      (s) => {
-        s.debts.find((d) => d.id === id).archived = false;
-        C.refreshAllBudgets(s);
-      },
-    );
+    reversibleAction("Deuda reactivada", (s) => {
+      s.debts.find((d) => d.id === id).archived = false;
+      C.refreshAllBudgets(s);
+    });
   else if (a === "editFixed") editFixed(id);
   else if (a === "editGoal") editGoal(id);
   else if (a === "contribute") contribute(id);
@@ -172,23 +188,10 @@ export async function action(a, id, el) {
   } else if (a === "deleteTransaction") deleteTransaction(id);
   else if (a === "debtDetails") debtDetails(id);
   else if (a === "extraPayment") extraPayment(id);
-  else if (a === "fixedDetails") {
-    const f = model.state.fixedExpenses.find((f) => f.id === id);
-    const upcoming = Array.from({ length: 12 }, (_, n) =>
-      C.obligations(model.state, C.addMonth(C.month(), n)),
-    )
-      .flat()
-      .filter((i) => i.ref === id && !i.paid)
-      .slice(0, 6);
-    const payments = model.state.transactions
-      .filter((t) => t.ref === id)
-      .sort((a, b) => b.date.localeCompare(a.date));
-    modal(
-      f.name,
-      `<p>${money(f.amount)} por vencimiento · ${esc(C.recurrenceLabel(f))}</p><p>${f.kind === "subscription" ? "Suscripción" : "Gasto fijo"}</p><p class="note">Configuración vigente desde ${dlabel(C.rulesFor(f).at(-1).effectiveFrom)}. Cambiar o archivar no borra pagos.</p><div class="toolbar wrap">${btn("Editar", "editFixed", id)}${f.active !== false ? btn("Dejar de generar cobros", "deleteFixed", id, "danger") : ""}</div><h3>Próximos vencimientos</h3>${upcoming.map((i) => `<button class="list-row" data-action="pay" data-id="${esc(i.key)}" data-period="${i.date.slice(0, 7)}">${dlabel(i.date)} · ${money(i.remaining)} · Pagar</button>`).join("") || '<p class="note">Sin nuevos pagos pendientes en los próximos 12 meses.</p>'}<h3>Pagos registrados</h3>${payments.map((t) => `<button class="list-row" data-action="transactionDetails" data-id="${esc(t.id)}">${dlabel(t.date)} · ${money(t.amount)} · Ver o corregir</button>`).join("") || '<p class="note">Sin pagos registrados.</p>'}`,
-    );
-  } else if (a === "expenseSub") {
+  else if (a === "fixedDetails") openDetail("fixed", id);
+  else if (a === "expenseSub") {
     model.sub = id;
+    model.tab = "expense";
     render();
   } else if (a === "filters") openFilters();
   else if (a === "clearFilters") {
@@ -332,6 +335,7 @@ function openFilters() {
       render();
     },
     "Aplicar filtros",
+    { noDraft: true },
   );
 }
 
@@ -351,3 +355,24 @@ function kindLabel(k) {
     }[k] || k
   );
 }
+
+// Detalle de un gasto fijo: vencimientos, pagos y vigencia.
+function fixedDetailView(id) {
+  const f = model.state.fixedExpenses.find((f) => f.id === id);
+  if (!f) return null;
+  const upcoming = Array.from({ length: 12 }, (_, n) =>
+    C.obligations(model.state, C.addMonth(C.month(), n)),
+  )
+    .flat()
+    .filter((i) => i.ref === id && !i.paid)
+    .slice(0, 6);
+  const payments = model.state.transactions
+    .filter((t) => t.ref === id)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  return {
+    title: f.name,
+    html: `<p>${money(f.amount)} por vencimiento · ${esc(C.recurrenceLabel(f))}</p><p>${f.kind === "subscription" ? "Suscripción" : "Gasto fijo"}</p><p class="note">Configuración vigente desde ${dlabel(C.rulesFor(f).at(-1).effectiveFrom)}. Cambiar o archivar no borra pagos.</p><div class="toolbar wrap">${btn("Editar", "editFixed", id)}${f.active !== false ? btn("Dejar de generar cobros", "deleteFixed", id, "danger") : ""}</div><h3>Próximos vencimientos</h3>${upcoming.map((i) => `<button class="list-row" data-action="pay" data-id="${esc(i.key)}" data-period="${i.date.slice(0, 7)}">${dlabel(i.date)} · ${money(i.remaining)} · Pagar</button>`).join("") || '<p class="note">Sin nuevos pagos pendientes en los próximos 12 meses.</p>'}<h3>Pagos registrados</h3>${payments.map((t) => `<button class="list-row" data-action="transactionDetails" data-id="${esc(t.id)}">${dlabel(t.date)} · ${money(t.amount)} · Ver o corregir</button>`).join("") || '<p class="note">Sin pagos registrados.</p>'}`,
+  };
+}
+
+model.detailViews.fixed = fixedDetailView;

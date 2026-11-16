@@ -17,14 +17,17 @@ La información del navegador se guarda en IndexedDB y es independiente de la de
 
 ## Dónde editar
 
-- `app/src/main/assets/css/theme.css`: paleta, tipografía, radios, sombras y movimiento. Es la primera hoja que se carga.
+- `app/src/main/assets/css/theme.css`: paleta de Día y Noche, tipografía, radios, sombras y movimiento. Es la primera hoja que se carga.
+- `app/src/main/assets/css/paisaje.css`: dirección Paisaje (escenas, navegación con el sol de Registrar, piedras, títulos serif, listas sin tarjetas y pantallas de detalle). Se carga al final.
+- `app/src/main/assets/js/theme-init.js`: aplica Día o Noche antes de pintar, según Ajustes › Apariencia o el modo del teléfono.
+- `app/src/main/assets/js/ui/scene.js`: escenas del desierto de cada pestaña y el horizonte del mes.
 - `app/src/main/assets/css/base.css`: shell, titulares de pantalla, barra compacta al desplazar y animaciones de entrada.
 - `app/src/main/assets/css/screens.css`: composición de Inicio, Deudas, Cuentas, Calendario, Ruta de deudas, Proyección, Metas y Ajustes.
 - `app/src/main/assets/css/components.css`, `charts-and-lists.css` y `dialogs-and-forms.css`: componentes, navegación inferior, gráficos/listas y hojas/formularios.
 - `app/src/main/assets/index.html`: estructura general y orden de las hojas de estilo.
 - `app/src/main/assets/js/screens/`: contenido de Inicio, Cuentas, Movimientos y demás pantallas.
 - `app/src/main/assets/js/ui/icons.js`: iconos de línea Lucide en SVG, sin red.
-- `app/src/main/assets/fonts/`: Instrument Serif para titulares y cifras editoriales, con su licencia OFL.
+- `app/src/main/assets/fonts/`: Instrument Serif para titulares y cifras, y Manrope (variable, 400–800) para la interfaz, cada una con su licencia OFL.
 - `app/src/main/assets/js/ui/`: navegación, componentes y formularios.
 
 Ejemplo: cambia `--brand` en `theme.css`, guarda y recarga. Para experimentar temporalmente, usa **Inspeccionar** en el navegador; copia al archivo los cambios que quieras conservar, porque lo editado solo en el inspector se pierde al recargar.
@@ -33,13 +36,14 @@ Activa el modo de dispositivos de las herramientas del navegador y revisa anchos
 
 ## Decisiones de interfaz móvil
 
-- Cada pestaña abre con un título grande sin barra de marca duplicada. Al desplazar aparece una barra compacta con el nombre de la pantalla; en pantallas de detalle incluye Atrás.
-- La navegación inferior es flotante, con fondo translúcido y una píldora de estado. Las pantallas de detalle (Ruta, Proyección y Ajustes) la ocultan y usan una cabecera con Volver.
-- La tipografía serif se reserva para la marca, las cifras principales y las fechas de libertad. Los títulos de pantalla, listas y formularios usan la sans del sistema.
-- Los importes ocultan los centavos cuando son cero y las fechas se muestran como “5 oct 2026”, no como ISO.
-- Las listas largas se agrupan por fecha, los formularios se abren en hojas inferiores con asa y botón fijo, y los filtros viven en una hoja en lugar de empujar la página.
-- Las tarjetas de crédito usan una pieza visual oscura con saldo, límite, corte y pago; el detalle y los MSI quedan debajo.
-- Los carruseles horizontales usan `scroll-snap` y muestran el siguiente elemento para invitar a deslizar.
+- Dirección **Paisaje**: el desierto es la interfaz. Cada pestaña abre con una escena que muestra un dato real: en Inicio el sol marca el día de hoy y los pagos del mes van sobre la duna; Actividad muestra huellas, Dinero un oasis y Deudas la ladera hacia la fecha de libertad.
+- Dos temas, **Día** y **Noche** (cielo índigo, dos lunas, crestas con luz de especia). Automático sigue el modo del teléfono; la preferencia vive en el dispositivo, no en el libro.
+- Navegación: Inicio · Actividad · Registrar · Dinero · Deudas. Calendario y Fijos viven en Actividad; Metas en Dinero. El botón central es el sol de Registrar.
+- Cuenta, tarjeta, deuda y gasto fijo se abren como pantallas de detalle. Sus acciones abren hojas encima y al guardar se vuelve al detalle.
+- Las listas van sobre la arena separadas por líneas finas; solo la tarjeta de crédito y las hojas tienen superficie propia. Los iconos van en «piedras» de forma orgánica.
+- Serif (Instrument Serif) para cifras principales y títulos de sección; Manrope para el resto. Importes sin centavos cuando son cero y fechas como «5 oct 2026».
+- Especia para actuar, agua para lo que tienes, óxido solo para lo vencido.
+- Lo reversible (archivar, reactivar) se aplica sin confirmar y ofrece Deshacer; lo que elimina sí se confirma. Cerrar un formulario guarda un borrador.
 - Todo el movimiento respeta `prefers-reduced-motion`.
 
 ## Qué hace cada comando

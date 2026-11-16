@@ -11,16 +11,31 @@ import {
 } from "../ui/components.js";
 import { openPage, render } from "../ui/navigation.js";
 import { paymentRow } from "./home.js";
+import { activityHeader, monthHorizon } from "../ui/scene.js";
 
 const monthLong = (month) =>
   new Date(month + "-15T12:00:00").toLocaleDateString("es-MX", {
     month: "long",
   });
 
+// Cordillera: una duna por mes; su altura es lo que quedaría.
+function duneRange(rows) {
+  const max = Math.max(1, ...rows.map((r) => Math.abs(r.v.budgetFree))),
+    step = 340 / 11;
+  const dunes = rows
+    .map(({ month, v }, i) => {
+      const x = 25 + i * step,
+        h = Math.max(6, (Math.abs(v.budgetFree) / max) * 84),
+        cls = v.budgetFree < 0 ? "dune-bad" : i === 0 ? "dune-now" : "dune";
+      return `<path d="M${(x - 26).toFixed(1)} 132 Q ${x.toFixed(1)} ${(132 - 2 * h).toFixed(1)} ${(x + 26).toFixed(1)} 132 Z" class="${cls}"><title>${monthLong(month)}: ${money(v.budgetFree)}</title></path><text x="${x.toFixed(1)}" y="150" text-anchor="middle" class="horizon-label">${monthLong(month).slice(0, 3)}</text>`;
+    })
+    .join("");
+  return `<figure class="dune-range"><svg viewBox="0 0 390 156" role="img" aria-label="Lo que quedaría cada mes durante los próximos 12 meses"><circle cx="25" cy="18" r="9" class="horizon-sun"></circle>${dunes}<line x1="0" y1="132" x2="390" y2="132" class="horizon-line"></line></svg></figure>`;
+}
+
 export function projectionPage() {
-  const months = Array.from({ length: 12 }, (_, i) =>
-      C.addMonth(model.period, i),
-    ),
+  // La proyección siempre empieza en el mes actual, venga de donde venga.
+  const months = Array.from({ length: 12 }, (_, i) => C.addMonth(C.month(), i)),
     rows = months.map((month) => {
       const v = C.metrics(model.state, month),
         total = v.fixed + v.debt,
@@ -31,6 +46,7 @@ export function projectionPage() {
     screenHead("Proyección", "Cómo se ven los próximos 12 meses", {
       back: true,
     }) +
+    duneRange(rows) +
     `<div class="section-head"><div><h2>Lo que quedaría cada mes</h2><small>Tu ingreso previsto menos los pagos fijos y las cuotas de deuda.</small></div></div>` +
     `<section class="card projection-list">${rows
       .map(
@@ -92,6 +108,12 @@ function monthGrid(items) {
   }).join("")}</div>`;
 }
 
+// Mini horizonte del mes elegido: pagos como puntos y el sol en hoy.
+function calendarHorizon() {
+  const h = monthHorizon(model.state, model.period);
+  return `<svg class="calendar-horizon" viewBox="0 0 390 44" role="img" aria-label="${h.label}"><line x1="34" y1="22" x2="356" y2="22" class="horizon-line"></line>${h.todayX ? `<line x1="34" y1="22" x2="${h.todayX.toFixed(1)}" y2="22" class="horizon-past"></line><circle cx="${h.todayX.toFixed(1)}" cy="22" r="7" class="horizon-sun"></circle>` : ""}<g transform="translate(0 22)">${h.markers}</g></svg>`;
+}
+
 export function calendarPage() {
   const items = C.obligations(model.state, model.period).sort((a, b) =>
       a.date.localeCompare(b.date),
@@ -107,10 +129,9 @@ export function calendarPage() {
         ).toLocaleDateString("es-MX", { day: "numeric", month: "long" })
       : "Compromisos";
   return (
-    screenHead("Calendario", "Tus vencimientos del mes.") +
-    `<div class="calendar-tools"><button data-action="timeline">${svg("route")}Ruta de deudas</button><button data-action="projection">${svg("insights")}Proyección</button></div>` +
-    `<section class="card calendar-card"><div class="calendar-head"><button class="icon" data-action="prev" aria-label="Mes anterior">${svg("back")}</button><strong>${monthLong(model.period)}<small>${model.period.slice(0, 4)}</small></strong><button class="icon rotate-180" data-action="next" aria-label="Mes siguiente">${svg("back")}</button></div>${monthGrid(items)}<div class="calendar-foot"><div><small>Pendiente</small><strong>${money(m.pending)}</strong></div><div><small>Pagado</small><strong>${money(m.paid)}</strong></div></div></section>` +
-    `<div class="toolbar"><input type="month" data-calendar-period value="${model.period}" aria-label="Elegir mes y año del calendario" title="Elegir mes y año"><button class="btn" data-action="thisMonth">Volver a este mes</button></div>` +
+    activityHeader(model.state, C.metrics(model.state), "calendar") +
+    `<section class="calendar-panel"><div class="calendar-head"><button class="icon ghost" data-action="prev" aria-label="Mes anterior">${svg("back")}</button><label class="month-pick"><span>${monthLong(model.period)} <small>${model.period.slice(0, 4)}</small></span><input type="month" data-calendar-period value="${model.period}" aria-label="Elegir mes y año del calendario" title="Elegir mes y año"></label><button class="icon ghost rotate-180" data-action="next" aria-label="Mes siguiente">${svg("back")}</button></div>${calendarHorizon(items)}${monthGrid(items)}<div class="calendar-foot"><div><small>Pendiente</small><strong>${money(m.pending)}</strong></div><div><small>Pagado</small><strong>${money(m.paid)}</strong></div></div>${model.period !== C.month() ? `<button class="btn link-btn calendar-today" data-action="thisMonth">Volver a este mes</button>` : ""}</section>` +
+    `<div class="calendar-tools"><button data-action="timeline">${svg("dunePath")}Ruta de deudas</button><button data-action="projection">${svg("insights")}Proyección</button></div>` +
     sectionHead(
       selected ? selectedLabel : "Compromisos",
       selected

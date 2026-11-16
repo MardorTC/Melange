@@ -25,3 +25,8 @@ Melange incluye los siguientes recursos locales:
 
 - Instrument Serif, Copyright 2022 The Instrument Serif Project Authors.
   Licencia SIL Open Font License 1.1. El texto completo está en fonts/OFL.txt.
+
+- Manrope, Copyright 2018 The Manrope Project Authors.
+  Licencia SIL Open Font License 1.1. El texto completo está en
+  fonts/OFL-Manrope.txt. Se incluye el subconjunto latino como fuente variable
+  (pesos 400 a 800), sin cambios.

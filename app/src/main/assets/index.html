@@ -6,15 +6,23 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <meta name="theme-color" content="#f7f2e9" />
+    <meta name="theme-color" content="#f3ece1" />
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
     <title>Melange</title>
+    <script src="js/theme-init.js"></script>
     <link
       rel="preload"
       href="fonts/instrument-serif-latin-400.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="fonts/manrope-latin-var.woff2"
       as="font"
       type="font/woff2"
       crossorigin
@@ -26,6 +34,7 @@
     <link rel="stylesheet" href="css/screens.css" />
     <link rel="stylesheet" href="css/dialogs-and-forms.css" />
     <link rel="stylesheet" href="css/responsive.css" />
+    <link rel="stylesheet" href="css/paisaje.css" />
   </head>
   <body>
     <div id="topbar" class="topbar" aria-hidden="true"></div>
