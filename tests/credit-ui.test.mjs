@@ -144,11 +144,8 @@ try {
   await page
     .locator(`[data-action="creditDetails"][data-id="${cardId}"]`)
     .click();
-  assert.match(
-    await page.locator("dialog").innerText(),
-    /Compra por conciliar/,
-  );
-  await page.locator('dialog [data-action="close"]').click();
+  // El detalle de la tarjeta es una pantalla, no una hoja.
+  assert.match(await page.locator("#view").innerText(), /Compra por conciliar/);
   await page.locator(".more-actions summary").first().click();
   await page
     .locator(`[data-action="creditUnassigned"][data-id="${cardId}"]`)
@@ -240,7 +237,7 @@ try {
   });
   assert.equal(
     await page
-      .locator(".home-spending .legend")
+      .locator(".home-spending .strata-legend")
       .getByText("Otros", { exact: true })
       .count(),
     1,
@@ -280,7 +277,8 @@ try {
     balanceMode: "total",
     creditCardId: cardId,
   });
-  await page.locator("nav [data-id=calendar]").click();
+  await page.locator("nav [data-id=expense]").click();
+  await page.locator('#view [data-action="tab"][data-id="calendar"]').click();
   await page.getByRole("button", { name: "Ruta de deudas" }).click();
   const routeText = await page.locator("#view").innerText();
   assert.match(routeText, /MSI de prueba/);

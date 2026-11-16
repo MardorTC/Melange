@@ -1,7 +1,15 @@
 import C from "../domain/finance.js";
 import { model } from "../state/model.js";
 import { commit } from "../state/ledger.js";
-import { input, select, esc, moneyValue, form } from "./components.js";
+import {
+  input,
+  select,
+  esc,
+  moneyValue,
+  form,
+  stepHead,
+  syncStepHeads,
+} from "./components.js";
 import { installmentSummary, firstInstallmentDate } from "../screens/credit.js";
 
 const TYPE_OPTIONS = [
@@ -212,6 +220,7 @@ function syncDebtFields() {
           type === "msi" ? "mensualidad" : "cuota",
         )
       : "";
+  syncStepHeads(form);
 }
 
 // The same words as the MSI rows of the card form.
@@ -323,6 +332,7 @@ export function debtForm(id) {
       `<label>Notas<textarea name="notes" maxlength="2000">${esc(d.notes)}</textarea></label>`,
     );
   const fields =
+    stepHead(1, "Qué es") +
     field(
       "type",
       select("type", "¿Qué tipo de deuda es?", TYPE_OPTIONS, d.type),
@@ -346,6 +356,7 @@ export function debtForm(id) {
         d.creditCardId || "",
       ),
     ) +
+    stepHead(2, "Cuánto debes") +
     field(
       "balance",
       moneyField("balance", "Saldo pendiente actual", d.balance, true),
@@ -364,6 +375,7 @@ export function debtForm(id) {
         `min="0" max="1200" ${hasPaid ? "readonly" : ""}`,
       ),
     ) +
+    stepHead(3, "Calendario") +
     field(
       "priorPaid",
       input(
@@ -418,6 +430,7 @@ export function debtForm(id) {
       ),
     ) +
     '<p class="note" data-msi-summary aria-live="polite"></p>' +
+    stepHead(4, "Más detalles") +
     `<details data-debt-advanced ${advancedOpen ? "open" : ""}><summary>Más detalles (opcional)</summary><div style="display:grid;gap:13px;margin-top:12px">${advancedFields}</div></details>` +
     '<p class="note">Las cuotas liquidadas antes del registro son antecedentes: no generan salidas ni vuelven a reducir el saldo.</p>' +
     (hasPaid

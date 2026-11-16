@@ -10,21 +10,52 @@ import {
   btn,
   mlabel,
   dlabel,
-  screenHead,
 } from "../ui/components.js";
+import { headerAction, subTabs, tabHeader } from "../ui/scene.js";
 import C from "../domain/finance.js";
 import { debtBreakdown, debtPlan } from "../domain/debt-plan.js";
 
 export function debtsPage() {
   const selected = model.debtSub || "owe";
-  const tabs = `<div class="segmented" role="tablist" aria-label="Tipo de deuda"><button class="${selected === "owe" ? "active" : ""}" role="tab" aria-selected="${selected === "owe"}" data-action="debtSub" data-id="owe">Debo</button><button class="${selected === "owed" ? "active" : ""}" role="tab" aria-selected="${selected === "owed"}" data-action="debtSub" data-id="owed">Me deben</button></div>`;
-  const heading = screenHead(
-    "Deudas",
-    "Compras a meses, préstamos y tarjetas.",
+  const tabs = subTabs("Tipo de deuda", [
+    ["Debo", "debtSub", "owe", selected === "owe"],
+    ["Me deben", "debtSub", "owed", selected === "owed"],
+  ]);
+  const owedTotal = C.metrics(model.state).receivable,
+    summary = debtBreakdown(model.state),
+    route = debtPlan(model.state),
+    monthsLeft = route.debtFreeMonth
+      ? Math.max(
+          0,
+          (Number(route.debtFreeMonth.slice(0, 4)) -
+            Number(C.month().slice(0, 4))) *
+            12 +
+            Number(route.debtFreeMonth.slice(5, 7)) -
+            Number(C.month().slice(5, 7)),
+        )
+      : 0;
+  const heading =
     selected === "owe"
-      ? { action: "editDebt", actionLabel: "Agregar deuda" }
-      : { action: "loanCreate", actionLabel: "Registrar préstamo" },
-  );
+      ? tabHeader({
+          kind: "debts",
+          title: "Deudas",
+          kicker: "Debes",
+          figure: `<span class="scene-amount">${money(summary.total)}</span>`,
+          note: route.debtFreeMonth
+            ? `Libre de cuotas en ${mlabel(route.debtFreeMonth)}${monthsLeft ? ` · faltan ${monthsLeft} ${monthsLeft === 1 ? "mes" : "meses"}` : ""}`
+            : summary.total
+              ? "Sin fecha final de cuotas"
+              : "Sin deudas activas",
+          actions: headerAction("editDebt", "Agregar deuda"),
+        })
+      : tabHeader({
+          kind: "debts",
+          title: "Deudas",
+          kicker: "Te deben",
+          figure: `<span class="scene-amount">${money(owedTotal)}</span>`,
+          note: "No suma a tu disponible hasta que cobres.",
+          actions: headerAction("loanCreate", "Registrar préstamo"),
+        });
   if (selected === "owed") return heading + tabs + receivablesPage();
 
   const breakdown = debtBreakdown(model.state),
@@ -66,10 +97,7 @@ export function debtsPage() {
   return (
     heading +
     tabs +
-    `<div class="toolbar wrap">${btn("Agregar tarjeta", "creditEdit")}</div>` +
     `<section class="card debt-summary">
-      <small>Deuda total</small>
-      <div class="metric">${money(breakdown.total)}</div>
        <p class="note">${parts.length ? parts.join(" · ") : "Sin deudas activas"}</p>
        ${breakdown.cards.length ? `<p class="note">Tarjetas ya incluidas en el total: ${money(cardPurchases)} de compras y saldo anterior + ${money(cardInstallments)} de compras a meses${cardPending ? ` + ${money(cardPending)} de compras a meses por asociar` : ""}${cardUnassigned ? ` − ${money(cardUnassigned)} en pagos todavía sin desglose` : ""}. No vuelvas a sumar estos importes.</p>` : ""}
       <div class="hero-split">
@@ -82,7 +110,10 @@ export function debtsPage() {
       ? `<section class="card danger-zone"><div class="row"><div><strong>Cuotas atrasadas</strong><p class="note">${plan.lateCount} ${plan.lateCount === 1 ? "cuota" : "cuotas"} por ${money(plan.latePayment)} de meses anteriores.</p></div><span class="pill bad">Revisar</span></div></section>`
       : "") +
     (breakdown.cards.length
-      ? `<div class="section-head"><h2>Tarjetas de crédito</h2><button class="text-action" data-action="creditEdit">Agregar</button></div><section class="card debt-group">${breakdown.cards.map((c) => cardRow(c, plan)).join("")}</section>`
+      ? `<div class="section-head"><h2>Tarjetas de crédito</h2><button class="text-action" data-action="creditEdit">Agregar tarjeta</button></div><section class="debt-group">${breakdown.cards.map((c) => cardRow(c, plan)).join("")}</section>`
+      : "") +
+    (!breakdown.cards.length
+      ? `<div class="section-head"><h2>Tarjetas de crédito</h2><button class="text-action" data-action="creditEdit">Agregar tarjeta</button></div>`
       : "") +
     (loans.length
       ? `<div class="section-head"><h2>Préstamos y otras deudas</h2></div>${loans.map((d) => debtCard(d, plan)).join("")}`

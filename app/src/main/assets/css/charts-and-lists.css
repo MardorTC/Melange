@@ -91,7 +91,7 @@
 .chip.selected {
   background: var(--ink);
   border-color: var(--ink);
-  color: #fffaf6;
+  color: var(--on-brand);
 }
 
 /* Search + action row */
@@ -349,7 +349,7 @@ nav button:active .nav-icon {
 .history-point[aria-pressed="true"]::after {
   width: 12px;
   height: 12px;
-  box-shadow: 0 0 0 4px #c2673830;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent);
   border: 2px solid white;
 }
 

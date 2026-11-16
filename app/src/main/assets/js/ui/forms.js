@@ -1,3 +1,4 @@
+import { openDetail } from "./navigation.js";
 import { creditPayForm } from "../screens/credit.js";
 import { recurrenceFields, recurrenceValue } from "./recurrence-fields.js";
 import { debtForm } from "./debt-wizard.js";
@@ -26,6 +27,7 @@ import {
   esc,
   money,
   confirmAction,
+  reversibleAction,
   kindName,
   mlabel,
   dlabel,
@@ -34,6 +36,7 @@ import C from "../domain/finance.js";
 import { model } from "../state/model.js";
 import { commit } from "../state/ledger.js";
 import { paymentRow } from "../screens/home.js";
+import { draftAction } from "./form-drafts.js";
 
 const nameKey = (s) =>
   String(s || "")
@@ -43,14 +46,71 @@ const nameKey = (s) =>
     .replace(/\s+/g, " ")
     .trim();
 
+// Registrar: el botón central abre directamente un gasto, con un selector
+// para cambiar a ingreso, transferencia u otras operaciones.
 export function newMovement() {
+  transactionForm("expense", undefined, { switcher: true });
+}
+
+const registerKinds = [
+  ["expense", "Gasto"],
+  ["income", "Ingreso"],
+  ["transfer", "Transferir"],
+  ["more", "Más"],
+];
+
+function kindSwitch(current) {
+  return `<div class="kind-switch" role="tablist" aria-label="Tipo de operación">${registerKinds
+    .map(
+      ([id, label]) =>
+        `<button type="button" role="tab" aria-selected="${id === current}" class="${id === current ? "active" : ""}" data-action="registerKind" data-id="${id}">${label}</button>`,
+    )
+    .join("")}</div>`;
+}
+
+// Cambiar de tipo conserva importe, concepto y fecha; el borrador del tipo
+// anterior se descarta para no ofrecerlo después como si fuera otro.
+export async function switchRegisterKind(kind) {
+  const formEl = document.querySelector("#form");
+  const value = (name) =>
+    formEl?.querySelector(`[name="${name}"]`)?.value || "";
+  let prefill = {};
+  try {
+    prefill = {
+      amount: value("amount") ? moneyValue(value("amount")) : 0,
+      name: value("name"),
+      date: value("date") || C.today(),
+    };
+  } catch {
+    prefill = { name: value("name"), date: value("date") || C.today() };
+  }
+  const dirty = Boolean(value("amount") || value("name"));
+  if (formEl && dirty) await draftAction("draftDiscard");
+  if (kind === "more") moreOperations();
+  else transactionForm(kind, undefined, { switcher: true, prefill });
+}
+
+const operationRow = (action, icon, title, note, tone = "", id = "") =>
+  `<button class="op-row" data-action="${action}" data-id="${esc(id)}"><span class="pebble ${tone}">${svg(icon)}</span><span class="op-copy"><strong>${title}</strong><small>${note}</small></span><span class="row-chevron">${svg("chevron")}</span></button>`;
+
+export function moreOperations() {
+  const pending = C.obligations(model.state).filter((i) => !i.paid),
+    pendingTotal = pending.reduce((n, i) => n + (i.remaining ?? i.amount), 0);
   modal(
-    "Registrar movimiento",
-    `<div class="quick"><button data-action="expense"><span class="icon">${svg("minus")}</span>Gasto</button><button data-action="income"><span class="icon">${svg("plus")}</span>Ingreso</button><button data-action="transfer"><span class="icon">${svg("transfer")}</span>Transferir</button></div>${btn("Pagar una deuda o gasto fijo", "choosePayment", "", "full")}`,
+    "Registrar",
+    `${kindSwitch("more")}<p class="op-group">Pagos y préstamos</p>${operationRow(
+      "choosePayment",
+      "pay",
+      "Pagar un compromiso",
+      pending.length
+        ? `${pending.length} ${pending.length === 1 ? "pendiente" : "pendientes"} este mes · ${money(pendingTotal)}`
+        : "Sin pendientes este mes",
+      "spice",
+    )}${operationRow("loanCreate", "northEast", "Prestar dinero", "Sale de tu cuenta y queda por cobrar")}${operationRow("debtSub", "southWest", "Registrar un cobro", "De dinero que te deben", "water", "owed")}<p class="op-group">Crear</p>${operationRow("editDebt", "dunePath", "Deuda o compra a meses", "Préstamo, MSI o crédito sin plazo")}${operationRow("editFixed", "receipt", "Gasto fijo o suscripción", "Renta, internet, streaming")}${operationRow("editGoal", "drop", "Meta de ahorro", "Reserva dinero sin moverlo de cuenta", "water")}${operationRow("walletEdit", "bank", "Cuenta", "Banco, efectivo o vales")}${operationRow("creditEdit", "card", "Tarjeta de crédito", "Su saldo, corte y compras a meses")}`,
   );
 }
 
-export function transactionForm(kind = "expense", existing) {
+export function transactionForm(kind = "expense", existing, options = {}) {
   const t = existing || {
     kind,
     amount: 0,
@@ -58,6 +118,7 @@ export function transactionForm(kind = "expense", existing) {
     date: C.today(),
     accountId: "debit",
     categoryId: "",
+    ...(options.prefill || {}),
   };
   if (existing?.kind === "fixed") {
     form(
@@ -126,6 +187,8 @@ export function transactionForm(kind = "expense", existing) {
     return;
   }
   const fields =
+    (options.switcher && !existing ? kindSwitch(kind) : "") +
+    `<div class="amount-hero ${kind === "income" ? "is-income" : ""}">${amount("amount", "Importe", t.amount || null)}</div>` +
     input(
       "name",
       kind === "income" ? "Concepto del ingreso" : "Concepto",
@@ -133,11 +196,13 @@ export function transactionForm(kind = "expense", existing) {
       "text",
       'required maxlength="120"',
     ) +
-    amount("amount", "Importe", t.amount) +
-    input("date", "Fecha", t.date, "date", `required max="${C.today()}"`) +
     select(
       "accountId",
-      kind === "income" ? "Recibir en" : "Pagar desde",
+      kind === "income"
+        ? "Recibir en"
+        : kind === "transfer"
+          ? "Sale de"
+          : "Pagar con",
       kind === "expense" ? spendingOptions() : accountOptions(),
       t.creditCardId ? "credit:" + t.creditCardId : t.accountId,
     ) +
@@ -178,11 +243,12 @@ export function transactionForm(kind = "expense", existing) {
     (kind === "transfer"
       ? select(
           "toAccountId",
-          "Destino",
+          "Llega a",
           accountOptions(),
           t.toAccountId || "cash",
         ) + accountCreateControl("toAccountId")
       : "") +
+    input("date", "Fecha", t.date, "date", `required max="${C.today()}"`) +
     (kind === "transfer"
       ? '<p class="note">Puedes distribuir saldo hacia vales sin crear ingresos ni gastos. Una cuenta de vales no puede transferir dinero a cuentas libres.</p>'
       : "") +
@@ -615,24 +681,19 @@ export function deleteEntity(type, id) {
       },
     );
   } else if (type === "Fixed")
-    confirmAction(
-      "Archivar gasto fijo",
-      "Se conservarán sus pagos realizados, incluso los adelantados. Dejará de generar nuevos cobros desde hoy. No necesitas revertir ningún pago.",
-      "Gasto fijo archivado",
-      (s) => {
-        const f = s.fixedExpenses.find((x) => x.id === id);
-        C.updateFixed(
-          s,
-          id,
-          { name: f.name, kind: f.kind },
-          {
-            ...C.rulesFor(f).at(-1),
-            effectiveFrom: C.today(),
-            active: false,
-          },
-        );
-      },
-    );
+    reversibleAction("Gasto fijo archivado", (s) => {
+      const f = s.fixedExpenses.find((x) => x.id === id);
+      C.updateFixed(
+        s,
+        id,
+        { name: f.name, kind: f.kind },
+        {
+          ...C.rulesFor(f).at(-1),
+          effectiveFrom: C.today(),
+          active: false,
+        },
+      );
+    });
   else if (type === "Goal")
     confirmAction(
       "Eliminar meta",
@@ -696,11 +757,17 @@ export function transactionDetails(id) {
   );
 }
 
-export function debtDetails(id) {
+export function debtDetailView(id) {
   const d = model.state.debts.find((x) => x.id === id);
-  modal(
-    d.name,
-    `<div class="details">${[
+  if (!d) return null;
+  // La cuota que toca se paga desde aquí, sin volver a la lista.
+  const nextDue = [
+    ...C.overdueObligations(model.state),
+    ...C.obligations(model.state),
+  ].find((i) => i.ref === id && i.kind === "debt" && !i.paid);
+  return {
+    title: d.name,
+    html: `<section class="detail-hero"><span class="pebble spice">${svg("dunePath")}</span><div><small>Saldo pendiente</small><strong class="serif-figure">${money(d.balance)}</strong>${d.totalPayments ? `<p class="note">${d.paidPayments.length} de ${d.totalPayments} cuotas pagadas</p><div class="bar"><span style="--p:${Math.min(100, (d.paidPayments.length / d.totalPayments) * 100)}%"></span></div>` : ""}</div></section><div class="details">${[
       ["Monto original", money(d.originalAmount)],
       ["Saldo", money(d.balance)],
       ["Pago habitual", money(d.payment)],
@@ -716,7 +783,7 @@ export function debtDetails(id) {
       )
       .join(
         "",
-      )}</div><p>${esc(d.notes || "Sin notas")}</p><p class="note">${d.historicalPaidPayments?.length || 0} cuotas como antecedentes; ${d.paidPayments.length - (d.historicalPaidPayments?.length || 0)} liquidadas mediante pagos registrados. Los antecedentes no afectan el saldo de tus cuentas.</p>${btn("Editar deuda", "editDebt", id, "full")}${d.balance > 0 ? btn("Registrar abono adicional", "extraPayment", id, "full") : ""}${d.creditCardId ? btn("Quitar compra a meses", "creditMsiDelete", id, "full danger") : ""}<h3 style="margin-top:20px">Movimientos vinculados</h3>${
+      )}</div><p>${esc(d.notes || "Sin notas")}</p><p class="note">${d.historicalPaidPayments?.length || 0} cuotas como antecedentes; ${d.paidPayments.length - (d.historicalPaidPayments?.length || 0)} liquidadas mediante pagos registrados. Los antecedentes no afectan el saldo de tus cuentas.</p>${nextDue ? `<button class="btn primary full" data-action="pay" data-id="${esc(nextDue.key)}" data-period="${nextDue.date.slice(0, 7)}">Pagar esta cuota · ${money(nextDue.remaining ?? nextDue.amount)}</button><p class="note">${nextDue.n ? `Cuota ${nextDue.n} · ` : ""}vence ${dlabel(nextDue.date)}</p>` : ""}${btn("Editar deuda", "editDebt", id, "full")}${d.balance > 0 ? btn("Registrar abono adicional", "extraPayment", id, "full") : ""}${d.creditCardId ? btn("Quitar compra a meses", "creditMsiDelete", id, "full danger") : ""}<h3 style="margin-top:20px">Movimientos vinculados</h3>${
       model.state.transactions
         .filter((t) => t.ref === id)
         .map(
@@ -725,7 +792,7 @@ export function debtDetails(id) {
         )
         .join("") || '<p class="muted">Sin movimientos nuevos.</p>'
     }`,
-  );
+  };
 }
 
 export function extraPayment(id) {
@@ -783,3 +850,9 @@ export function deleteTransaction(id) {
     },
   );
 }
+
+export function debtDetails(id) {
+  openDetail("debt", id);
+}
+
+model.detailViews.debt = debtDetailView;

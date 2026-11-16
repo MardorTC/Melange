@@ -140,7 +140,7 @@ const fs = require("fs");
     );
     await page.locator("nav [data-id=expense]").click();
     await page
-      .getByRole("button", { name: "Fijos y suscripciones", exact: true })
+      .getByRole("tab", { name: "Fijos y suscripciones", exact: true })
       .click();
     await page
       .getByRole("button", { name: "Agregar gasto fijo", exact: true })
@@ -167,7 +167,8 @@ const fs = require("fs");
       }),
       30000,
     );
-    await page.locator("nav [data-id=goal]").click();
+    await page.locator("nav [data-id=accounts]").click();
+    await page.locator('#view [data-action="tab"][data-id="goal"]').click();
     await page.getByRole("button", { name: "Crear meta", exact: true }).click();
     await page.locator("[name=name]").fill("Una escapada");
     await page.locator("[name=target]").fill("5000");
@@ -261,12 +262,14 @@ const fs = require("fs");
       path: "build/previews/Melange-inicio.png",
       fullPage: true,
     });
-    await page.locator("nav [data-id=goal]").click();
+    await page.locator("nav [data-id=accounts]").click();
+    await page.locator('#view [data-action="tab"][data-id="goal"]').click();
     await page.screenshot({
       path: "build/previews/Melange-metas.png",
       fullPage: true,
     });
-    await page.locator("nav [data-id=calendar]").click();
+    await page.locator("nav [data-id=expense]").click();
+    await page.locator('#view [data-action="tab"][data-id="calendar"]').click();
     await page.getByRole("button", { name: "Ruta de deudas" }).click();
     const routeText = await page.locator("#view").innerText();
     assert.match(routeText, /Equipo de trabajo/);
@@ -284,7 +287,11 @@ const fs = require("fs");
     for (const width of [360, 390, 430, 1000]) {
       await page.setViewportSize({ width, height: 844 });
       for (const name of ["home", "expense", "debt", "calendar", "goal"]) {
-        await page.locator(`nav [data-id=${name}]`).click();
+        // Calendario y Metas no tienen lugar propio en la barra inferior.
+        await page.evaluate(
+          async (id) => (await import("/js/ui/actions.js")).action("tab", id),
+          name,
+        );
         const overflow = await page.evaluate(async () => {
           const { model } = await import("/js/state/model.js");
           const state = model.state;
@@ -307,7 +314,8 @@ const fs = require("fs");
       "settings overflow at 390",
     );
     await page.getByRole("button", { name: "Volver", exact: true }).click();
-    await page.locator("nav [data-id=calendar]").click();
+    await page.locator("nav [data-id=expense]").click();
+    await page.locator('#view [data-action="tab"][data-id="calendar"]').click();
     await page.getByRole("button", { name: "Proyección", exact: true }).click();
     assert.equal(
       await page.evaluate(

@@ -152,6 +152,16 @@ public final class NativeBridge {
   }
 
   @JavascriptInterface
+  public boolean systemDark() {
+    return activity.systemDark();
+  }
+
+  @JavascriptInterface
+  public void setSystemTheme(boolean dark) {
+    activity.runOnUiThread(() -> activity.applySystemTheme(dark));
+  }
+
+  @JavascriptInterface
   public String appInfo() {
     return "{\"version\":\""
         + BuildConfig.VERSION_NAME

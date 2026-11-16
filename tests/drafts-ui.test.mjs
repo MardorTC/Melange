@@ -228,7 +228,7 @@ try {
   await closed();
 
   // Dynamic MSI fields also survive closing/reloading, without creating debt.
-  await page.locator('.hero-account[data-account-sub="credit"]').click();
+  await page.locator('.pano[data-account-sub="credit"]').click();
   await click("Agregar tarjeta");
   await page.locator('[name="name"]').fill("Banco crédito");
   await page.locator('[name="limit"]').fill("20000");
@@ -244,7 +244,7 @@ try {
   await page.keyboard.press("Escape");
   await closed();
   await page.reload();
-  await page.locator('.hero-account[data-account-sub="credit"]').click();
+  await page.locator('.pano[data-account-sub="credit"]').click();
   await click("Agregar tarjeta");
   await recover();
   assert.equal(await page.locator('[name$="_name"]').inputValue(), "Laptop");

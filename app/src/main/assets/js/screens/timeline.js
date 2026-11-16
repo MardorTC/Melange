@@ -65,8 +65,9 @@ function planRow(row, year) {
             index < start || index > end
               ? "outside"
               : debtCellState(row, month, C.month());
-          const isCurrent = month === C.month() ? " current" : "";
-          return `<span class="debt-cell ${state}${isCurrent}" title="${esc(shortMonth(month) + " · " + state)}" aria-hidden="true"></span>`;
+          const isCurrent = month === C.month() ? " current" : "",
+            isLast = month === row.end ? " last" : "";
+          return `<span class="debt-cell ${state}${isCurrent}${isLast}" title="${esc(shortMonth(month) + " · " + state)}" aria-hidden="true"></span>`;
         })
         .join("")}
     </div>
@@ -81,7 +82,7 @@ export function timelinePage() {
     months = Array.from({ length: 12 }, (_, i) => monthOf(year, i));
   const noDate = plan.rows.filter((row) => !row.end && !row.archived);
   const summary = plan.rows.length
-    ? `<section class="card timeline-summary">
+    ? `<section class="card timeline-summary"><svg class="ticket-art slope-art" viewBox="0 0 340 200" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><path d="M0 70 C 90 76 160 110 220 150 S 300 188 340 190 L340 200 L0 200 Z" class="ticket-dune"></path><path d="M0 70 C 90 76 160 110 220 150 S 300 188 340 190" fill="none" class="slope-ridge"></path><g class="slope-flag-art"><line x1="318" y1="188" x2="318" y2="162"></line><path d="M318 162 L332 167 L318 172 Z"></path></g></svg>
         <small>Libre de cuotas</small>
         <div class="timeline-free">${plan.debtFreeMonth ? mlabel(plan.debtFreeMonth) : "Sin fecha planificada"}</div>
         <p class="note">${plan.debtFreeMonth ? `${plan.monthsRemaining === 1 ? "Falta un mes" : `Faltan ${plan.monthsRemaining} meses`} si mantienes tus cuotas actuales.` : "Define una cuota en las deudas marcadas para revisar para calcular una fecha."}</p>
@@ -114,7 +115,7 @@ export function timelinePage() {
       : "") +
     (rows.length
       ? `<section class="card debt-plan">
-          <div class="row"><div><h2>Calendario de deudas</h2><small class="muted">Cada barra es una deuda; no suma gastos fijos.</small></div></div>
+          <div class="row"><div><h2>Calendario de deudas</h2><small class="muted">Cada fila es una deuda y cada punto, un mes. No suma gastos fijos.</small></div></div>
           <div class="timeline-months" aria-hidden="true">${months.map((month) => `<span>${shortMonth(month).replace(".", "")}</span>`).join("")}</div>
           ${rows.map((row) => planRow(row, year)).join("")}
           <div class="timeline-legend"><span><i class="legend-swatch paid"></i>Pagado</span><span><i class="legend-swatch due"></i>Este mes</span><span><i class="legend-swatch future"></i>Pendiente</span><span><i class="legend-swatch estimated"></i>Estimado</span><span><i class="legend-swatch overdue"></i>Vencido</span></div>

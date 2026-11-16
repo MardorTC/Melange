@@ -354,17 +354,24 @@ test("invalid bank setup is atomic, accepts overdrafts and rejects duplicate nam
   assert.equal(C.metrics(s).available, -5000);
 });
 
-test("core small-text color pairs retain at least 4.5:1 contrast", () => {
+test("core small-text color pairs retain at least 4.5:1 contrast in Día and Noche", () => {
   const theme = readFileSync(
     new URL("../app/src/main/assets/css/theme.css", import.meta.url),
     "utf8",
   );
-  const colors = Object.fromEntries(
-    [...theme.matchAll(/--([\w-]+):\s*#([a-fA-F0-9]{6});/g)].map((m) => [
-      m[1],
-      m[2],
-    ]),
-  );
+  const block = (selector) => {
+    const start = theme.indexOf(selector);
+    assert.ok(start >= 0, selector);
+    return Object.fromEntries(
+      [
+        ...theme
+          .slice(start, theme.indexOf("}", start))
+          .matchAll(/--([\w-]+):\s*#([a-fA-F0-9]{6});/g),
+      ].map((m) => [m[1], m[2]]),
+    );
+  };
+  const day = block(":root {");
+  const night = { ...day, ...block(':root[data-theme="noche"] {') };
   const luminance = (hex) => {
     const rgb = hex
       .match(/../g)
@@ -372,18 +379,27 @@ test("core small-text color pairs retain at least 4.5:1 contrast", () => {
       .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
     return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
   };
-  for (const [foreground, background] of [
-    [colors.muted, colors.bg],
-    [colors.brand, "fffaf6"],
-    [colors.green, colors.mint],
-    [colors.warning, colors["warning-soft"]],
-    [colors.info, colors["info-soft"]],
-  ]) {
-    const a = luminance(foreground),
-      b = luminance(background);
-    assert.ok(
-      (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) >= 4.5,
-      `${foreground} on ${background}`,
-    );
-  }
+  for (const [name, colors] of [
+    ["Día", day],
+    ["Noche", night],
+  ])
+    for (const [foreground, background] of [
+      ["muted", "bg"],
+      ["muted", "paper"],
+      ["brand", "on-brand"],
+      ["brand-dark", "bg"],
+      ["green", "mint"],
+      ["warning", "warning-soft"],
+      ["info", "info-soft"],
+      ["info", "bg"],
+      ["danger", "danger-soft"],
+      ["ink", "paper"],
+    ]) {
+      const a = luminance(colors[foreground]),
+        b = luminance(colors[background]);
+      assert.ok(
+        (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) >= 4.5,
+        `${name}: ${foreground} on ${background}`,
+      );
+    }
 });

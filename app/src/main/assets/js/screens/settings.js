@@ -18,6 +18,7 @@ export function settingsPage() {
     </section>
     <div class="settings-section-title">Preferencias</div>
     <section class="card settings-group">
+      ${appearanceRow()}
       ${row("Recordatorios", reminders ? "Avisos locales activados." : "Sin avisos de pago.", "reminders", reminders ? "Activos" : "Inactivos", svg("notifications"))}
     </section>
     <div class="settings-section-title">Catálogos</div>
@@ -53,4 +54,12 @@ export function settingsPage() {
 
 function row(title, subtitle, action, value, iconSvg) {
   return `<button class="settings-row" data-action="${action}" aria-label="${esc(title)}"><span class="row-icon gray">${iconSvg}</span><span class="settings-copy"><strong>${title}</strong><small>${subtitle}</small></span><span class="settings-value">${value}</span><span class="row-chevron">${svg("chevron")}</span></button>`;
+}
+
+// Apariencia: preferencia de este dispositivo, fuera del libro y de Deshacer.
+function appearanceRow() {
+  const current = window.melangeAppearance?.get?.() || "auto";
+  const option = (id, label) =>
+    `<button type="button" role="radio" aria-checked="${current === id}" class="${current === id ? "active" : ""}" data-action="appearance" data-id="${id}">${label}</button>`;
+  return `<div class="settings-row appearance-row"><span class="row-icon gray">${svg(document.documentElement.dataset.theme === "noche" ? "moon" : "sun")}</span><span class="settings-copy"><strong>Apariencia</strong><small>Automático sigue el modo de tu teléfono.</small></span><div class="kind-switch appearance-switch" role="radiogroup" aria-label="Apariencia">${option("auto", "Automático")}${option("dia", "Día")}${option("noche", "Noche")}</div></div>`;
 }

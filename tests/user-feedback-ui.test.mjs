@@ -21,7 +21,8 @@ try {
   await page.locator('[name="debit"]').fill("1000");
   await click("Empezar");
   await closed();
-  await page.locator('nav [data-id="goal"]').click();
+  await page.locator('nav [data-id="accounts"]').click();
+  await page.locator('#view [data-action="tab"][data-id="goal"]').click();
   await click("Crear mi primera meta");
   await page.locator('[name="name"]').fill("Viaje");
   await page.locator('[name="target"]').fill("500");

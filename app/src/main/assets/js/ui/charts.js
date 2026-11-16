@@ -1,6 +1,64 @@
 import { model } from "../state/model.js";
 import { empty, esc, money, colors, dlabel } from "./components.js";
 
+// Totales por categoría: las cinco mayores y «Otros».
+export function categoryTotals(tx) {
+  const map = {};
+  tx.forEach((t) => {
+    const name =
+      model.state.categories.find((c) => c.id === t.categoryId)?.name ||
+      (t.kind === "fixed" ? "Gastos fijos" : "Sin categoría");
+    map[name] = (map[name] || 0) + t.amount;
+  });
+  let pairs = Object.entries(map).sort((a, b) => b[1] - a[1]);
+  if (pairs.length > 5) {
+    // Una categoría que ya se llama «Otros» se une al resto, sin repetirse.
+    const named = pairs.filter(([name]) => name !== "Otros");
+    pairs = [
+      ...named.slice(0, 4),
+      [
+        "Otros",
+        (map.Otros || 0) + named.slice(4).reduce((n, x) => n + x[1], 0),
+      ],
+    ];
+  }
+  return pairs.filter(([, value]) => value > 0);
+}
+
+// Capas de arena: cada categoría es un estrato con grosor proporcional.
+export function strata(tx) {
+  const pairs = categoryTotals(tx),
+    total = pairs.reduce((a, x) => a + x[1], 0);
+  if (!total)
+    return empty(
+      "Todavía sin gastos",
+      "Los gastos del mes aparecerán aquí como capas de arena.",
+    );
+  const base = 24,
+    height = Math.max(150, base * pairs.length + 120),
+    free = height - base * pairs.length,
+    heights = pairs.map(([, a]) => Math.round(base + (a / total) * free)),
+    tops = heights.map((_, i) =>
+      heights.slice(0, i).reduce((n, h) => n + h, 0),
+    ),
+    full = tops.at(-1) + heights.at(-1);
+  const layers = pairs
+    .map((_, i) => {
+      const y = tops[i],
+        k = i % 2 ? 6 : -6;
+      return i === 0
+        ? `<rect width="96" height="${full}" style="fill: var(--st${i + 1})"></rect>`
+        : `<path d="M0 ${y} C 26 ${y + k} 58 ${y - k} 96 ${y - 1} L96 ${full} L0 ${full} Z" style="fill: var(--st${i + 1})"></path>`;
+    })
+    .join("");
+  return `<div class="strata"><svg class="strata-core" viewBox="0 0 96 ${full}" width="96" height="${full}" role="img" aria-label="Gasto por categoría: ${esc(pairs.map(([n, a]) => `${n} ${money(a)}`).join(", "))}"><defs><clipPath id="strata-clip"><rect width="96" height="${full}" rx="26"></rect></clipPath></defs><g clip-path="url(#strata-clip)">${layers}</g></svg><div class="strata-legend">${pairs
+    .map(
+      ([name, a], i) =>
+        `<div style="height:${heights[i]}px"><i aria-hidden="true"></i><span><strong>${esc(name)}</strong> <small>${Math.round((a / total) * 100)}%</small></span><span class="strata-amount">${money(a)}</span></div>`,
+    )
+    .join("")}</div></div>`;
+}
+
 export function donut(tx) {
   const map = {};
   tx.forEach((t) => {
@@ -31,17 +89,17 @@ export function donut(tx) {
     );
   let offset = 0;
   const circumference = 320.442;
-  return `<div class="donut-wrap"><svg class="donut" viewBox="0 0 140 140" role="img" aria-label="Gasto por categoría: ${esc(pairs.map(([n, a]) => n + " " + money(a)).join(", "))}"><circle cx="70" cy="70" r="51" fill="none" stroke="#eee8dd" stroke-width="20"/>${pairs
+  return `<div class="donut-wrap"><svg class="donut" viewBox="0 0 140 140" role="img" aria-label="Gasto por categoría: ${esc(pairs.map(([n, a]) => n + " " + money(a)).join(", "))}"><circle cx="70" cy="70" r="51" fill="none" style="stroke: var(--surface-muted)" stroke-width="20"/>${pairs
     .map(([name, a], i) => {
       const exact = (a / total) * circumference,
         len = Math.min(circumference, exact + 0.6),
         off = offset;
       offset += exact;
-      return `<circle cx="70" cy="70" r="51" fill="none" stroke="${colors[i]}" stroke-width="20" stroke-dasharray="${len} ${Math.max(0, circumference - len)}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${esc(name)}: ${money(a)}</title></circle>`;
+      return `<circle cx="70" cy="70" r="51" fill="none" style="stroke: ${colors[i]}" stroke-width="20" stroke-dasharray="${len} ${Math.max(0, circumference - len)}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${esc(name)}: ${money(a)}</title></circle>`;
     })
     .join(
       "",
-    )}<text x="70" y="67" text-anchor="middle" fill="#82796a" font-size="10">TOTAL</text><text x="70" y="84" text-anchor="middle" fill="#30291f" font-size="13" font-weight="700">${money(total)}</text></svg><div class="legend">${pairs.map(([n, a], i) => `<div><span><i class="dot" style="background:${colors[i]}"></i>${esc(n)}</span><strong>${Math.round((a / total) * 100)}%</strong></div>`).join("")}</div></div>`;
+    )}<text x="70" y="67" text-anchor="middle" style="fill: var(--muted)" font-size="10">TOTAL</text><text x="70" y="84" text-anchor="middle" style="fill: var(--ink)" font-size="13" font-weight="700">${money(total)}</text></svg><div class="legend">${pairs.map(([n, a], i) => `<div><span><i class="dot" style="background:${colors[i]}"></i>${esc(n)}</span><strong>${Math.round((a / total) * 100)}%</strong></div>`).join("")}</div></div>`;
 }
 
 export function lineChart(all) {

@@ -28,7 +28,7 @@ export function receivablesPage() {
     open = model.state.receivables.filter(
       (l) => C.loanBalance(model.state, l.id) > 0,
     ).length;
-  return `<section class="card hero receivable-hero"><small>Dinero por recuperar</small><div class="metric">${money(receivable)}</div><p>${open ? `${open} ${open === 1 ? "préstamo pendiente" : "préstamos pendientes"}` : "No forma parte del disponible."}</p></section><div class="section-head"><h2>Dinero que me deben</h2></div><p class="note">Cada cobro aparece como <strong>Entrada de dinero</strong> y muestra la cuenta donde se recibió. Cada préstamo nuevo aparece como <strong>Salida de dinero</strong> y la cuenta de origen. Lo pendiente por cobrar no forma parte de tu disponible hasta que lo recibas.</p>${
+  return `<div class="section-head"><div><h2>Dinero que me deben</h2><small>${open ? `${open} ${open === 1 ? "préstamo pendiente" : "préstamos pendientes"} · ${money(receivable)}` : "Sin préstamos pendientes"}</small></div></div><p class="note">Cada cobro aparece como <strong>Entrada de dinero</strong> y muestra la cuenta donde se recibió. Cada préstamo nuevo aparece como <strong>Salida de dinero</strong> y la cuenta de origen. Lo pendiente por cobrar no forma parte de tu disponible hasta que lo recibas.</p>${
     model.state.receivables
       .map((l) => {
         const balance = C.loanBalance(model.state, l.id),
@@ -44,7 +44,8 @@ export function receivablesPage() {
             "",
           )}</div><div class="receivable-actions">${balance > 0 ? btn("Registrar cobro", "loanCollect", l.id, "primary") : ""}${btn("Corregir préstamo", "loanEdit", l.id)}</div></section>`;
       })
-      .join("") || empty("Sin préstamos", "Registra dinero que te deben.")
+      .join("") ||
+    `<section class="empty-scene">${empty("Sin préstamos", "Registra dinero que te deben.")}<div class="actions">${btn("Prestar dinero", "loanCreate", "", "primary")}</div></section>`
   }`;
 }
 
